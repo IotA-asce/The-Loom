@@ -10,8 +10,8 @@ coordinated LLM agents.
 
 ## Project Status
 
-This repository now has **Phase 0 complete**, **Phase 1 complete**, and
-**Phase 2 (profiling) implemented**.
+This repository now has **Phase 0 complete**, **Phase 1 complete**,
+**Phase 2 complete**, and **Phase 3 (retrieval/memory) implemented**.
 
 - Project docs are established: `PRD.md`, `STRATEGY.md`, `GOALS.md`, `AGENTS.md`
 - Initial Python scaffolding is in place (`agents/`, `core/`, `tests/`, tooling)
@@ -23,6 +23,7 @@ This repository now has **Phase 0 complete**, **Phase 1 complete**, and
 - Ingestion dedupe exists with content hashing, near-duplicate detection, and default idempotent behavior
 - Text/visual tone profiling exists with scene/panel analysis, uncertainty scoring, and shift detection
 - Maturity spectrum engine exists with smoothing, preset mapping, correction loops, and override audit trails
+- Retrieval engine exists with hierarchical memory, branch-aware namespaces, hybrid ranking, incremental refresh, and runtime/cost tracking
 
 Treat `PRD.md` as product intent, `STRATEGY.md` as problem-first architecture,
 and `GOALS.md` as the step-by-step execution checklist.
@@ -142,6 +143,10 @@ pytest tests/test_ocr_pipeline.py::test_sidecar_ocr_fallback_extracts_regions -q
 pytest tests/test_profile_engine.py::test_benchmark_precision_recall_and_tone_jitter_thresholds -q
 ```
 
+```bash
+pytest tests/test_retrieval_engine.py::test_phase3_done_criteria_thresholds_hold -q
+```
+
 ## Phase Progress
 
 Phase 0 completed:
@@ -212,7 +217,37 @@ Phase 2 progress (G2.4 completed):
 - Override audit events are queryable by branch/version
 - Regression benchmark tests added for precision/recall and jitter tolerance
 
-Next implementation slices are tracked in `GOALS.md` (starting from `G3.1`).
+Phase 3 progress (G3.1 completed):
+
+- Hierarchical chunking implemented for chapter/scene/sentence levels
+- Canonical metadata attached for story, branch, version, lineage, and timestamps
+- Unresolved-thread tracker added for long-form narrative memory
+
+Phase 3 progress (G3.2 completed):
+
+- Branch-aware namespace partitioning implemented for retrieval index storage
+- Branch lineage filters applied at query time
+- Namespace compaction and dedup maintenance jobs implemented
+
+Phase 3 progress (G3.3 completed):
+
+- Hybrid retrieval implemented (`BM25 + embedding`)
+- Canon-aware reranking layer added for branch/canon relevance
+- Retrieval quality metrics implemented (`Precision@K`, `MRR`, `nDCG`)
+
+Phase 3 progress (G3.4 completed):
+
+- Incremental re-embedding path implemented for edited chunks
+- Stale chunk suppression implemented in retrieval responses
+- Retrieval invalidation tests added for branch rewrite workflows
+
+Phase 3 progress (G3.5 completed):
+
+- Query/result caching layers implemented with cache-hit tracking
+- Retrieval budget controls added (token, candidate, and cost limits)
+- Runtime metrics now expose p95 latency and p95 cost
+
+Next implementation slices are tracked in `GOALS.md` (starting from `G4.1`).
 
 ## Guiding Engineering Principles
 

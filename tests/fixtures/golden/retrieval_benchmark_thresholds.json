@@ -1,0 +1,7 @@
+{
+  "precision_at_3": 0.3,
+  "mrr": 0.3,
+  "ndcg_at_3": 0.45,
+  "max_wrong_branch_incidence": 0.0,
+  "max_p95_cost": 0.08
+}

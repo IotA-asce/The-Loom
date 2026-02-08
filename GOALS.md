@@ -109,34 +109,34 @@ phase.
 ## Phase 3 - Retrieval and Long-Form Memory
 
 ### G3.1 Chunking and memory model
-- [ ] Implement hierarchical chunking (sentence, scene, chapter)
-- [ ] Attach canonical metadata (story, branch, version, time)
-- [ ] Build unresolved-thread tracker for narrative memory
+- [x] Implement hierarchical chunking (sentence, scene, chapter)
+- [x] Attach canonical metadata (story, branch, version, time)
+- [x] Build unresolved-thread tracker for narrative memory
 
 ### G3.2 Vector index strategy
-- [ ] Implement branch-aware index namespace partitioning
-- [ ] Add branch lineage filters in retrieval queries
-- [ ] Add index compaction and dedup maintenance jobs
+- [x] Implement branch-aware index namespace partitioning
+- [x] Add branch lineage filters in retrieval queries
+- [x] Add index compaction and dedup maintenance jobs
 
 ### G3.3 Ranking and retrieval quality
-- [ ] Implement hybrid retrieval (BM25 + embedding)
-- [ ] Add reranking layer for canon relevance
-- [ ] Track retrieval metrics (Precision@K, MRR, nDCG)
+- [x] Implement hybrid retrieval (BM25 + embedding)
+- [x] Add reranking layer for canon relevance
+- [x] Track retrieval metrics (Precision@K, MRR, nDCG)
 
 ### G3.4 Freshness and incremental updates
-- [ ] Implement incremental re-embedding on edits
-- [ ] Mark stale chunks and suppress stale retrieval hits
-- [ ] Add retrieval invalidation tests for branch rewrites
+- [x] Implement incremental re-embedding on edits
+- [x] Mark stale chunks and suppress stale retrieval hits
+- [x] Add retrieval invalidation tests for branch rewrites
 
 ### G3.5 Performance and cost controls
-- [ ] Add query/result caching layers
-- [ ] Add retrieval budget controls per request
-- [ ] Track p95 latency and retrieval cost per query
+- [x] Add query/result caching layers
+- [x] Add retrieval budget controls per request
+- [x] Track p95 latency and retrieval cost per query
 
 ### Phase 3 done criteria
-- [ ] Wrong-branch retrieval incidence is near zero
-- [ ] Retrieval quality beats baseline method
-- [ ] p95 retrieval latency and cost are within target
+- [x] Wrong-branch retrieval incidence is near zero
+- [x] Retrieval quality beats baseline method
+- [x] p95 retrieval latency and cost are within target
 
 ## Phase 4 - Story Graph and Branching Core
 
