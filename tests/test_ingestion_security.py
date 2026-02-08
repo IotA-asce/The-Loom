@@ -2,22 +2,36 @@
 
 from __future__ import annotations
 
+import io
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import agents.archivist as archivist
 import pytest
 
-_PNG_HEADER = b"\x89PNG\r\n\x1a\n"
-_JPEG_HEADER = b"\xff\xd8\xff\xe0"
+
+def _png_bytes() -> bytes:
+    image_module = __import__("PIL.Image", fromlist=["Image"])
+    image = image_module.new("RGB", (8, 8), "white")
+    payload = io.BytesIO()
+    image.save(payload, format="PNG")
+    return payload.getvalue()
+
+
+def _jpeg_bytes() -> bytes:
+    image_module = __import__("PIL.Image", fromlist=["Image"])
+    image = image_module.new("RGB", (8, 8), "white")
+    payload = io.BytesIO()
+    image.save(payload, format="JPEG")
+    return payload.getvalue()
 
 
 def _write_fake_png(path: Path) -> None:
-    path.write_bytes(_PNG_HEADER + b"fake-png-data")
+    path.write_bytes(_png_bytes())
 
 
 def _write_fake_jpeg(path: Path) -> None:
-    path.write_bytes(_JPEG_HEADER + b"fake-jpeg-data")
+    path.write_bytes(_jpeg_bytes())
 
 
 def test_image_folder_ingestion_uses_sandbox_by_default(
@@ -71,7 +85,7 @@ def test_image_folder_ingestion_validates_extension_signature_consistency(
 def test_cbz_ingestion_rejects_path_traversal(tmp_path: Path) -> None:
     archive_path = tmp_path / "unsafe.cbz"
     with ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as cbz_archive:
-        cbz_archive.writestr("../page-1.png", _PNG_HEADER + b"panel")
+        cbz_archive.writestr("../page-1.png", _png_bytes())
 
     with pytest.raises(archivist.IngestionSecurityError, match="path traversal"):
         archivist.ingest_cbz_pages(archive_path, use_sandbox=False)
@@ -80,7 +94,7 @@ def test_cbz_ingestion_rejects_path_traversal(tmp_path: Path) -> None:
 def test_cbz_ingestion_rejects_compression_ratio_abuse(tmp_path: Path) -> None:
     archive_path = tmp_path / "ratio.cbz"
     with ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as cbz_archive:
-        cbz_archive.writestr("page-1.png", _PNG_HEADER + (b"A" * 40_000))
+        cbz_archive.writestr("page-1.png", _png_bytes() + (b"A" * 40_000))
 
     strict_policy = archivist.IngestionPolicy(max_compression_ratio=2.0)
     with pytest.raises(archivist.IngestionSecurityError, match="compression ratio"):
@@ -102,7 +116,7 @@ def test_cbz_ingestion_rejects_signature_mismatch(tmp_path: Path) -> None:
 def test_cbz_ingestion_enforces_worker_timeout(tmp_path: Path) -> None:
     archive_path = tmp_path / "pages.cbz"
     with ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as cbz_archive:
-        cbz_archive.writestr("page-1.png", _PNG_HEADER + b"panel")
+        cbz_archive.writestr("page-1.png", _png_bytes())
 
     short_timeout_policy = archivist.IngestionPolicy(worker_timeout_seconds=0.0)
     with pytest.raises(TimeoutError, match="exceeded timeout"):

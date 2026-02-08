@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+import difflib
+import hashlib
 import html
 import importlib
+import io
+import json
 import mimetypes
 import re
 import xml.etree.ElementTree as ET
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from multiprocessing import get_context
 from pathlib import Path, PurePosixPath
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 from zipfile import BadZipFile, ZipFile
 
 _ReportT = TypeVar("_ReportT")
@@ -82,6 +86,28 @@ class IngestionReport:
     source_path: Path
     page_count: int
     warnings: tuple[str, ...] = ()
+    source_hash: str = ""
+    spread_count: int = 0
+    page_formats: tuple[str, ...] = ()
+    page_hashes: tuple[str, ...] = ()
+    page_metadata: tuple[MangaPageMetadata, ...] = ()
+
+
+@dataclass(frozen=True)
+class MangaPageMetadata:
+    """Normalized metadata captured for a manga page."""
+
+    source_ref: str
+    width: int
+    height: int
+    format_name: str
+    original_mode: str
+    normalized_mode: str
+    has_alpha: bool
+    is_spread: bool
+    content_hash: str
+    normalized_hash: str
+    perceptual_hash: str
 
 
 @dataclass(frozen=True)
@@ -103,6 +129,49 @@ class TextIngestionReport:
     confidence: float
     warnings: tuple[str, ...] = ()
     errors: tuple[str, ...] = ()
+    source_hash: str = ""
+    chunk_hashes: tuple[str, ...] = ()
+    chunk_signatures: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class OcrRegion:
+    """Detected OCR region and dialogue classification."""
+
+    x1: int
+    y1: int
+    x2: int
+    y2: int
+    text: str
+    confidence: float
+    region_type: str
+
+
+@dataclass(frozen=True)
+class OcrPageReport:
+    """OCR output for a single manga page."""
+
+    source_path: Path
+    engine: str
+    regions: tuple[OcrRegion, ...]
+    average_confidence: float
+    warnings: tuple[str, ...] = ()
+
+
+@dataclass
+class IngestionDedupeCache:
+    """In-memory cache for idempotent ingestion and dedupe tracking."""
+
+    source_fingerprints: dict[str, str] = field(default_factory=dict)
+    source_reports: dict[str, object] = field(default_factory=dict)
+    chunk_hash_index: dict[str, set[str]] = field(default_factory=dict)
+    chunk_signature_index: dict[str, set[str]] = field(default_factory=dict)
+    page_hash_index: dict[str, set[str]] = field(default_factory=dict)
+    page_perceptual_index: dict[str, set[str]] = field(default_factory=dict)
+    source_texts: dict[str, str] = field(default_factory=dict)
+
+
+DEFAULT_INGESTION_DEDUPE_CACHE = IngestionDedupeCache()
 
 
 def _sniff_binary_signature(file_header: bytes) -> str:
@@ -259,6 +328,259 @@ def _validate_archive_limits(
         raise IngestionSecurityError(msg)
 
     return sorted(page_names, key=_natural_sort_key)
+
+
+def _hash_bytes(payload: bytes) -> str:
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _compute_file_hash(path: Path) -> str:
+    hash_builder = hashlib.sha256()
+    with path.open("rb") as file_handle:
+        while True:
+            chunk = file_handle.read(1024 * 1024)
+            if not chunk:
+                break
+            hash_builder.update(chunk)
+    return hash_builder.hexdigest()
+
+
+def _compute_folder_hash(folder_path: Path) -> str:
+    hash_builder = hashlib.sha256()
+    page_paths = list_manga_image_pages(folder_path)
+
+    for page_path in page_paths:
+        hash_builder.update(page_path.name.encode("utf-8"))
+        hash_builder.update(page_path.stat().st_size.to_bytes(8, signed=False))
+        hash_builder.update(_compute_file_hash(page_path).encode("ascii"))
+
+    return hash_builder.hexdigest()
+
+
+def _load_pillow_modules() -> tuple[Any, Any]:
+    image_module = importlib.import_module("PIL.Image")
+    image_ops_module = importlib.import_module("PIL.ImageOps")
+    return image_module, image_ops_module
+
+
+def _compute_perceptual_hash(pillow_image: Any) -> str:
+    grayscale = pillow_image.convert("L").resize((8, 8))
+    pixels = list(grayscale.tobytes())
+    mean_value = sum(pixels) / len(pixels)
+    bits = ["1" if pixel >= mean_value else "0" for pixel in pixels]
+    value = int("".join(bits), 2)
+    return f"{value:016x}"
+
+
+def _hamming_distance(hash_a: str, hash_b: str) -> int:
+    integer_a = int(hash_a, 16)
+    integer_b = int(hash_b, 16)
+    xor_value = integer_a ^ integer_b
+    return xor_value.bit_count()
+
+
+def _image_has_alpha(pillow_image: Any) -> bool:
+    mode = pillow_image.mode
+    if mode in {"RGBA", "LA"}:
+        return True
+    if mode == "P" and "transparency" in pillow_image.info:
+        return True
+    return False
+
+
+def _normalize_image_mode(pillow_image: Any) -> Any:
+    has_alpha = _image_has_alpha(pillow_image)
+    if has_alpha:
+        image_module, _ = _load_pillow_modules()
+        rgba_image = pillow_image.convert("RGBA")
+        background_image = image_module.new(
+            "RGBA", rgba_image.size, (255, 255, 255, 255)
+        )
+        background_image.alpha_composite(rgba_image)
+        return background_image.convert("RGB")
+
+    if pillow_image.mode != "RGB":
+        return pillow_image.convert("RGB")
+
+    return pillow_image
+
+
+def _analyze_manga_page_bytes(
+    image_bytes: bytes,
+    source_ref: str,
+    spread_ratio_threshold: float = 1.35,
+) -> MangaPageMetadata:
+    image_module, image_ops_module = _load_pillow_modules()
+    source_hash = _hash_bytes(image_bytes)
+
+    with image_module.open(io.BytesIO(image_bytes)) as raw_image:
+        image_format = (raw_image.format or "unknown").lower()
+        oriented_image = image_ops_module.exif_transpose(raw_image)
+        original_mode = oriented_image.mode
+        has_alpha = _image_has_alpha(oriented_image)
+        normalized_image = _normalize_image_mode(oriented_image)
+        width, height = normalized_image.size
+        normalized_mode = normalized_image.mode
+        spread_ratio = width / max(height, 1)
+        is_spread = spread_ratio >= spread_ratio_threshold
+        perceptual_hash = _compute_perceptual_hash(normalized_image)
+
+        normalized_buffer = io.BytesIO()
+        normalized_image.save(normalized_buffer, format="PNG")
+        normalized_bytes = normalized_buffer.getvalue()
+
+    normalized_hash = _hash_bytes(normalized_bytes)
+
+    return MangaPageMetadata(
+        source_ref=source_ref,
+        width=width,
+        height=height,
+        format_name=image_format,
+        original_mode=original_mode,
+        normalized_mode=normalized_mode,
+        has_alpha=has_alpha,
+        is_spread=is_spread,
+        content_hash=source_hash,
+        normalized_hash=normalized_hash,
+        perceptual_hash=perceptual_hash,
+    )
+
+
+def _compute_text_chunk_hashes(
+    normalized_text: str,
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    chunks = [chunk.strip() for chunk in normalized_text.split("\n\n") if chunk.strip()]
+
+    chunk_hashes: list[str] = []
+    chunk_signatures: list[str] = []
+    for chunk in chunks:
+        chunk_hashes.append(_hash_bytes(chunk.encode("utf-8")))
+        token_candidates = re.findall(r"[a-zA-Z0-9']+", chunk.lower())
+        unique_tokens = sorted(set(token_candidates))[:40]
+        signature_seed = " ".join(unique_tokens)
+        chunk_signatures.append(_hash_bytes(signature_seed.encode("utf-8")))
+
+    return tuple(chunk_hashes), tuple(chunk_signatures)
+
+
+def _append_warning(report: IngestionReport, warning: str) -> IngestionReport:
+    return replace(report, warnings=(*report.warnings, warning))
+
+
+def _append_text_warning(
+    report: TextIngestionReport, warning: str
+) -> TextIngestionReport:
+    return replace(report, warnings=(*report.warnings, warning))
+
+
+def _cache_key(path: Path) -> str:
+    return str(path.resolve())
+
+
+def _apply_text_dedupe(
+    report: TextIngestionReport,
+    cache: IngestionDedupeCache,
+) -> TextIngestionReport:
+    source_key = _cache_key(report.source_path)
+    source_hash = _compute_file_hash(report.source_path)
+    cached_hash = cache.source_fingerprints.get(source_key)
+    cached_report = cache.source_reports.get(source_key)
+
+    if cached_hash == source_hash and isinstance(cached_report, TextIngestionReport):
+        return _append_text_warning(
+            cached_report,
+            "Source unchanged; returning cached text ingestion report.",
+        )
+
+    chunk_hashes, chunk_signatures = _compute_text_chunk_hashes(report.normalized_text)
+    near_duplicate_sources: set[str] = set()
+    for chunk_signature in chunk_signatures:
+        near_duplicate_sources.update(
+            cache.chunk_signature_index.get(chunk_signature, set())
+        )
+
+    for known_source, known_text in cache.source_texts.items():
+        similarity = difflib.SequenceMatcher(
+            None,
+            report.normalized_text,
+            known_text,
+        ).ratio()
+        if similarity >= 0.85:
+            near_duplicate_sources.add(known_source)
+
+    near_duplicate_sources.discard(source_key)
+
+    enriched_report = replace(
+        report,
+        source_hash=source_hash,
+        chunk_hashes=chunk_hashes,
+        chunk_signatures=chunk_signatures,
+    )
+
+    if near_duplicate_sources:
+        enriched_report = _append_text_warning(
+            enriched_report,
+            f"Detected {len(near_duplicate_sources)} near-duplicate text source(s).",
+        )
+
+    cache.source_fingerprints[source_key] = source_hash
+    cache.source_reports[source_key] = enriched_report
+
+    for chunk_hash in chunk_hashes:
+        cache.chunk_hash_index.setdefault(chunk_hash, set()).add(source_key)
+
+    for chunk_signature in chunk_signatures:
+        cache.chunk_signature_index.setdefault(chunk_signature, set()).add(source_key)
+
+    cache.source_texts[source_key] = report.normalized_text
+
+    return enriched_report
+
+
+def _apply_page_dedupe(
+    report: IngestionReport,
+    source_hash: str,
+    cache: IngestionDedupeCache,
+) -> IngestionReport:
+    source_key = _cache_key(report.source_path)
+    cached_hash = cache.source_fingerprints.get(source_key)
+    cached_report = cache.source_reports.get(source_key)
+
+    if cached_hash == source_hash and isinstance(cached_report, IngestionReport):
+        return _append_warning(
+            cached_report,
+            "Source unchanged; returning cached manga ingestion report.",
+        )
+
+    near_duplicate_sources: set[str] = set()
+    for page in report.page_metadata:
+        near_duplicate_sources.update(
+            cache.page_hash_index.get(page.normalized_hash, set())
+        )
+
+        for cached_phash, source_keys in cache.page_perceptual_index.items():
+            if _hamming_distance(page.perceptual_hash, cached_phash) <= 6:
+                near_duplicate_sources.update(source_keys)
+
+    near_duplicate_sources.discard(source_key)
+
+    enriched_report = replace(report, source_hash=source_hash)
+    if near_duplicate_sources:
+        enriched_report = _append_warning(
+            enriched_report,
+            f"Detected {len(near_duplicate_sources)} near-duplicate page source(s).",
+        )
+
+    cache.source_fingerprints[source_key] = source_hash
+    cache.source_reports[source_key] = enriched_report
+
+    for page in report.page_metadata:
+        cache.page_hash_index.setdefault(page.normalized_hash, set()).add(source_key)
+        cache.page_perceptual_index.setdefault(page.perceptual_hash, set()).add(
+            source_key
+        )
+
+    return enriched_report
 
 
 def _clamp_confidence(value: float) -> float:
@@ -682,6 +1004,7 @@ def _ingest_image_folder_pages_worker(
 ) -> IngestionReport:
     pages = list_manga_image_pages(folder_path)
     warnings: list[str] = []
+    page_metadata: list[MangaPageMetadata] = []
 
     if len(pages) > policy.max_page_count:
         msg = (
@@ -693,13 +1016,25 @@ def _ingest_image_folder_pages_worker(
         _validate_file_size(page_path, policy)
         _validate_extension_mime_and_signature(page_path)
 
+        page_bytes = page_path.read_bytes()
+        metadata = _analyze_manga_page_bytes(page_bytes, source_ref=str(page_path))
+        page_metadata.append(metadata)
+
     if not pages:
         warnings.append("No supported manga image pages found.")
+
+    spread_count = sum(1 for metadata in page_metadata if metadata.is_spread)
+    page_formats = tuple(sorted({metadata.format_name for metadata in page_metadata}))
+    page_hashes = tuple(metadata.normalized_hash for metadata in page_metadata)
 
     return IngestionReport(
         source_path=folder_path,
         page_count=len(pages),
         warnings=tuple(warnings),
+        spread_count=spread_count,
+        page_formats=page_formats,
+        page_hashes=page_hashes,
+        page_metadata=tuple(page_metadata),
     )
 
 
@@ -708,12 +1043,20 @@ def _ingest_cbz_pages_worker(
     policy: IngestionPolicy,
 ) -> IngestionReport:
     warnings: list[str] = []
+    page_metadata: list[MangaPageMetadata] = []
     _validate_file_size(archive_path, policy)
     _validate_extension_mime_and_signature(archive_path)
 
     try:
         with ZipFile(archive_path) as cbz_archive:
             sorted_page_names = _validate_archive_limits(cbz_archive, policy)
+
+            for page_name in sorted_page_names:
+                with cbz_archive.open(page_name) as member_file:
+                    page_bytes = member_file.read()
+
+                metadata = _analyze_manga_page_bytes(page_bytes, source_ref=page_name)
+                page_metadata.append(metadata)
     except BadZipFile as error:
         msg = f"CBZ archive '{archive_path.name}' is invalid: {error}."
         raise IngestionSecurityError(msg) from error
@@ -721,10 +1064,18 @@ def _ingest_cbz_pages_worker(
     if not sorted_page_names:
         warnings.append("No supported page images found inside CBZ archive.")
 
+    spread_count = sum(1 for metadata in page_metadata if metadata.is_spread)
+    page_formats = tuple(sorted({metadata.format_name for metadata in page_metadata}))
+    page_hashes = tuple(metadata.normalized_hash for metadata in page_metadata)
+
     return IngestionReport(
         source_path=archive_path,
         page_count=len(sorted_page_names),
         warnings=tuple(warnings),
+        spread_count=spread_count,
+        page_formats=page_formats,
+        page_hashes=page_hashes,
+        page_metadata=tuple(page_metadata),
     )
 
 
@@ -781,6 +1132,230 @@ def _run_in_sandboxed_worker(
     raise RuntimeError(msg)
 
 
+def _classify_dialogue_region(text: str) -> str:
+    normalized_text = text.strip().lower()
+
+    narration_prefixes = ("narrator:", "narration:", "[narration]")
+    if normalized_text.startswith(narration_prefixes):
+        return "narration"
+
+    if normalized_text.startswith("(") and normalized_text.endswith(")"):
+        return "thought"
+
+    return "speech"
+
+
+def _page_dimensions(image_path: Path) -> tuple[int, int]:
+    image_module, image_ops_module = _load_pillow_modules()
+    with image_module.open(image_path) as raw_image:
+        normalized_image = image_ops_module.exif_transpose(raw_image)
+        return cast(tuple[int, int], normalized_image.size)
+
+
+def _parse_sidecar_ocr_regions(image_path: Path) -> list[OcrRegion]:
+    sidecar_path = image_path.with_suffix(f"{image_path.suffix}.ocr.txt")
+    if not sidecar_path.exists() or not sidecar_path.is_file():
+        return []
+
+    page_width, page_height = _page_dimensions(image_path)
+    regions: list[OcrRegion] = []
+
+    for line in sidecar_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+
+        # Format: x1,y1,x2,y2|confidence|text
+        parts = line.split("|", maxsplit=2)
+        if len(parts) == 3 and "," in parts[0]:
+            coordinate_values = [value.strip() for value in parts[0].split(",")]
+            if len(coordinate_values) == 4:
+                try:
+                    x1, y1, x2, y2 = [int(value) for value in coordinate_values]
+                    confidence = _clamp_confidence(float(parts[1]))
+                    text = parts[2].strip()
+                    if text:
+                        regions.append(
+                            OcrRegion(
+                                x1=x1,
+                                y1=y1,
+                                x2=x2,
+                                y2=y2,
+                                text=text,
+                                confidence=confidence,
+                                region_type=_classify_dialogue_region(text),
+                            )
+                        )
+                        continue
+                except ValueError:
+                    pass
+
+        regions.append(
+            OcrRegion(
+                x1=0,
+                y1=0,
+                x2=page_width,
+                y2=page_height,
+                text=line,
+                confidence=0.65,
+                region_type=_classify_dialogue_region(line),
+            )
+        )
+
+    return regions
+
+
+def _run_primary_ocr_regions(image_path: Path) -> list[OcrRegion]:
+    pytesseract_module = importlib.import_module("pytesseract")
+    image_module, image_ops_module = _load_pillow_modules()
+
+    with image_module.open(image_path) as raw_image:
+        image = image_ops_module.exif_transpose(raw_image)
+        ocr_data = pytesseract_module.image_to_data(
+            image,
+            output_type=pytesseract_module.Output.DICT,
+        )
+
+    regions: list[OcrRegion] = []
+    total_entries = len(ocr_data.get("text", []))
+    for index in range(total_entries):
+        text_value = str(ocr_data["text"][index]).strip()
+        if not text_value:
+            continue
+
+        try:
+            confidence = _clamp_confidence(float(ocr_data["conf"][index]) / 100.0)
+        except (TypeError, ValueError):
+            confidence = 0.0
+
+        x1 = int(ocr_data["left"][index])
+        y1 = int(ocr_data["top"][index])
+        width = int(ocr_data["width"][index])
+        height = int(ocr_data["height"][index])
+
+        regions.append(
+            OcrRegion(
+                x1=x1,
+                y1=y1,
+                x2=x1 + width,
+                y2=y1 + height,
+                text=text_value,
+                confidence=confidence,
+                region_type=_classify_dialogue_region(text_value),
+            )
+        )
+
+    return regions
+
+
+def _average_ocr_confidence(regions: list[OcrRegion]) -> float:
+    if not regions:
+        return 0.0
+    return sum(region.confidence for region in regions) / len(regions)
+
+
+def extract_ocr_from_manga_page(
+    image_path: Path,
+    *,
+    min_confidence: float = 0.6,
+    use_ensemble: bool = True,
+) -> OcrPageReport:
+    """Extract OCR regions for one page with fallback support."""
+
+    warnings: list[str] = []
+
+    primary_regions: list[OcrRegion] = []
+    try:
+        primary_regions = _run_primary_ocr_regions(image_path)
+    except Exception as error:  # noqa: BLE001
+        warnings.append(f"Primary OCR unavailable; fallback used ({error}).")
+
+    primary_confidence = _average_ocr_confidence(primary_regions)
+    fallback_regions: list[OcrRegion] = []
+
+    should_try_fallback = (not primary_regions) or (primary_confidence < min_confidence)
+    if should_try_fallback:
+        fallback_regions = _parse_sidecar_ocr_regions(image_path)
+        if fallback_regions and primary_regions:
+            warnings.append("Primary OCR confidence low; combined with fallback OCR.")
+
+    if use_ensemble and primary_regions and fallback_regions:
+        if _average_ocr_confidence(fallback_regions) > primary_confidence:
+            selected_regions = fallback_regions
+            engine = "ensemble-fallback"
+        else:
+            selected_regions = primary_regions
+            engine = "ensemble-primary"
+    elif fallback_regions:
+        selected_regions = fallback_regions
+        engine = "sidecar"
+    elif primary_regions:
+        selected_regions = primary_regions
+        engine = "pytesseract"
+    else:
+        selected_regions = []
+        engine = "none"
+        warnings.append("No OCR text extracted from this page.")
+
+    return OcrPageReport(
+        source_path=image_path,
+        engine=engine,
+        regions=tuple(selected_regions),
+        average_confidence=_clamp_confidence(_average_ocr_confidence(selected_regions)),
+        warnings=tuple(warnings),
+    )
+
+
+def extract_ocr_for_manga_pages(
+    page_paths: list[Path],
+    *,
+    min_confidence: float = 0.6,
+    use_ensemble: bool = True,
+) -> tuple[OcrPageReport, ...]:
+    """Extract OCR reports for a batch of manga pages."""
+
+    reports = [
+        extract_ocr_from_manga_page(
+            page_path,
+            min_confidence=min_confidence,
+            use_ensemble=use_ensemble,
+        )
+        for page_path in page_paths
+    ]
+    return tuple(reports)
+
+
+def save_ocr_reports(reports: tuple[OcrPageReport, ...], output_path: Path) -> None:
+    """Store OCR reports as JSON with coordinates and confidence values."""
+
+    payload = {
+        "pages": [
+            {
+                "source_path": str(report.source_path),
+                "engine": report.engine,
+                "average_confidence": report.average_confidence,
+                "warnings": list(report.warnings),
+                "regions": [
+                    {
+                        "x1": region.x1,
+                        "y1": region.y1,
+                        "x2": region.x2,
+                        "y2": region.y2,
+                        "text": region.text,
+                        "confidence": region.confidence,
+                        "region_type": region.region_type,
+                    }
+                    for region in report.regions
+                ],
+            }
+            for report in reports
+        ]
+    }
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
 _SANDBOX_TASKS: dict[str, Callable[[Path, IngestionPolicy], object]] = {
     "ingest_image_folder_pages": _ingest_image_folder_pages_worker,
     "ingest_cbz_pages": _ingest_cbz_pages_worker,
@@ -793,6 +1368,8 @@ def ingest_image_folder_pages(
     policy: IngestionPolicy = DEFAULT_INGESTION_POLICY,
     *,
     use_sandbox: bool = True,
+    idempotent: bool = True,
+    dedupe_cache: IngestionDedupeCache = DEFAULT_INGESTION_DEDUPE_CACHE,
 ) -> IngestionReport:
     """Count supported pages for a loose-image manga folder."""
 
@@ -804,14 +1381,20 @@ def ingest_image_folder_pages(
         )
 
     if use_sandbox:
-        return _run_in_sandboxed_worker(
+        report = _run_in_sandboxed_worker(
             "ingest_image_folder_pages",
             (folder_path, policy),
             policy.worker_timeout_seconds,
             IngestionReport,
         )
+    else:
+        report = _ingest_image_folder_pages_worker(folder_path, policy)
 
-    return _ingest_image_folder_pages_worker(folder_path, policy)
+    source_hash = _compute_folder_hash(folder_path)
+    if idempotent:
+        return _apply_page_dedupe(report, source_hash, dedupe_cache)
+
+    return replace(report, source_hash=source_hash)
 
 
 def ingest_cbz_pages(
@@ -819,6 +1402,8 @@ def ingest_cbz_pages(
     policy: IngestionPolicy = DEFAULT_INGESTION_POLICY,
     *,
     use_sandbox: bool = True,
+    idempotent: bool = True,
+    dedupe_cache: IngestionDedupeCache = DEFAULT_INGESTION_DEDUPE_CACHE,
 ) -> IngestionReport:
     """Count supported pages in a CBZ archive."""
 
@@ -830,14 +1415,20 @@ def ingest_cbz_pages(
         )
 
     if use_sandbox:
-        return _run_in_sandboxed_worker(
+        report = _run_in_sandboxed_worker(
             "ingest_cbz_pages",
             (archive_path, policy),
             policy.worker_timeout_seconds,
             IngestionReport,
         )
+    else:
+        report = _ingest_cbz_pages_worker(archive_path, policy)
 
-    return _ingest_cbz_pages_worker(archive_path, policy)
+    source_hash = _compute_file_hash(archive_path)
+    if idempotent:
+        return _apply_page_dedupe(report, source_hash, dedupe_cache)
+
+    return replace(report, source_hash=source_hash)
 
 
 def ingest_text_document(
@@ -845,6 +1436,8 @@ def ingest_text_document(
     policy: IngestionPolicy = DEFAULT_INGESTION_POLICY,
     *,
     use_sandbox: bool = True,
+    idempotent: bool = True,
+    dedupe_cache: IngestionDedupeCache = DEFAULT_INGESTION_DEDUPE_CACHE,
 ) -> TextIngestionReport:
     """Parse and normalize `.txt`, `.pdf`, and `.epub` sources."""
 
@@ -860,11 +1453,23 @@ def ingest_text_document(
         )
 
     if use_sandbox:
-        return _run_in_sandboxed_worker(
+        report = _run_in_sandboxed_worker(
             "ingest_text_document",
             (source_path, policy),
             policy.worker_timeout_seconds,
             TextIngestionReport,
         )
+    else:
+        report = _ingest_text_document_worker(source_path, policy)
 
-    return _ingest_text_document_worker(source_path, policy)
+    if idempotent:
+        return _apply_text_dedupe(report, dedupe_cache)
+
+    source_hash = _compute_file_hash(source_path)
+    chunk_hashes, chunk_signatures = _compute_text_chunk_hashes(report.normalized_text)
+    return replace(
+        report,
+        source_hash=source_hash,
+        chunk_hashes=chunk_hashes,
+        chunk_signatures=chunk_signatures,
+    )

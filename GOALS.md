@@ -57,27 +57,27 @@ phase.
 - [x] Build parser confidence scoring and error reporting
 
 ### G1.3 Manga ingestion pipeline
-- [ ] Implement `ingest_cbz_pages()` for archive-based manga imports
-- [ ] Implement `ingest_image_folder_pages()` for loose page folders
-- [ ] Support page formats: `.png`, `.jpg`, `.jpeg`, `.webp`
-- [ ] Normalize EXIF orientation, color space, and alpha handling
-- [ ] Apply natural page ordering and spread detection
+- [x] Implement `ingest_cbz_pages()` for archive-based manga imports
+- [x] Implement `ingest_image_folder_pages()` for loose page folders
+- [x] Support page formats: `.png`, `.jpg`, `.jpeg`, `.webp`
+- [x] Normalize EXIF orientation, color space, and alpha handling
+- [x] Apply natural page ordering and spread detection
 
 ### G1.4 OCR and page semantics
-- [ ] Implement OCR baseline on manga pages
-- [ ] Add OCR fallback/ensemble path for low-confidence pages
-- [ ] Detect dialogue regions and classify bubble/narration types
-- [ ] Store OCR text with page coordinates and confidence
+- [x] Implement OCR baseline on manga pages
+- [x] Add OCR fallback/ensemble path for low-confidence pages
+- [x] Detect dialogue regions and classify bubble/narration types
+- [x] Store OCR text with page coordinates and confidence
 
 ### G1.5 Idempotency and deduplication
-- [ ] Add content hashing for chunks and pages
-- [ ] Add near-duplicate detection for repeated imports
-- [ ] Ensure re-ingestion is idempotent by default
+- [x] Add content hashing for chunks and pages
+- [x] Add near-duplicate detection for repeated imports
+- [x] Ensure re-ingestion is idempotent by default
 
 ### Phase 1 done criteria
-- [ ] Mixed fixture ingestion success rate meets target
-- [ ] Per-format decode success (png/jpg/jpeg/webp/cbz) meets target
-- [ ] Security fixture suite passes
+- [x] Mixed fixture ingestion success rate meets target
+- [x] Per-format decode success (png/jpg/jpeg/webp/cbz) meets target
+- [x] Security fixture suite passes
 
 ## Phase 2 - Tone, Style, and Maturity Profiling
 

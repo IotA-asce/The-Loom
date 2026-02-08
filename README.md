@@ -10,13 +10,16 @@ coordinated LLM agents.
 
 ## Project Status
 
-This repository now has **Phase 0 complete** and **Phase 1 (G1.1 + G1.2) implemented**.
+This repository now has **Phase 0 complete** and **Phase 1 fully implemented**.
 
 - Project docs are established: `PRD.md`, `STRATEGY.md`, `GOALS.md`, `AGENTS.md`
 - Initial Python scaffolding is in place (`agents/`, `core/`, `tests/`, tooling)
 - CI now runs lint + test on push/PR
 - Ingestion trust-boundary checks exist for `.cbz` and image-folder sources
 - Text ingestion exists for `.txt`, `.pdf` (with fallback), and `.epub` (chapter-aware)
+- Manga page normalization exists for EXIF orientation, color mode, alpha handling, and spread detection
+- OCR baseline exists with fallback/ensemble path and JSON report storage with coordinates/confidence
+- Ingestion dedupe exists with content hashing, near-duplicate detection, and default idempotent behavior
 
 Treat `PRD.md` as product intent, `STRATEGY.md` as problem-first architecture,
 and `GOALS.md` as the step-by-step execution checklist.
@@ -124,6 +127,14 @@ pytest tests/test_ingestion_security.py::test_cbz_ingestion_rejects_path_travers
 pytest tests/test_text_ingestion.py::test_epub_ingestion_extracts_chapters_from_spine -q
 ```
 
+```bash
+pytest tests/test_manga_ingestion_pipeline.py::test_folder_ingestion_supports_png_jpg_jpeg_webp -q
+```
+
+```bash
+pytest tests/test_ocr_pipeline.py::test_sidecar_ocr_fallback_extracts_regions -q
+```
+
 ## Phase Progress
 
 Phase 0 completed:
@@ -149,7 +160,26 @@ Phase 1 progress (G1.2 completed):
 - `.epub` ingestion with spine-based chapter extraction and fallback HTML scan
 - Parser confidence scoring plus warnings/errors in ingestion reports
 
-Next implementation slices are tracked in `GOALS.md` (starting from `G1.3`).
+Phase 1 progress (G1.3 completed):
+
+- `ingest_cbz_pages()` and `ingest_image_folder_pages()` implemented with format support for `.png`, `.jpg`, `.jpeg`, `.webp`
+- Manga page normalization includes EXIF orientation handling, RGB normalization, and alpha flattening
+- Natural page ordering and spread-page detection are now part of ingestion metadata
+
+Phase 1 progress (G1.4 completed):
+
+- OCR baseline extraction implemented for manga pages
+- Low-confidence fallback and ensemble selection path implemented
+- Dialogue region classification (`speech`, `narration`, `thought`) added
+- OCR reports can be persisted with coordinates and confidence scores
+
+Phase 1 progress (G1.5 completed):
+
+- Content hashing added for text chunks and manga pages
+- Near-duplicate detection added for text and image ingestion
+- Re-ingestion is idempotent by default through ingestion dedupe cache
+
+Next implementation slices are tracked in `GOALS.md` (starting from `G2.1`).
 
 ## Guiding Engineering Principles
 
