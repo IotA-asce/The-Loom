@@ -1,0 +1,10 @@
+{
+  "page_id": "page-001",
+  "regions": [
+    {
+      "type": "speech",
+      "text": "Who is there?",
+      "confidence": 0.98
+    }
+  ]
+}

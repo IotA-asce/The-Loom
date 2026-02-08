@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.venv/
+venv/
+.env
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.wheels/
+
+# Node and frontend
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Editor and OS
+.DS_Store
+.idea/
+.vscode/
+
+# Local models and generated artifacts
+models/*
+!models/.gitkeep
+tests/artifacts/

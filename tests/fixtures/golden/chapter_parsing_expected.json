@@ -1,0 +1,9 @@
+{
+  "source": "sample_story.txt",
+  "chapters": [
+    {
+      "title": "Chapter 1: The Door",
+      "scene_count": 1
+    }
+  ]
+}
