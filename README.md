@@ -10,11 +10,12 @@ coordinated LLM agents.
 
 ## Project Status
 
-This repository is now in **Phase 0 (foundation) implementation**.
+This repository now has **Phase 0 complete** and **Phase 1 (G1.1) implemented**.
 
 - Project docs are established: `PRD.md`, `STRATEGY.md`, `GOALS.md`, `AGENTS.md`
 - Initial Python scaffolding is in place (`agents/`, `core/`, `tests/`, tooling)
 - CI now runs lint + test on push/PR
+- Ingestion trust-boundary checks exist for `.cbz` and image-folder sources
 
 Treat `PRD.md` as product intent, `STRATEGY.md` as problem-first architecture,
 and `GOALS.md` as the step-by-step execution checklist.
@@ -115,12 +116,12 @@ make build
 Run a single test:
 
 ```bash
-pytest tests/test_smoke.py::test_supported_manga_extensions_include_required_formats -q
+pytest tests/test_ingestion_security.py::test_cbz_ingestion_rejects_path_traversal -q
 ```
 
-## Phase 0 Coverage
+## Phase Progress
 
-Implemented in the current baseline:
+Phase 0 completed:
 
 - Repository scaffolding and Python package layout
 - Lint/format/type/test toolchain (`ruff`, `black`, `mypy`, `pytest`)
@@ -129,7 +130,14 @@ Implemented in the current baseline:
 - Fixture baseline for text/pdf/epub/cbz/loose manga image pages
 - Golden fixture examples for chapter parsing and OCR
 
-Next implementation slices are tracked in `GOALS.md` (starting from Phase 1).
+Phase 1 progress (G1.1 completed):
+
+- Sandboxed ingestion workers with timeout controls
+- File size and page count limits for folders and archives
+- MIME/extension/signature consistency checks
+- CBZ path traversal and compression-ratio abuse protection
+
+Next implementation slices are tracked in `GOALS.md` (starting from `G1.2`).
 
 ## Guiding Engineering Principles
 

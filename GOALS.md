@@ -45,10 +45,10 @@ phase.
 ## Phase 1 - Safe, Reliable Ingestion
 
 ### G1.1 File trust boundary and sandboxing
-- [ ] Implement sandboxed parsing workers for untrusted files
-- [ ] Enforce file size, page count, and timeout limits
-- [ ] Validate MIME type and extension consistency
-- [ ] Add archive path traversal and zip bomb protection
+- [x] Implement sandboxed parsing workers for untrusted files
+- [x] Enforce file size, page count, and timeout limits
+- [x] Validate MIME type and extension consistency
+- [x] Add archive path traversal and zip bomb protection
 
 ### G1.2 Text ingestion pipeline
 - [ ] Implement `.txt` parser with encoding normalization
