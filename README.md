@@ -10,7 +10,8 @@ coordinated LLM agents.
 
 ## Project Status
 
-This repository now has **Phase 0 complete** and **Phase 1 fully implemented**.
+This repository now has **Phase 0 complete**, **Phase 1 complete**, and
+**Phase 2 (profiling) implemented**.
 
 - Project docs are established: `PRD.md`, `STRATEGY.md`, `GOALS.md`, `AGENTS.md`
 - Initial Python scaffolding is in place (`agents/`, `core/`, `tests/`, tooling)
@@ -20,6 +21,8 @@ This repository now has **Phase 0 complete** and **Phase 1 fully implemented**.
 - Manga page normalization exists for EXIF orientation, color mode, alpha handling, and spread detection
 - OCR baseline exists with fallback/ensemble path and JSON report storage with coordinates/confidence
 - Ingestion dedupe exists with content hashing, near-duplicate detection, and default idempotent behavior
+- Text/visual tone profiling exists with scene/panel analysis, uncertainty scoring, and shift detection
+- Maturity spectrum engine exists with smoothing, preset mapping, correction loops, and override audit trails
 
 Treat `PRD.md` as product intent, `STRATEGY.md` as problem-first architecture,
 and `GOALS.md` as the step-by-step execution checklist.
@@ -135,6 +138,10 @@ pytest tests/test_manga_ingestion_pipeline.py::test_folder_ingestion_supports_pn
 pytest tests/test_ocr_pipeline.py::test_sidecar_ocr_fallback_extracts_regions -q
 ```
 
+```bash
+pytest tests/test_profile_engine.py::test_benchmark_precision_recall_and_tone_jitter_thresholds -q
+```
+
 ## Phase Progress
 
 Phase 0 completed:
@@ -179,7 +186,33 @@ Phase 1 progress (G1.5 completed):
 - Near-duplicate detection added for text and image ingestion
 - Re-ingestion is idempotent by default through ingestion dedupe cache
 
-Next implementation slices are tracked in `GOALS.md` (starting from `G2.1`).
+Phase 2 progress (G2.1 completed):
+
+- Scene-level text profiling implemented with multi-label tagging for violence/romance/humor/horror/wholesome/psychological signals
+- Uncertainty scoring added for low-confidence scenes
+- Abrupt tonal shifts and peak-intensity scenes detected per profile run
+
+Phase 2 progress (G2.2 completed):
+
+- Panel-level visual tone classification implemented (`light`, `balanced`, `dark`, `gritty`)
+- Visual cues now include brightness, contrast, line density, texture entropy, and composition balance
+- Panel signals aggregate into scene and chapter visual profiles
+
+Phase 2 progress (G2.3 completed):
+
+- Maturity spectrum scores generated from text + visual signals
+- Rolling smoothing window reduces tone jitter in long sequences
+- Maturity bands map to generation presets for parameterized downstream generation
+- Manual maturity overrides supported with actor/reason metadata
+
+Phase 2 progress (G2.4 completed):
+
+- Human correction loop added for scene profile adjustments
+- Profile versioning and provenance tracking implemented per branch
+- Override audit events are queryable by branch/version
+- Regression benchmark tests added for precision/recall and jitter tolerance
+
+Next implementation slices are tracked in `GOALS.md` (starting from `G3.1`).
 
 ## Guiding Engineering Principles
 

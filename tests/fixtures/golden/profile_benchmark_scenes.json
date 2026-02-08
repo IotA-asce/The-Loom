@@ -1,0 +1,33 @@
+{
+  "thresholds": {
+    "precision": 0.75,
+    "recall": 0.75,
+    "tone_jitter_tolerance": 0.45
+  },
+  "scenes": [
+    {
+      "text": "Mina smiles and shares warm tea with her friends. They laugh and feel safe.",
+      "labels": ["humor", "wholesome"]
+    },
+    {
+      "text": "The monster slashes bone and blood floods the hall. Everyone screams in terror.",
+      "labels": ["horror", "violence"]
+    },
+    {
+      "text": "He whispers love and kisses her gently beneath bright lanterns.",
+      "labels": ["romance", "wholesome"]
+    },
+    {
+      "text": "His memory fractures into paranoia and obsession; the void in his mind grows.",
+      "labels": ["horror", "psychological"]
+    },
+    {
+      "text": "They joke about the broken door and chuckle while cleaning together.",
+      "labels": ["humor", "wholesome"]
+    },
+    {
+      "text": "The captain orders the attack and the battle leaves wounded bodies.",
+      "labels": ["violence"]
+    }
+  ]
+}

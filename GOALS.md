@@ -82,29 +82,29 @@ phase.
 ## Phase 2 - Tone, Style, and Maturity Profiling
 
 ### G2.1 Text profile extraction
-- [ ] Implement scene-level sentiment/intensity multi-label tagging
-- [ ] Add uncertainty scoring for low-confidence classifications
-- [ ] Detect abrupt tonal shifts and peak intensity moments
+- [x] Implement scene-level sentiment/intensity multi-label tagging
+- [x] Add uncertainty scoring for low-confidence classifications
+- [x] Detect abrupt tonal shifts and peak intensity moments
 
 ### G2.2 Visual profile extraction
-- [ ] Implement panel-level visual tonal classification
-- [ ] Add style cues beyond brightness (line density, texture, composition)
-- [ ] Aggregate panel tone into scene and chapter profiles
+- [x] Implement panel-level visual tonal classification
+- [x] Add style cues beyond brightness (line density, texture, composition)
+- [x] Aggregate panel tone into scene and chapter profiles
 
 ### G2.3 Maturity spectrum engine
-- [ ] Implement maturity/rating score bands with smoothing
-- [ ] Map score bands to generation parameter presets
-- [ ] Add explicit user overrides with audit logging
+- [x] Implement maturity/rating score bands with smoothing
+- [x] Map score bands to generation parameter presets
+- [x] Add explicit user overrides with audit logging
 
 ### G2.4 Profile quality controls
-- [ ] Create correction loop for human profile edits
-- [ ] Store profile versions and change provenance
-- [ ] Add profile regression tests with benchmark fixtures
+- [x] Create correction loop for human profile edits
+- [x] Store profile versions and change provenance
+- [x] Add profile regression tests with benchmark fixtures
 
 ### Phase 2 done criteria
-- [ ] Profile precision/recall targets met on benchmark scenes
-- [ ] Tone jitter index remains within tolerance
-- [ ] Overrides are traceable per branch version
+- [x] Profile precision/recall targets met on benchmark scenes
+- [x] Tone jitter index remains within tolerance
+- [x] Overrides are traceable per branch version
 
 ## Phase 3 - Retrieval and Long-Form Memory
 

@@ -8,6 +8,7 @@ import html
 import importlib
 import io
 import json
+import math
 import mimetypes
 import re
 import xml.etree.ElementTree as ET
@@ -108,6 +109,11 @@ class MangaPageMetadata:
     content_hash: str
     normalized_hash: str
     perceptual_hash: str
+    mean_brightness: float
+    contrast: float
+    line_density: float
+    texture_entropy: float
+    composition_balance: float
 
 
 @dataclass(frozen=True)
@@ -334,6 +340,10 @@ def _hash_bytes(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def _clamp(value: float, *, min_value: float = 0.0, max_value: float = 1.0) -> float:
+    return max(min_value, min(max_value, value))
+
+
 def _compute_file_hash(path: Path) -> str:
     hash_builder = hashlib.sha256()
     with path.open("rb") as file_handle:
@@ -370,6 +380,94 @@ def _compute_perceptual_hash(pillow_image: Any) -> str:
     bits = ["1" if pixel >= mean_value else "0" for pixel in pixels]
     value = int("".join(bits), 2)
     return f"{value:016x}"
+
+
+def _compute_visual_feature_signals(
+    pillow_image: Any,
+) -> tuple[float, float, float, float, float]:
+    grayscale = pillow_image.convert("L")
+    width, height = grayscale.size
+    pixel_values = list(grayscale.tobytes())
+
+    if not pixel_values:
+        return 0.0, 0.0, 0.0, 0.0, 1.0
+
+    mean_brightness = sum(pixel_values) / (len(pixel_values) * 255.0)
+
+    variance = sum(
+        (value - (mean_brightness * 255.0)) ** 2 for value in pixel_values
+    ) / len(pixel_values)
+    contrast = _clamp((variance**0.5) / 128.0)
+
+    edge_hits = 0
+    edge_samples = 0
+    for y_value in range(height):
+        row_offset = y_value * width
+        for x_value in range(width):
+            current = pixel_values[row_offset + x_value]
+            if x_value + 1 < width:
+                right = pixel_values[row_offset + x_value + 1]
+                edge_samples += 1
+                if abs(current - right) >= 18:
+                    edge_hits += 1
+            if y_value + 1 < height:
+                down = pixel_values[row_offset + width + x_value]
+                edge_samples += 1
+                if abs(current - down) >= 18:
+                    edge_hits += 1
+
+    line_density = _clamp(edge_hits / max(1, edge_samples))
+
+    histogram = [0] * 256
+    for value in pixel_values:
+        histogram[value] += 1
+
+    entropy = 0.0
+    total_pixels = len(pixel_values)
+    for bucket_count in histogram:
+        if bucket_count == 0:
+            continue
+        probability = bucket_count / total_pixels
+        entropy -= probability * (math.log2(probability))
+
+    texture_entropy = _clamp(entropy / 8.0)
+
+    half_width = max(1, width // 2)
+    half_height = max(1, height // 2)
+
+    left_pixels = [
+        pixel_values[y * width + x] for y in range(height) for x in range(half_width)
+    ]
+    right_pixels = [
+        pixel_values[y * width + x]
+        for y in range(height)
+        for x in range(half_width, width)
+    ]
+    top_pixels = [
+        pixel_values[y * width + x] for y in range(half_height) for x in range(width)
+    ]
+    bottom_pixels = [
+        pixel_values[y * width + x]
+        for y in range(half_height, height)
+        for x in range(width)
+    ]
+
+    left_mean = sum(left_pixels) / max(1, len(left_pixels))
+    right_mean = sum(right_pixels) / max(1, len(right_pixels))
+    top_mean = sum(top_pixels) / max(1, len(top_pixels))
+    bottom_mean = sum(bottom_pixels) / max(1, len(bottom_pixels))
+
+    horizontal_balance = 1.0 - min(1.0, abs(left_mean - right_mean) / 255.0)
+    vertical_balance = 1.0 - min(1.0, abs(top_mean - bottom_mean) / 255.0)
+    composition_balance = _clamp((horizontal_balance + vertical_balance) / 2.0)
+
+    return (
+        _clamp(mean_brightness),
+        contrast,
+        line_density,
+        texture_entropy,
+        composition_balance,
+    )
 
 
 def _hamming_distance(hash_a: str, hash_b: str) -> int:
@@ -424,6 +522,13 @@ def _analyze_manga_page_bytes(
         spread_ratio = width / max(height, 1)
         is_spread = spread_ratio >= spread_ratio_threshold
         perceptual_hash = _compute_perceptual_hash(normalized_image)
+        (
+            mean_brightness,
+            contrast,
+            line_density,
+            texture_entropy,
+            composition_balance,
+        ) = _compute_visual_feature_signals(normalized_image)
 
         normalized_buffer = io.BytesIO()
         normalized_image.save(normalized_buffer, format="PNG")
@@ -443,6 +548,11 @@ def _analyze_manga_page_bytes(
         content_hash=source_hash,
         normalized_hash=normalized_hash,
         perceptual_hash=perceptual_hash,
+        mean_brightness=mean_brightness,
+        contrast=contrast,
+        line_density=line_density,
+        texture_entropy=texture_entropy,
+        composition_balance=composition_balance,
     )
 
 
