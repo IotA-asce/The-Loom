@@ -31,10 +31,12 @@ def test_image_folder_ingestion_uses_sandbox_by_default(
         task_name: str,
         task_args: tuple[object, ...],
         timeout_seconds: float,
+        expected_type: type[object],
     ) -> archivist.IngestionReport:
         called["task_name"] = task_name
         called["task_args"] = task_args
         called["timeout_seconds"] = timeout_seconds
+        called["expected_type"] = expected_type
         return archivist.ingest_image_folder_pages(tmp_path, use_sandbox=False)
 
     monkeypatch.setattr(archivist, "_run_in_sandboxed_worker", fake_runner)
@@ -42,6 +44,7 @@ def test_image_folder_ingestion_uses_sandbox_by_default(
     report = archivist.ingest_image_folder_pages(tmp_path)
 
     assert called["task_name"] == "ingest_image_folder_pages"
+    assert called["expected_type"] is archivist.IngestionReport
     assert report.page_count == 1
 
 

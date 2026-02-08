@@ -51,10 +51,10 @@ phase.
 - [x] Add archive path traversal and zip bomb protection
 
 ### G1.2 Text ingestion pipeline
-- [ ] Implement `.txt` parser with encoding normalization
-- [ ] Implement `.pdf` parser with fallback strategy
-- [ ] Implement `.epub` parser with chapter extraction support
-- [ ] Build parser confidence scoring and error reporting
+- [x] Implement `.txt` parser with encoding normalization
+- [x] Implement `.pdf` parser with fallback strategy
+- [x] Implement `.epub` parser with chapter extraction support
+- [x] Build parser confidence scoring and error reporting
 
 ### G1.3 Manga ingestion pipeline
 - [ ] Implement `ingest_cbz_pages()` for archive-based manga imports

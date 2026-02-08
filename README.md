@@ -10,12 +10,13 @@ coordinated LLM agents.
 
 ## Project Status
 
-This repository now has **Phase 0 complete** and **Phase 1 (G1.1) implemented**.
+This repository now has **Phase 0 complete** and **Phase 1 (G1.1 + G1.2) implemented**.
 
 - Project docs are established: `PRD.md`, `STRATEGY.md`, `GOALS.md`, `AGENTS.md`
 - Initial Python scaffolding is in place (`agents/`, `core/`, `tests/`, tooling)
 - CI now runs lint + test on push/PR
 - Ingestion trust-boundary checks exist for `.cbz` and image-folder sources
+- Text ingestion exists for `.txt`, `.pdf` (with fallback), and `.epub` (chapter-aware)
 
 Treat `PRD.md` as product intent, `STRATEGY.md` as problem-first architecture,
 and `GOALS.md` as the step-by-step execution checklist.
@@ -119,6 +120,10 @@ Run a single test:
 pytest tests/test_ingestion_security.py::test_cbz_ingestion_rejects_path_traversal -q
 ```
 
+```bash
+pytest tests/test_text_ingestion.py::test_epub_ingestion_extracts_chapters_from_spine -q
+```
+
 ## Phase Progress
 
 Phase 0 completed:
@@ -137,7 +142,14 @@ Phase 1 progress (G1.1 completed):
 - MIME/extension/signature consistency checks
 - CBZ path traversal and compression-ratio abuse protection
 
-Next implementation slices are tracked in `GOALS.md` (starting from `G1.2`).
+Phase 1 progress (G1.2 completed):
+
+- `.txt` ingestion with encoding normalization and newline normalization
+- `.pdf` ingestion with primary parser path and fallback extraction strategy
+- `.epub` ingestion with spine-based chapter extraction and fallback HTML scan
+- Parser confidence scoring plus warnings/errors in ingestion reports
+
+Next implementation slices are tracked in `GOALS.md` (starting from `G1.3`).
 
 ## Guiding Engineering Principles
 
