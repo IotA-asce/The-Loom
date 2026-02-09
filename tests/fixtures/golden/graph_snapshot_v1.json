@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "story_id": "legacy-story-v1",
+  "events": [
+    {
+      "id": "evt1",
+      "scene": 0,
+      "order": 0,
+      "text": "Captain Arin discovers a hidden key.",
+      "actors": ["Captain", "Arin"],
+      "action": "discovers",
+      "objects": ["key"],
+      "confidence": 0.78
+    },
+    {
+      "id": "evt2",
+      "scene": 1,
+      "order": 1,
+      "text": "Arin reveals the truth because the gate failed.",
+      "actors": ["Arin"],
+      "action": "reveals",
+      "objects": ["truth", "gate"],
+      "confidence": 0.81
+    }
+  ],
+  "relations": [
+    {
+      "source": "evt1",
+      "target": "evt2",
+      "type": "causes",
+      "confidence": 0.74
+    }
+  ],
+  "branches": [
+    {
+      "id": "main",
+      "parent": null,
+      "divergence_event": null,
+      "status": "active",
+      "label": "root"
+    }
+  ],
+  "metadata": {
+    "source": "legacy-fixture"
+  }
+}

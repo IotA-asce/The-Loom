@@ -11,7 +11,7 @@ coordinated LLM agents.
 ## Project Status
 
 This repository now has **Phase 0 complete**, **Phase 1 complete**,
-**Phase 2 complete**, and **Phase 3 (retrieval/memory) implemented**.
+**Phase 2 complete**, **Phase 3 complete**, and **Phase 4 (story graph core) implemented**.
 
 - Project docs are established: `PRD.md`, `STRATEGY.md`, `GOALS.md`, `AGENTS.md`
 - Initial Python scaffolding is in place (`agents/`, `core/`, `tests/`, tooling)
@@ -24,6 +24,7 @@ This repository now has **Phase 0 complete**, **Phase 1 complete**,
 - Text/visual tone profiling exists with scene/panel analysis, uncertainty scoring, and shift detection
 - Maturity spectrum engine exists with smoothing, preset mapping, correction loops, and override audit trails
 - Retrieval engine exists with hierarchical memory, branch-aware namespaces, hybrid ranking, incremental refresh, and runtime/cost tracking
+- Story graph engine exists with event extraction, relation/temporal inference, divergence lifecycle workflows, consequence simulation, and schema migrations
 
 Treat `PRD.md` as product intent, `STRATEGY.md` as problem-first architecture,
 and `GOALS.md` as the step-by-step execution checklist.
@@ -147,6 +148,10 @@ pytest tests/test_profile_engine.py::test_benchmark_precision_recall_and_tone_ji
 pytest tests/test_retrieval_engine.py::test_phase3_done_criteria_thresholds_hold -q
 ```
 
+```bash
+pytest tests/test_story_graph_engine.py::test_phase4_done_criteria_thresholds_hold -q
+```
+
 ## Phase Progress
 
 Phase 0 completed:
@@ -247,7 +252,42 @@ Phase 3 progress (G3.5 completed):
 - Retrieval budget controls added (token, candidate, and cost limits)
 - Runtime metrics now expose p95 latency and p95 cost
 
-Next implementation slices are tracked in `GOALS.md` (starting from `G4.1`).
+Phase 4 progress (G4.1 completed):
+
+- Hybrid event extraction pipeline implemented with normalized schema and confidence fields
+- Duplicate event merge logic added to suppress redundant event nodes
+
+Phase 4 progress (G4.2 completed):
+
+- Canonical entity ids implemented via alias graph resolution
+- Causality and dependency relation extraction added for event graph edges
+- Entity-state contradiction detection added for canonical consistency checks
+
+Phase 4 progress (G4.3 completed):
+
+- Temporal ordering inference implemented beyond source order constraints
+- Contradiction detection added for cycles and impossible temporal edges
+- Automated repair workflow added to remove low-confidence cycle edges
+
+Phase 4 progress (G4.4 completed):
+
+- Divergence node creation and branch lineage tracking implemented
+- High-impact branch point recommendations implemented
+- Branch budget enforcement with archive/merge workflows implemented
+
+Phase 4 progress (G4.5 completed):
+
+- Affected-subgraph consequence simulation implemented
+- Hard canon constraints and soft style penalties integrated into scoring
+- Downstream consistency tracked against baseline full recompute
+
+Phase 4 progress (G4.6 completed):
+
+- Graph snapshot schema versioning implemented (current v3)
+- Replayable migration manager with rollback checkpoints implemented
+- Historical snapshot migration replay tests added for v1/v2 payloads
+
+Next implementation slices are tracked in `GOALS.md` (starting from `G5.1`).
 
 ## Guiding Engineering Principles
 

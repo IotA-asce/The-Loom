@@ -1,0 +1,5 @@
+{
+  "min_event_confidence_mean": 0.45,
+  "max_temporal_contradictions": 1,
+  "min_consequence_consistency": 0.8
+}

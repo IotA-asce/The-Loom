@@ -141,39 +141,39 @@ phase.
 ## Phase 4 - Story Graph and Branching Core
 
 ### G4.1 Event extraction and normalization
-- [ ] Build hybrid event extraction pipeline
-- [ ] Normalize event schema and confidence fields
-- [ ] Add duplicate event merge logic
+- [x] Build hybrid event extraction pipeline
+- [x] Normalize event schema and confidence fields
+- [x] Add duplicate event merge logic
 
 ### G4.2 Entity and relation integrity
-- [ ] Implement canonical entity IDs with alias graph
-- [ ] Add relation extraction for causality and dependencies
-- [ ] Add conflict detection for entity-state contradictions
+- [x] Implement canonical entity IDs with alias graph
+- [x] Add relation extraction for causality and dependencies
+- [x] Add conflict detection for entity-state contradictions
 
 ### G4.3 Temporal and causal ordering
-- [ ] Infer chronological ordering beyond source order
-- [ ] Add contradiction detector for impossible sequences
-- [ ] Add repair workflow for ordering errors
+- [x] Infer chronological ordering beyond source order
+- [x] Add contradiction detector for impossible sequences
+- [x] Add repair workflow for ordering errors
 
 ### G4.4 Divergence and branch lifecycle
-- [ ] Implement divergence node creation and lineage tracking
-- [ ] Add system recommendations for high-impact branch points
-- [ ] Add branch budgets and archive/merge workflows
+- [x] Implement divergence node creation and lineage tracking
+- [x] Add system recommendations for high-impact branch points
+- [x] Add branch budgets and archive/merge workflows
 
 ### G4.5 Consequence simulation
-- [ ] Implement affected-subgraph recompute pipeline
-- [ ] Add hard canon constraints and soft style penalties
-- [ ] Track downstream consistency versus baseline recompute
+- [x] Implement affected-subgraph recompute pipeline
+- [x] Add hard canon constraints and soft style penalties
+- [x] Track downstream consistency versus baseline recompute
 
 ### G4.6 Graph persistence and migration
-- [ ] Version graph schema explicitly
-- [ ] Add replayable migrations with rollback checkpoints
-- [ ] Add migration tests against historical snapshots
+- [x] Version graph schema explicitly
+- [x] Add replayable migrations with rollback checkpoints
+- [x] Add migration tests against historical snapshots
 
 ### Phase 4 done criteria
-- [ ] Event/temporal quality targets met
-- [ ] Branch lineage and consequence simulation remain consistent
-- [ ] Schema migrations pass replay tests
+- [x] Event/temporal quality targets met
+- [x] Branch lineage and consequence simulation remain consistent
+- [x] Schema migrations pass replay tests
 
 ## Phase 5 - Text Generation Engine
 

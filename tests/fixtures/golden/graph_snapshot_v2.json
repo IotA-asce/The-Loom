@@ -1,0 +1,62 @@
+{
+  "schema_version": 2,
+  "story_id": "legacy-story-v2",
+  "events": [
+    {
+      "event_id": "evt_a",
+      "scene_index": 0,
+      "sentence_index": 0,
+      "source_order": 0,
+      "text": "Mina is alive and holds key.",
+      "normalized_text": "mina is alive and holds key",
+      "actors": ["ent_mina"],
+      "action": "holds",
+      "objects": ["key"],
+      "confidence": 0.76
+    },
+    {
+      "event_id": "evt_b",
+      "scene_index": 1,
+      "sentence_index": 0,
+      "source_order": 1,
+      "text": "Mina loses key after the attack.",
+      "normalized_text": "mina loses key after the attack",
+      "actors": ["ent_mina"],
+      "action": "loses",
+      "objects": ["key", "attack"],
+      "confidence": 0.72
+    }
+  ],
+  "relations": [
+    {
+      "source_event_id": "evt_a",
+      "target_event_id": "evt_b",
+      "relation_type": "before",
+      "confidence": 0.66,
+      "reason": "temporal connective"
+    }
+  ],
+  "branches": [
+    {
+      "branch_id": "main",
+      "parent_branch_id": null,
+      "divergence_event_id": null,
+      "label": "root",
+      "created_at": "2026-02-09T00:00:00+00:00",
+      "status": "active",
+      "merged_into": null
+    },
+    {
+      "branch_id": "main.b001",
+      "parent_branch_id": "main",
+      "divergence_event_id": "evt_b",
+      "label": "what-if",
+      "created_at": "2026-02-09T00:10:00+00:00",
+      "status": "active",
+      "merged_into": null
+    }
+  ],
+  "metadata": {
+    "migrated_to_v2_at": "2026-02-09T00:00:00+00:00"
+  }
+}
