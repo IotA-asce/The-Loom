@@ -1,0 +1,6 @@
+{
+  "min_style_similarity": 0.35,
+  "max_voice_confusion": 0.25,
+  "max_contradiction_rate": 0.25,
+  "min_expectation_match": 0.5
+}

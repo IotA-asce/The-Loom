@@ -178,39 +178,39 @@ phase.
 ## Phase 5 - Text Generation Engine
 
 ### G5.1 Writer agent baseline
-- [ ] Implement Writer Agent interface and contract tests
-- [ ] Add branch-aware context assembly from retrieval
-- [ ] Add deterministic generation mode for tests
+- [x] Implement Writer Agent interface and contract tests
+- [x] Add branch-aware context assembly from retrieval
+- [x] Add deterministic generation mode for tests
 
 ### G5.2 Style fidelity controls
-- [ ] Implement style profile embeddings
-- [ ] Add style exemplar retrieval and prompt grounding
-- [ ] Track style similarity metrics against source windows
+- [x] Implement style profile embeddings
+- [x] Add style exemplar retrieval and prompt grounding
+- [x] Track style similarity metrics against source windows
 
 ### G5.3 Character voice integrity
-- [ ] Create per-character voice cards
-- [ ] Enforce dialogue/voice constraints in generation
-- [ ] Add voice confusion regression tests
+- [x] Create per-character voice cards
+- [x] Enforce dialogue/voice constraints in generation
+- [x] Add voice confusion regression tests
 
 ### G5.4 Long-range coherence
-- [ ] Implement unresolved-thread carryover checks
-- [ ] Add arc/chapter memory summaries into generation context
-- [ ] Add contradiction checks after chapter generation
+- [x] Implement unresolved-thread carryover checks
+- [x] Add arc/chapter memory summaries into generation context
+- [x] Add contradiction checks after chapter generation
 
 ### G5.5 Prompt governance and safety
-- [ ] Create versioned prompt registry with rollback
-- [ ] Enforce strict system/developer/user prompt layering
-- [ ] Implement prompt injection defense tests using hostile fixtures
+- [x] Create versioned prompt registry with rollback
+- [x] Enforce strict system/developer/user prompt layering
+- [x] Implement prompt injection defense tests using hostile fixtures
 
 ### G5.6 Tuner mapping for text
-- [ ] Map violence/humor/romance controls with calibrated curves
-- [ ] Add expected-impact preview for slider changes
-- [ ] Validate user expectation match in tuning tests
+- [x] Map violence/humor/romance controls with calibrated curves
+- [x] Add expected-impact preview for slider changes
+- [x] Validate user expectation match in tuning tests
 
 ### Phase 5 done criteria
-- [ ] Style and voice targets met on benchmark stories
-- [ ] Long-range contradiction rate below threshold
-- [ ] Prompt version and provenance are fully traceable
+- [x] Style and voice targets met on benchmark stories
+- [x] Long-range contradiction rate below threshold
+- [x] Prompt version and provenance are fully traceable
 
 ## Phase 6 - Manga/Image Generation Engine
 

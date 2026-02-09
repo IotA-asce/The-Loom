@@ -11,7 +11,8 @@ coordinated LLM agents.
 ## Project Status
 
 This repository now has **Phase 0 complete**, **Phase 1 complete**,
-**Phase 2 complete**, **Phase 3 complete**, and **Phase 4 (story graph core) implemented**.
+**Phase 2 complete**, **Phase 3 complete**, **Phase 4 complete**, and
+**Phase 5 (writer generation core) implemented**.
 
 - Project docs are established: `PRD.md`, `STRATEGY.md`, `GOALS.md`, `AGENTS.md`
 - Initial Python scaffolding is in place (`agents/`, `core/`, `tests/`, tooling)
@@ -25,6 +26,7 @@ This repository now has **Phase 0 complete**, **Phase 1 complete**,
 - Maturity spectrum engine exists with smoothing, preset mapping, correction loops, and override audit trails
 - Retrieval engine exists with hierarchical memory, branch-aware namespaces, hybrid ranking, incremental refresh, and runtime/cost tracking
 - Story graph engine exists with event extraction, relation/temporal inference, divergence lifecycle workflows, consequence simulation, and schema migrations
+- Writer generation engine exists with deterministic generation, branch-aware context assembly, style/voice controls, coherence checks, prompt governance, and tuner calibration
 
 Treat `PRD.md` as product intent, `STRATEGY.md` as problem-first architecture,
 and `GOALS.md` as the step-by-step execution checklist.
@@ -150,6 +152,10 @@ pytest tests/test_retrieval_engine.py::test_phase3_done_criteria_thresholds_hold
 
 ```bash
 pytest tests/test_story_graph_engine.py::test_phase4_done_criteria_thresholds_hold -q
+```
+
+```bash
+pytest tests/test_writer_engine.py::test_phase5_done_criteria_thresholds_hold -q
 ```
 
 ## Phase Progress
@@ -287,7 +293,43 @@ Phase 4 progress (G4.6 completed):
 - Replayable migration manager with rollback checkpoints implemented
 - Historical snapshot migration replay tests added for v1/v2 payloads
 
-Next implementation slices are tracked in `GOALS.md` (starting from `G5.1`).
+Phase 5 progress (G5.1 completed):
+
+- Writer agent interface implemented with contract-tested request/response models
+- Branch-aware context assembly added with retrieval-driven chunk selection
+- Deterministic generation mode added for reproducible tests
+
+Phase 5 progress (G5.2 completed):
+
+- Style embeddings implemented for source/generation comparison
+- Style exemplar retrieval and grounded prompt injection added
+- Style similarity metrics tracked against source windows
+
+Phase 5 progress (G5.3 completed):
+
+- Per-character voice cards implemented
+- Voice constraints enforced in generated dialogue
+- Voice confusion regression tests added
+
+Phase 5 progress (G5.4 completed):
+
+- Unresolved-thread carryover checks integrated into generation context
+- Arc/chapter memory summaries injected into prompt grounding
+- Post-generation contradiction checks added with canonical repair step
+
+Phase 5 progress (G5.5 completed):
+
+- Versioned prompt registry implemented with rollback support
+- Strict system/developer/user prompt layering enforced
+- Prompt-injection defense tests added with hostile prompt fixtures
+
+Phase 5 progress (G5.6 completed):
+
+- Violence/humor/romance tuner mapping calibrated with nonlinear curves
+- Expected-impact preview generated for slider settings
+- Tuner expectation-match validation added in regression tests
+
+Next implementation slices are tracked in `GOALS.md` (starting from `G6.1`).
 
 ## Guiding Engineering Principles
 
