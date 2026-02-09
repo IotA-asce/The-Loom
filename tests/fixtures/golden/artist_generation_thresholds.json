@@ -1,0 +1,6 @@
+{
+  "min_continuity_score": 0.65,
+  "min_identity_consistency": 0.65,
+  "min_atmosphere_predictability": 0.75,
+  "max_cross_modal_mismatch_rate": 0.35
+}

@@ -1,29 +1,33 @@
-"""Artist agent contract and stub implementation."""
+"""Artist agent interface backed by the image-generation engine."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from core.image_generation_engine import (
+    ArtistRequest,
+    ArtistResult,
+    DiffusionBackend,
+    LoRAAdapterManager,
+    generate_manga_sequence,
+)
 
 
-@dataclass(frozen=True)
-class ArtistRequest:
-    branch_id: str
-    scene_plan: str
-    seed: int
+def generate_manga_panels(
+    request: ArtistRequest,
+    *,
+    backend: DiffusionBackend | None = None,
+    adapter_manager: LoRAAdapterManager | None = None,
+) -> ArtistResult:
+    """Generate manga panels with continuity, QC, and alignment safeguards."""
 
-
-@dataclass(frozen=True)
-class ArtistResult:
-    branch_id: str
-    image_count: int
-    model_id: str
-
-
-def generate_manga_panels(request: ArtistRequest) -> ArtistResult:
-    """Return placeholder metadata for early orchestration wiring."""
-
-    return ArtistResult(
-        branch_id=request.branch_id,
-        image_count=0,
-        model_id="stub-model",
+    return generate_manga_sequence(
+        request,
+        backend=backend,
+        adapter_manager=adapter_manager,
     )
+
+
+__all__ = [
+    "ArtistRequest",
+    "ArtistResult",
+    "generate_manga_panels",
+]

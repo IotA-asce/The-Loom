@@ -215,66 +215,66 @@ phase.
 ## Phase 6 - Manga/Image Generation Engine
 
 ### G6.1 Artist agent baseline
-- [ ] Implement Artist Agent interface and job contract
-- [ ] Integrate diffusion backend with ControlNet-compatible flow
-- [ ] Add deterministic seed support and artifact metadata
+- [x] Implement Artist Agent interface and job contract
+- [x] Integrate diffusion backend with ControlNet-compatible flow
+- [x] Add deterministic seed support and artifact metadata
 
 ### G6.2 Panel continuity and scene planning
-- [ ] Build shared scene blueprint for panel sequences
-- [ ] Add continuity anchors (camera, pose, environment, props)
-- [ ] Validate continuity across 4-panel outputs
+- [x] Build shared scene blueprint for panel sequences
+- [x] Add continuity anchors (camera, pose, environment, props)
+- [x] Validate continuity across 4-panel outputs
 
 ### G6.3 Atmosphere and tone controls
-- [ ] Implement atmosphere presets for light/dark ranges
-- [ ] Add explicit lighting and texture constraints
-- [ ] Validate readability for high-contrast and dark scenes
+- [x] Implement atmosphere presets for light/dark ranges
+- [x] Add explicit lighting and texture constraints
+- [x] Validate readability for high-contrast and dark scenes
 
 ### G6.4 Character identity consistency
-- [ ] Build identity packs (face/silhouette/costume cues)
-- [ ] Add LoRA/adaptor management and training hooks
-- [ ] Add drift detection and retraining triggers
+- [x] Build identity packs (face/silhouette/costume cues)
+- [x] Add LoRA/adaptor management and training hooks
+- [x] Add drift detection and retraining triggers
 
 ### G6.5 Visual quality guardrails
-- [ ] Implement anatomy/composition QC scoring
-- [ ] Add correction loop and selective redraw flow
-- [ ] Track rejection and final pass rates
+- [x] Implement anatomy/composition QC scoring
+- [x] Add correction loop and selective redraw flow
+- [x] Track rejection and final pass rates
 
 ### G6.6 Cross-modal alignment
-- [ ] Use shared structured scene plans for text + image
-- [ ] Add mismatch detection between prose and panel semantics
-- [ ] Add reconcile workflow when modalities diverge
+- [x] Use shared structured scene plans for text + image
+- [x] Add mismatch detection between prose and panel semantics
+- [x] Add reconcile workflow when modalities diverge
 
 ### Phase 6 done criteria
-- [ ] Panel continuity and identity metrics meet target
-- [ ] Atmosphere control behaves predictably
-- [ ] Cross-modal mismatch rate stays within threshold
+- [x] Panel continuity and identity metrics meet target
+- [x] Atmosphere control behaves predictably
+- [x] Cross-modal mismatch rate stays within threshold
 
 ## Phase 7 - Orchestration and State Integrity
 
 ### G7.1 Director agent contracts
-- [ ] Define strict typed contracts for all agent inputs/outputs
-- [ ] Add contract test suite in CI
-- [ ] Add compatibility matrix for model and workflow versions
+- [x] Define strict typed contracts for all agent inputs/outputs
+- [x] Add contract test suite in CI
+- [x] Add compatibility matrix for model and workflow versions
 
 ### G7.2 Job orchestration reliability
-- [ ] Add idempotency keys for generation jobs
-- [ ] Implement transactional state transitions per branch version
-- [ ] Add bounded retry policies and dead-letter handling
+- [x] Add idempotency keys for generation jobs
+- [x] Implement transactional state transitions per branch version
+- [x] Add bounded retry policies and dead-letter handling
 
 ### G7.3 Edit provenance and regeneration
-- [ ] Implement event-sourced edit log for text and panels
-- [ ] Scope regeneration to affected spans/panels
-- [ ] Prevent overwrite of user edits in async reruns
+- [x] Implement event-sourced edit log for text and panels
+- [x] Scope regeneration to affected spans/panels
+- [x] Prevent overwrite of user edits in async reruns
 
 ### G7.4 Sync semantics for dual outputs
-- [ ] Add shared scene/version IDs across modalities
-- [ ] Add stale-state indicators and reconcile actions
-- [ ] Add sync regression tests for async race scenarios
+- [x] Add shared scene/version IDs across modalities
+- [x] Add stale-state indicators and reconcile actions
+- [x] Add sync regression tests for async race scenarios
 
 ### Phase 7 done criteria
-- [ ] Duplicate lineage IDs remain zero
-- [ ] Recovery from partial failures is reliable
-- [ ] Edit provenance remains complete and queryable
+- [x] Duplicate lineage IDs remain zero
+- [x] Recovery from partial failures is reliable
+- [x] Edit provenance remains complete and queryable
 
 ## Phase 8 - Frontend and User Workflow
 

@@ -1,344 +1,270 @@
-# The Loom
+# The Loom 🧵
 
 [![CI](https://github.com/IotA-asce/The-Loom/actions/workflows/ci.yml/badge.svg)](https://github.com/IotA-asce/The-Loom/actions/workflows/ci.yml)
 
-Weaving infinite timelines from existing stories.
+> *Weaving infinite timelines from existing stories.*
 
-The Loom is a Python-first storytelling framework for analyzing source narratives,
-branching plot timelines, and generating both prose and manga-style outputs with
-coordinated LLM agents.
+The Loom is a Python-first storytelling framework that analyzes source narratives, branches plot timelines, and generates both prose and manga-style outputs with coordinated AI agents. It preserves the original tone—from wholesome children's tales to visceral adult fiction—without sanitization or bias.
 
-## Project Status
+---
 
-This repository now has **Phase 0 complete**, **Phase 1 complete**,
-**Phase 2 complete**, **Phase 3 complete**, **Phase 4 complete**, and
-**Phase 5 (writer generation core) implemented**.
+## ✨ What The Loom Does
 
-- Project docs are established: `PRD.md`, `STRATEGY.md`, `GOALS.md`, `AGENTS.md`
-- Initial Python scaffolding is in place (`agents/`, `core/`, `tests/`, tooling)
-- CI now runs lint + test on push/PR
-- Ingestion trust-boundary checks exist for `.cbz` and image-folder sources
-- Text ingestion exists for `.txt`, `.pdf` (with fallback), and `.epub` (chapter-aware)
-- Manga page normalization exists for EXIF orientation, color mode, alpha handling, and spread detection
-- OCR baseline exists with fallback/ensemble path and JSON report storage with coordinates/confidence
-- Ingestion dedupe exists with content hashing, near-duplicate detection, and default idempotent behavior
-- Text/visual tone profiling exists with scene/panel analysis, uncertainty scoring, and shift detection
-- Maturity spectrum engine exists with smoothing, preset mapping, correction loops, and override audit trails
-- Retrieval engine exists with hierarchical memory, branch-aware namespaces, hybrid ranking, incremental refresh, and runtime/cost tracking
-- Story graph engine exists with event extraction, relation/temporal inference, divergence lifecycle workflows, consequence simulation, and schema migrations
-- Writer generation engine exists with deterministic generation, branch-aware context assembly, style/voice controls, coherence checks, prompt governance, and tuner calibration
+| Capability | Description |
+|------------|-------------|
+| **📚 Multi-Format Ingestion** | Parse `.txt`, `.pdf`, `.epub`, `.cbz`, and loose image folders |
+| **🎭 Tone Preservation** | Analyze and replicate any genre—from Kodomomuke to Seinen, slice-of-life to horror |
+| **🌳 Branching Narratives** | Create alternate timelines with a navigable "Tree of Possibilities" |
+| **✍️ Prose Generation** | Style-faithful text generation with character voice integrity |
+| **🎨 Manga Generation** | Panel sequences with atmosphere control and identity consistency |
+| **🔄 State Integrity** | Event-sourced edit logs, idempotent jobs, and cross-modal synchronization |
 
-Treat `PRD.md` as product intent, `STRATEGY.md` as problem-first architecture,
-and `GOALS.md` as the step-by-step execution checklist.
+---
 
-## Vision
+## 🚀 Current Status
 
-Most AI storytelling tools lose tonal fidelity over long outputs or extreme genre
-shifts. The Loom aims to preserve the source tone across the full spectrum:
+**Phase 0–7 Complete** — The Loom has foundational scaffolding through full orchestration and state integrity.
 
-- wholesome to dark
-- children-focused to mature/adult
-- slice-of-life to horror/violent action
+| Phase | Status | Key Deliverables |
+|-------|--------|------------------|
+| Phase 0 | ✅ Complete | Repository scaffolding, CI/CD, test baseline |
+| Phase 1 | ✅ Complete | Safe file ingestion (text, PDF, EPUB, CBZ, images) |
+| Phase 2 | ✅ Complete | Tone profiling and maturity spectrum engine |
+| Phase 3 | ✅ Complete | Retrieval engine with branch-aware memory |
+| Phase 4 | ✅ Complete | Story graph with divergence and consequence simulation |
+| Phase 5 | ✅ Complete | Writer agent with style fidelity controls |
+| Phase 6 | ✅ Complete | Artist agent with panel continuity and cross-modal alignment |
+| Phase 7 | ✅ Complete | Orchestration engine with edit provenance and sync semantics |
+| Phase 8 | 📝 Planned | Interactive frontend and dual-view UI |
+| Phase 9 | 📝 Planned | Operations, security, and governance |
+| Phase 10 | 📝 Planned | Evaluation, hardening, and release |
 
-The core goal is style-faithful branching storytelling, not forced normalization.
+---
 
-## What The Loom Is Intended To Do
+## 🏗️ Architecture
 
-- Ingest text and manga inputs (`.txt`, `.pdf`, `.epub`, `.cbz`, image folders)
-- Analyze narrative and visual tone to build a "maturity/style profile"
-- Build a navigable event graph (the "Tree of Possibilities")
-- Generate alternate branches in prose and matching manga panels
-- Keep character consistency and atmosphere across branches
+The Loom orchestrates four specialized agents:
 
-## Planned Architecture
-
-From the current PRD, the system is planned around specialized agents:
-
-- `archivist` - ingestion and tonal analysis
-- `writer` - style-faithful prose generation
-- `artist` - visual generation with atmosphere controls
-- `director` - orchestration and tuning controls
-
-Supporting layers include graph logic, style/character profiles, local model
-integration, and a node-based UI for branching and editing.
-
-## Development Roadmap (From PRD)
-
-1. Foundation: ingestion + rating classifier
-2. Weaver: node graph + branch-aware writing
-3. Illustrator: manga panel pipeline + atmosphere control
-4. Director: full UI + editing/polish loop
-
-See `PRD.md` for milestone-level deliverables and constraints.
-
-## Repository Layout
-
-Current repository (foundation scaffolding):
-
-```text
-.
-├── .github/workflows/ci.yml
-├── .pre-commit-config.yaml
-├── AGENTS.md
-├── GOALS.md
-├── LICENSE
-├── Makefile
-├── PRD.md
-└── README.md
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  Archivist  │────▶│   Writer    │◄───▶│   Artist    │◄───▶│   Director  │
+│  (Ingest)   │     │  (Text Gen) │     │ (Image Gen) │     │(Orchestrate)│
+└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
+       │                    │                   │                   │
+       ▼                    ▼                   ▼                   ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        Core Services                                     │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐ │
+│  │ Story Graph  │  │    Tone      │  │  Retrieval   │  │     Sync    │ │
+│  │   Engine     │  │   Engine     │  │   Engine     │  │   Manager   │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └─────────────┘ │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-Key implementation directories:
+### Agent Responsibilities
 
-```text
-.
-├── agents/
-├── core/
-├── docs/
-├── models/
-├── scripts/
-├── tests/
-│   └── fixtures/
-└── ui/
+| Agent | Purpose |
+|-------|---------|
+| **Archivist** | Ingests source material, extracts events, performs OCR on manga pages |
+| **Writer** | Generates prose with style mimicry, voice constraints, and long-range coherence |
+| **Artist** | Generates manga panels with continuity anchors, atmosphere presets, and identity packs |
+| **Director** | Orchestrates agents, manages edit provenance, maintains cross-modal sync |
+
+---
+
+## 📁 Repository Layout
+
+```
+the-loom/
+├── agents/              # Agent implementations
+│   ├── archivist.py    # Ingestion and analysis
+│   ├── writer.py       # Text generation interface
+│   ├── artist.py       # Image generation interface
+│   └── director.py     # Orchestration and coordination
+├── core/               # Core engines
+│   ├── graph_logic.py           # Story branching mechanics
+│   ├── profile_engine.py        # Tone/maturity analysis
+│   ├── retrieval_engine.py      # Vector memory and search
+│   ├── story_graph_engine.py    # Event and temporal logic
+│   ├── text_generation_engine.py # Writer implementation
+│   ├── image_generation_engine.py # Artist implementation
+│   └── orchestration_engine.py  # Phase 7: State integrity
+├── tests/              # Test suite
+│   ├── fixtures/       # Golden test fixtures
+│   └── test_*.py       # Unit and integration tests
+├── ui/                 # Frontend (planned)
+├── models/             # Model storage (local LLM weights)
+└── docs/               # Documentation
 ```
 
-## Getting Started
+---
 
-Create and activate a virtual environment, then install dependencies:
+## 🛠️ Getting Started
+
+### Prerequisites
+
+- Python 3.12+
+- (Optional) Local LLM runtime (Ollama, LM Studio) for private inference
+
+### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/IotA-asce/The-Loom.git
+cd The-Loom
+
+# Create virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-Run project checks:
+### Running Checks
 
 ```bash
+# Run linting
 make lint
+
+# Run tests
 make test
+
+# Run specific test
+pytest tests/test_orchestration_engine.py -v
 ```
 
-Optional build command:
+---
+
+## 🧪 Testing Philosophy
+
+Every phase has comprehensive tests:
 
 ```bash
-make build
+# Phase 1: Ingestion security and parsing
+pytest tests/test_ingestion_security.py tests/test_text_ingestion.py -v
+
+# Phase 6: Image generation with continuity
+pytest tests/test_artist_engine.py -v
+
+# Phase 7: Orchestration and state integrity
+pytest tests/test_orchestration_engine.py -v
 ```
 
-Run a single test:
+---
 
-```bash
-pytest tests/test_ingestion_security.py::test_cbz_ingestion_rejects_path_traversal -q
+## 📋 Example Usage
+
+### Creating a Generation Plan
+
+```python
+from agents.director import create_generation_plan, initialize_sync_state
+
+# Create an idempotent generation plan
+plan = create_generation_plan(
+    branch_id="branch-001",
+    scene_id="scene-001",
+    include_text=True,
+    include_images=True,
+)
+
+# Initialize sync state for dual-view
+sync = initialize_sync_state("scene-001", text_version="v1", image_version="v1")
 ```
 
-```bash
-pytest tests/test_text_ingestion.py::test_epub_ingestion_extracts_chapters_from_spine -q
+### Logging Edits
+
+```python
+from agents.director import log_text_edit, log_panel_redraw
+
+# Log a text edit
+log_text_edit(
+    branch_id="branch-001",
+    scene_id="scene-001",
+    span_start=100,
+    span_end=250,
+    previous_content="old dialogue",
+    new_content="revised dialogue",
+    actor="user",
+    reason="clarity improvement"
+)
+
+# Log a panel redraw request
+log_panel_redraw(
+    branch_id="branch-001",
+    scene_id="scene-001",
+    panel_index=3,
+    actor="user",
+    reason="anatomy fix"
+)
 ```
 
-```bash
-pytest tests/test_manga_ingestion_pipeline.py::test_folder_ingestion_supports_png_jpg_jpeg_webp -q
+### Checking Agent Contracts
+
+```python
+from agents.director import validate_agent_contract
+
+# Validate writer agent compatibility
+is_valid = validate_agent_contract(
+    agent_name="writer",
+    input_data={"story_id": "s1", "branch_id": "b1", "user_prompt": "test"},
+    model_version="llama-3",
+    workflow_version="text-gen-v1"
+)
 ```
 
-```bash
-pytest tests/test_ocr_pipeline.py::test_sidecar_ocr_fallback_extracts_regions -q
-```
+---
 
-```bash
-pytest tests/test_profile_engine.py::test_benchmark_precision_recall_and_tone_jitter_thresholds -q
-```
+## 🎯 Design Principles
 
-```bash
-pytest tests/test_retrieval_engine.py::test_phase3_done_criteria_thresholds_hold -q
-```
+| Principle | Description |
+|-----------|-------------|
+| **Tone Fidelity First** | Match source style without flattening extremes |
+| **Branch-First Logic** | Alternate timelines are first-class objects |
+| **Local-First Privacy** | Private by default; no data exfiltration |
+| **Deterministic Testing** | Reproducible behavior for validation |
+| **Clear Agent Boundaries** | Separation of ingest, write, draw, and direct |
 
-```bash
-pytest tests/test_story_graph_engine.py::test_phase4_done_criteria_thresholds_hold -q
-```
+---
 
-```bash
-pytest tests/test_writer_engine.py::test_phase5_done_criteria_thresholds_hold -q
-```
+## 📚 Documentation
 
-## Phase Progress
+- [`PRD.md`](./PRD.md) — Product Requirements Document
+- [`STRATEGY.md`](./STRATEGY.md) — Problem-first architecture decisions
+- [`GOALS.md`](./GOALS.md) — Implementation roadmap and checklist
+- [`AGENTS.md`](./AGENTS.md) — Engineering conventions for contributors
 
-Phase 0 completed:
+---
 
-- Repository scaffolding and Python package layout
-- Lint/format/type/test toolchain (`ruff`, `black`, `mypy`, `pytest`)
-- Pre-commit configuration
-- CI workflow with failure artifact upload for fixture diffs
-- Fixture baseline for text/pdf/epub/cbz/loose manga image pages
-- Golden fixture examples for chapter parsing and OCR
+## 🤝 Contributing
 
-Phase 1 progress (G1.1 completed):
+Contributions are welcome! Please:
 
-- Sandboxed ingestion workers with timeout controls
-- File size and page count limits for folders and archives
-- MIME/extension/signature consistency checks
-- CBZ path traversal and compression-ratio abuse protection
+1. Follow the existing code style (enforced by `ruff` and `black`)
+2. Add tests for new capabilities
+3. Update documentation for behavior changes
+4. Keep PRs scoped to a single goal
 
-Phase 1 progress (G1.2 completed):
+---
 
-- `.txt` ingestion with encoding normalization and newline normalization
-- `.pdf` ingestion with primary parser path and fallback extraction strategy
-- `.epub` ingestion with spine-based chapter extraction and fallback HTML scan
-- Parser confidence scoring plus warnings/errors in ingestion reports
+## 📄 License
 
-Phase 1 progress (G1.3 completed):
+MIT License — see [`LICENSE`](./LICENSE) for details.
 
-- `ingest_cbz_pages()` and `ingest_image_folder_pages()` implemented with format support for `.png`, `.jpg`, `.jpeg`, `.webp`
-- Manga page normalization includes EXIF orientation handling, RGB normalization, and alpha flattening
-- Natural page ordering and spread-page detection are now part of ingestion metadata
+---
 
-Phase 1 progress (G1.4 completed):
+## 🗺️ Roadmap
 
-- OCR baseline extraction implemented for manga pages
-- Low-confidence fallback and ensemble selection path implemented
-- Dialogue region classification (`speech`, `narration`, `thought`) added
-- OCR reports can be persisted with coordinates and confidence scores
+### Upcoming (Phase 8+)
 
-Phase 1 progress (G1.5 completed):
+| Phase | Focus | Key Deliverables |
+|-------|-------|------------------|
+| Phase 8 | Frontend | Interactive graph UX, dual-view, tuner controls |
+| Phase 9 | Operations | Observability, incident readiness, privacy controls |
+| Phase 10 | Release | Benchmark suites, beta program, public release |
 
-- Content hashing added for text chunks and manga pages
-- Near-duplicate detection added for text and image ingestion
-- Re-ingestion is idempotent by default through ingestion dedupe cache
+---
 
-Phase 2 progress (G2.1 completed):
-
-- Scene-level text profiling implemented with multi-label tagging for violence/romance/humor/horror/wholesome/psychological signals
-- Uncertainty scoring added for low-confidence scenes
-- Abrupt tonal shifts and peak-intensity scenes detected per profile run
-
-Phase 2 progress (G2.2 completed):
-
-- Panel-level visual tone classification implemented (`light`, `balanced`, `dark`, `gritty`)
-- Visual cues now include brightness, contrast, line density, texture entropy, and composition balance
-- Panel signals aggregate into scene and chapter visual profiles
-
-Phase 2 progress (G2.3 completed):
-
-- Maturity spectrum scores generated from text + visual signals
-- Rolling smoothing window reduces tone jitter in long sequences
-- Maturity bands map to generation presets for parameterized downstream generation
-- Manual maturity overrides supported with actor/reason metadata
-
-Phase 2 progress (G2.4 completed):
-
-- Human correction loop added for scene profile adjustments
-- Profile versioning and provenance tracking implemented per branch
-- Override audit events are queryable by branch/version
-- Regression benchmark tests added for precision/recall and jitter tolerance
-
-Phase 3 progress (G3.1 completed):
-
-- Hierarchical chunking implemented for chapter/scene/sentence levels
-- Canonical metadata attached for story, branch, version, lineage, and timestamps
-- Unresolved-thread tracker added for long-form narrative memory
-
-Phase 3 progress (G3.2 completed):
-
-- Branch-aware namespace partitioning implemented for retrieval index storage
-- Branch lineage filters applied at query time
-- Namespace compaction and dedup maintenance jobs implemented
-
-Phase 3 progress (G3.3 completed):
-
-- Hybrid retrieval implemented (`BM25 + embedding`)
-- Canon-aware reranking layer added for branch/canon relevance
-- Retrieval quality metrics implemented (`Precision@K`, `MRR`, `nDCG`)
-
-Phase 3 progress (G3.4 completed):
-
-- Incremental re-embedding path implemented for edited chunks
-- Stale chunk suppression implemented in retrieval responses
-- Retrieval invalidation tests added for branch rewrite workflows
-
-Phase 3 progress (G3.5 completed):
-
-- Query/result caching layers implemented with cache-hit tracking
-- Retrieval budget controls added (token, candidate, and cost limits)
-- Runtime metrics now expose p95 latency and p95 cost
-
-Phase 4 progress (G4.1 completed):
-
-- Hybrid event extraction pipeline implemented with normalized schema and confidence fields
-- Duplicate event merge logic added to suppress redundant event nodes
-
-Phase 4 progress (G4.2 completed):
-
-- Canonical entity ids implemented via alias graph resolution
-- Causality and dependency relation extraction added for event graph edges
-- Entity-state contradiction detection added for canonical consistency checks
-
-Phase 4 progress (G4.3 completed):
-
-- Temporal ordering inference implemented beyond source order constraints
-- Contradiction detection added for cycles and impossible temporal edges
-- Automated repair workflow added to remove low-confidence cycle edges
-
-Phase 4 progress (G4.4 completed):
-
-- Divergence node creation and branch lineage tracking implemented
-- High-impact branch point recommendations implemented
-- Branch budget enforcement with archive/merge workflows implemented
-
-Phase 4 progress (G4.5 completed):
-
-- Affected-subgraph consequence simulation implemented
-- Hard canon constraints and soft style penalties integrated into scoring
-- Downstream consistency tracked against baseline full recompute
-
-Phase 4 progress (G4.6 completed):
-
-- Graph snapshot schema versioning implemented (current v3)
-- Replayable migration manager with rollback checkpoints implemented
-- Historical snapshot migration replay tests added for v1/v2 payloads
-
-Phase 5 progress (G5.1 completed):
-
-- Writer agent interface implemented with contract-tested request/response models
-- Branch-aware context assembly added with retrieval-driven chunk selection
-- Deterministic generation mode added for reproducible tests
-
-Phase 5 progress (G5.2 completed):
-
-- Style embeddings implemented for source/generation comparison
-- Style exemplar retrieval and grounded prompt injection added
-- Style similarity metrics tracked against source windows
-
-Phase 5 progress (G5.3 completed):
-
-- Per-character voice cards implemented
-- Voice constraints enforced in generated dialogue
-- Voice confusion regression tests added
-
-Phase 5 progress (G5.4 completed):
-
-- Unresolved-thread carryover checks integrated into generation context
-- Arc/chapter memory summaries injected into prompt grounding
-- Post-generation contradiction checks added with canonical repair step
-
-Phase 5 progress (G5.5 completed):
-
-- Versioned prompt registry implemented with rollback support
-- Strict system/developer/user prompt layering enforced
-- Prompt-injection defense tests added with hostile prompt fixtures
-
-Phase 5 progress (G5.6 completed):
-
-- Violence/humor/romance tuner mapping calibrated with nonlinear curves
-- Expected-impact preview generated for slider settings
-- Tuner expectation-match validation added in regression tests
-
-Next implementation slices are tracked in `GOALS.md` (starting from `G6.1`).
-
-## Guiding Engineering Principles
-
-- Tone fidelity first: match source style without flattening
-- Branch-first logic: make alternate timelines first-class objects
-- Local-first privacy where possible
-- Deterministic testing around graph logic and branch consequences
-- Clear agent boundaries between ingest, write, draw, and direct
-
-## License
-
-MIT - see `LICENSE`.
+<p align="center">
+  <i>"Every story is a thread. The Loom weaves them into infinite possibilities."</i>
+</p>
