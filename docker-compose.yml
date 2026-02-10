@@ -1,0 +1,80 @@
+# The Loom - Docker Compose Configuration
+version: "3.8"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-in-production}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - STABILITY_API_KEY=${STABILITY_API_KEY:-}
+      - LOOM_ENV=production
+      - LOOM_DATA_DIR=/app/data
+      - LOOM_RATE_LIMIT_ENABLED=true
+      - LOOM_CORS_ORIGINS=${LOOM_CORS_ORIGINS:-http://localhost:5173}
+    volumes:
+      - loom_data:/app/data
+      - loom_graph:/app/.loom
+      - loom_images:/app/generated_images
+      - loom_chroma:/app/chroma_db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/ops/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Redis for distributed rate limiting
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    profiles:
+      - distributed
+
+  # Optional: Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # Optional: Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docs/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./docs/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+volumes:
+  loom_data:
+  loom_graph:
+  loom_images:
+  loom_chroma:
+  redis_data:
+  prometheus_data:
+  grafana_data:

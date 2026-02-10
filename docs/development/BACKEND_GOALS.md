@@ -252,7 +252,58 @@ pip install diffusers transformers accelerate
 
 ---
 
-## 🔄 PENDING: Backend Implementation (Sprint 30)
+## ✅ COMPLETE: Backend Sprint 30
+
+### Sprint 30: Security & Production Hardening ✅
+
+**Status:** Complete with authentication, authorization, rate limiting, and Docker
+
+**Deliverables:**
+- ✅ `core/auth.py` - Authentication & authorization:
+  - JWT token management (access + refresh tokens)
+  - Password hashing with bcrypt-like salt
+  - Role-based access control (RBAC): Admin, Editor, Viewer, Service
+  - Project-level permissions
+  - API key management for service accounts
+- ✅ `core/rate_limit.py` - Rate limiting:
+  - Token bucket algorithm
+  - Per-endpoint categories (auth, generate, api, websocket)
+  - Per-client tracking
+  - Rate limit headers
+- ✅ Docker containerization:
+  - `Dockerfile` - Multi-stage production build
+  - `docker-compose.yml` - Full stack with optional Redis, Prometheus, Grafana
+  - `.dockerignore` - Optimized build context
+  - Security: Non-root user, health checks
+
+**API Endpoints:**
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/auth/register` | User registration |
+| `POST /api/auth/login` | User login |
+| `POST /api/auth/logout` | Logout & revoke token |
+| `POST /api/auth/refresh` | Refresh access token |
+| `GET /api/auth/me` | Current user info |
+| `POST /api/auth/api-keys` | Create API key |
+| `GET /api/auth/api-keys` | List API keys |
+| `DELETE /api/auth/api-keys/{id}` | Revoke API key |
+| `GET /api/auth/rate-limit` | Rate limit status |
+
+**RBAC Roles:**
+- `admin` - All permissions
+- `editor` - Create, edit, generate (default)
+- `viewer` - Read-only
+- `service` - API key access
+
+**Rate Limits:**
+- Auth: 10 req/min
+- Generate: 20 req/min (cost: 5)
+- API: 120 req/min
+- WebSocket: 300 req/min
+
+---
+
+## ✅ COMPLETE: All Sprints (1-30)
 
 ## Backend Sprint 28: Real-time Collaboration
 

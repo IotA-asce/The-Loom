@@ -880,3 +880,19 @@ def get_available_providers() -> list[dict[str, Any]]:
     )
 
     return providers
+
+
+# Global LLM backend instance
+_llm_backend: LLMBackend | None = None
+
+
+def get_llm_backend() -> LLMBackend:
+    """Get the global LLM backend instance.
+
+    Creates the backend on first call using auto-detected configuration
+    from environment variables.
+    """
+    global _llm_backend
+    if _llm_backend is None:
+        _llm_backend = LLMBackendFactory.create_from_env()
+    return _llm_backend

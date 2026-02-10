@@ -24,6 +24,7 @@ from fastapi import (
     FastAPI,
     HTTPException,
     Query,
+    Request,
     UploadFile,
     WebSocket,
     WebSocketDisconnect,
@@ -3313,6 +3314,340 @@ async def get_logs(level: str | None = None, limit: int = 100) -> dict[str, Any]
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get logs: {e}") from e
+
+
+# ============ Sprint 30: Security & Authentication Endpoints ============
+
+
+class LoginRequest(CamelModel):
+    """Login request."""
+
+    email: str
+    password: str
+
+
+class TokenResponse(CamelModel):
+    """Token response."""
+
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int = 900  # 15 minutes
+    user: dict[str, Any]
+
+
+class RegisterRequest(CamelModel):
+    """Registration request."""
+
+    email: str
+    username: str
+    password: str
+
+
+class RefreshRequest(CamelModel):
+    """Token refresh request."""
+
+    refresh_token: str
+
+
+class APIKeyCreateRequest(CamelModel):
+    """API key creation request."""
+
+    name: str
+    expires_days: int | None = None
+
+
+class APIKeyResponse(CamelModel):
+    """API key response (only returned once on creation)."""
+
+    key_id: str
+    key: str  # Plain key - only shown once!
+    name: str
+    created_at: str
+    expires_at: str | None
+
+
+@app.post("/api/auth/register", response_model=TokenResponse)
+async def auth_register(request: RegisterRequest) -> dict[str, Any]:
+    """Register a new user."""
+    from core.auth import UserRole, get_auth_manager
+
+    try:
+        auth = get_auth_manager()
+        user = auth.create_user(
+            email=request.email,
+            username=request.username,
+            password=request.password,
+            role=UserRole.EDITOR,
+        )
+
+        # Create tokens
+        access_token = auth.create_access_token(user)
+        refresh_token = auth.create_refresh_token(user)
+
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "expires_in": 900,
+            "user": user.to_public_dict(),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Registration failed: {e}") from e
+
+
+@app.post("/api/auth/login", response_model=TokenResponse)
+async def auth_login(request: LoginRequest) -> dict[str, Any]:
+    """Login and get access token."""
+    from core.auth import get_auth_manager
+
+    try:
+        auth = get_auth_manager()
+        user = auth.authenticate_user(request.email, request.password)
+
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+
+        if not user.is_active:
+            raise HTTPException(status_code=403, detail="Account is disabled")
+
+        access_token = auth.create_access_token(user)
+        refresh_token = auth.create_refresh_token(user)
+
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "expires_in": 900,
+            "user": user.to_public_dict(),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Login failed: {e}") from e
+
+
+@app.post("/api/auth/logout")
+async def auth_logout(request: dict[str, Any]) -> dict[str, Any]:
+    """Logout and revoke token."""
+    from core.auth import get_auth_manager
+
+    try:
+        auth = get_auth_manager()
+        jti = request.get("jti")  # JWT ID to revoke
+
+        if jti:
+            auth.revoke_token(jti)
+
+        return {"success": True, "message": "Logged out successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Logout failed: {e}") from e
+
+
+@app.post("/api/auth/refresh", response_model=TokenResponse)
+async def auth_refresh(request: RefreshRequest) -> dict[str, Any]:
+    """Refresh access token."""
+    from core.auth import get_auth_manager
+
+    try:
+        auth = get_auth_manager()
+        payload = auth.decode_jwt(request.refresh_token)
+
+        if not payload or payload.type != "refresh":
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+        user = auth.get_user(payload.sub)
+        if not user or not user.is_active:
+            raise HTTPException(status_code=401, detail="User not found or inactive")
+
+        # Create new tokens
+        access_token = auth.create_access_token(user)
+        refresh_token = auth.create_refresh_token(user)
+
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "expires_in": 900,
+            "user": user.to_public_dict(),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Token refresh failed: {e}") from e
+
+
+@app.get("/api/auth/me")
+async def auth_me(request: Request) -> dict[str, Any]:
+    """Get current user info."""
+    from core.auth import get_auth_manager
+
+    # Get token from Authorization header
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing authentication")
+
+    token = auth_header[7:]  # Remove "Bearer "
+
+    try:
+        auth = get_auth_manager()
+        payload = auth.decode_jwt(token)
+
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+        user = auth.get_user(payload.sub)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        return user.to_public_dict()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get user info: {e}"
+        ) from e
+
+
+# ============ API Key Management ============
+
+
+@app.post("/api/auth/api-keys", response_model=APIKeyResponse)
+async def create_api_key(
+    request: APIKeyCreateRequest, http_request: Request
+) -> dict[str, Any]:
+    """Create a new API key."""
+    from core.auth import get_auth_manager
+
+    # Verify user is authenticated
+    auth_header = http_request.headers.get("authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    token = auth_header[7:]
+
+    try:
+        auth = get_auth_manager()
+        payload = auth.decode_jwt(token)
+
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        plain_key, api_key = auth.create_api_key(
+            name=request.name,
+            user_id=payload.sub,
+            expires_days=request.expires_days,
+        )
+
+        return {
+            "key_id": api_key.key_id,
+            "key": plain_key,  # Only shown once!
+            "name": api_key.name,
+            "created_at": api_key.created_at,
+            "expires_at": api_key.expires_at,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create API key: {e}"
+        ) from e
+
+
+@app.get("/api/auth/api-keys")
+async def list_api_keys(request: Request) -> dict[str, Any]:
+    """List user's API keys (without the actual keys)."""
+    from core.auth import get_auth_manager
+
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    token = auth_header[7:]
+
+    try:
+        auth = get_auth_manager()
+        payload = auth.decode_jwt(token)
+
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        keys = auth.list_user_api_keys(payload.sub)
+
+        return {
+            "keys": [
+                {
+                    "key_id": k.key_id,
+                    "name": k.name,
+                    "created_at": k.created_at,
+                    "expires_at": k.expires_at,
+                    "last_used": k.last_used,
+                    "is_active": k.is_active,
+                }
+                for k in keys
+            ]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list API keys: {e}"
+        ) from e
+
+
+@app.delete("/api/auth/api-keys/{key_id}")
+async def revoke_api_key(key_id: str, request: Request) -> dict[str, Any]:
+    """Revoke an API key."""
+    from core.auth import get_auth_manager
+
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    try:
+        auth = get_auth_manager()
+        success = auth.revoke_api_key(key_id)
+
+        if not success:
+            raise HTTPException(status_code=404, detail="API key not found")
+
+        return {"success": True, "message": "API key revoked"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to revoke API key: {e}"
+        ) from e
+
+
+# ============ Rate Limit Status ============
+
+
+@app.get("/api/auth/rate-limit")
+async def rate_limit_status(request: Request) -> dict[str, Any]:
+    """Get current rate limit status."""
+    from core.rate_limit import get_rate_limit_middleware
+
+    # Get client ID from header or IP
+    client_id = request.headers.get(
+        "x-client-id", request.client.host if request.client else "unknown"
+    )
+
+    try:
+        middleware = get_rate_limit_middleware()
+        limiter = middleware._limiter
+        stats = limiter.get_client_stats(client_id)
+
+        return {
+            "client_id": client_id,
+            "categories": stats,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get rate limit status: {e}"
+        ) from e
 
 
 if __name__ == "__main__":
