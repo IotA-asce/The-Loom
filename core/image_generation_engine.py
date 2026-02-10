@@ -8,8 +8,13 @@ import re
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from statistics import mean
+from typing import TYPE_CHECKING
 
 from .text_generation_engine import WriterResult
+
+if TYPE_CHECKING:
+    from .diffusion_backend import DiffusionBackend as NewDiffusionBackend
+    from .image_storage import ImageStorage, ImageMetadata
 
 _WORD_PATTERN = re.compile(r"[A-Za-z0-9']+")
 
@@ -1141,3 +1146,169 @@ def writer_result_to_prose_segments(writer_result: WriterResult) -> tuple[str, .
 
     lines = [line.strip() for line in writer_result.text.splitlines() if line.strip()]
     return tuple(lines)
+
+
+# ============ Sprint 24: Async Image Generation with Storage ============
+
+
+@dataclass(frozen=True)
+class GeneratedPanelImage:
+    """Result from async panel generation with storage."""
+    panel_index: int
+    image_id: str
+    image_url: str
+    prompt: str
+    seed: int
+    generation_time_ms: float
+    quality_score: float
+
+
+@dataclass(frozen=True)
+class StoredArtistResult:
+    """Artist result with stored image references."""
+    branch_id: str
+    scene_id: str
+    images: tuple[GeneratedPanelImage, ...]
+    continuity_score: float
+    overall_quality: float
+
+
+async def generate_and_store_panels(
+    request: ArtistRequest,
+    storage: ImageStorage | None = None,
+    backend: NewDiffusionBackend | None = None,
+) -> StoredArtistResult:
+    """Generate manga panels and store them with persistence.
+    
+    This is the Sprint 24 implementation that uses the new diffusion backend
+    and image storage system.
+    """
+    from .diffusion_backend import (
+        get_diffusion_backend,
+        GenerationRequest,
+        ControlNetCondition as NewControlNetCondition,
+    )
+    from .image_storage import (
+        get_image_storage,
+        ImageMetadata,
+    )
+    import time
+    
+    # Get backend and storage
+    active_backend = backend or get_diffusion_backend()
+    active_storage = storage or get_image_storage()
+    
+    # Create scene blueprint
+    scene_blueprint = request.scene_blueprint or shared_scene_plan_from_text_and_prompt(
+        scene_id=f"{request.branch_id}:scene",
+        scene_prompt=request.scene_prompt,
+        prose_reference=request.prose_reference,
+        panel_count=request.panel_count,
+        atmosphere=request.atmosphere,
+    )
+    
+    # Determine seed
+    if request.deterministic:
+        seed_material = (
+            f"{request.story_id}|{request.branch_id}|{request.scene_prompt}|"
+            f"{scene_blueprint.scene_id}|{request.seed or 0}"
+        )
+        base_seed = int(_sha256(seed_material)[:16], 16)
+    else:
+        base_seed = random.SystemRandom().randrange(1, 2**31)
+    
+    # Generate each panel
+    images: list[GeneratedPanelImage] = []
+    preset = atmosphere_preset(scene_blueprint.atmosphere)
+    
+    for panel_plan in scene_blueprint.panels:
+        panel_seed = base_seed + panel_plan.panel_index
+        
+        start_time = time.time()
+        
+        # Build prompt
+        prompt = f"{panel_plan.prompt}, {preset.lighting.key_light}, manga style, black and white, high quality"
+        negative_prompt = "color, blurry, low quality, deformed"
+        
+        # Convert ControlNet conditions
+        controlnet_conditions = []
+        for condition in request.controlnet_conditions:
+            controlnet_conditions.append(NewControlNetCondition(
+                control_type=condition.control_type,
+                weight=condition.weight,
+                image_path=condition.reference_hint if os.path.exists(condition.reference_hint) else None,
+            ))
+        
+        # Generate image
+        gen_request = GenerationRequest(
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            seed=panel_seed,
+            num_images=1,
+            controlnet_conditions=tuple(controlnet_conditions),
+        )
+        
+        results = await active_backend.generate(gen_request)
+        
+        if not results:
+            continue
+        
+        result = results[0]
+        generation_time_ms = (time.time() - start_time) * 1000
+        
+        # Create metadata
+        image_id = hashlib.sha256(
+            f"{request.branch_id}:{scene_blueprint.scene_id}:{panel_plan.panel_index}:{result.seed}".encode()
+        ).hexdigest()[:16]
+        
+        metadata = ImageMetadata(
+            image_id=image_id,
+            original_filename=f"panel_{panel_plan.panel_index}.png",
+            content_type="image/png",
+            width=512,  # Could detect from image
+            height=512,
+            file_size_bytes=len(result.image_data),
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            seed=result.seed,
+            model_id=result.model_id,
+            story_id=request.story_id,
+            branch_id=request.branch_id,
+            scene_id=scene_blueprint.scene_id,
+            panel_index=panel_plan.panel_index,
+            version=1,
+        )
+        
+        # Store image
+        stored = await active_storage.save_image(result.image_data, metadata)
+        
+        # Calculate quality score based on generation metrics
+        quality_score = (result.brightness + result.contrast) / 2
+        
+        images.append(GeneratedPanelImage(
+            panel_index=panel_plan.panel_index,
+            image_id=stored.image_id,
+            image_url=stored.url,
+            prompt=prompt,
+            seed=result.seed,
+            generation_time_ms=generation_time_ms,
+            quality_score=quality_score,
+        ))
+    
+    # Calculate continuity score (simplified)
+    continuity_score = 0.85 if len(images) > 1 else 1.0
+    
+    # Calculate overall quality
+    overall_quality = mean([img.quality_score for img in images]) if images else 0.0
+    
+    return StoredArtistResult(
+        branch_id=request.branch_id,
+        scene_id=scene_blueprint.scene_id,
+        images=tuple(images),
+        continuity_score=continuity_score,
+        overall_quality=overall_quality,
+    )
+
+
+# Import for the new function
+import os

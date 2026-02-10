@@ -2212,6 +2212,397 @@ async def get_correction_queue() -> dict[str, Any]:
     }
 
 
+# ============ Sprint 24: Image Generation & Storage Endpoints ============
+
+
+class DiffusionBackendConfig(CamelModel):
+    """Configuration for diffusion backend."""
+    backend_type: str = "mock"  # mock, local, stability
+    model_id: str = "mock-sd-v1-5"
+    device: str = "auto"
+
+
+class GeneratePanelsRequest(CamelModel):
+    """Request to generate manga panels."""
+    story_id: str = "default"
+    branch_id: str = "main"
+    scene_id: str
+    scene_prompt: str
+    panel_count: int = 4
+    atmosphere: str = "balanced"  # light, dark, balanced
+    style: str = "manga"
+    seed: int | None = None
+    controlnet_type: str | None = None  # pose, canny, depth
+
+
+class GeneratePanelsResponse(CamelModel):
+    """Response from panel generation."""
+    job_id: str
+    images: list[dict[str, Any]]
+    continuity_score: float
+    overall_quality: float
+
+
+@app.get("/api/diffusion/backends")
+async def list_diffusion_backends() -> list[dict[str, Any]]:
+    """List available diffusion backends."""
+    from core.diffusion_backend import DiffusionBackendFactory
+    return DiffusionBackendFactory.get_available_backends()
+
+
+@app.post("/api/diffusion/config")
+async def configure_diffusion_backend(config: DiffusionBackendConfig) -> dict[str, Any]:
+    """Configure the diffusion backend."""
+    from core.diffusion_backend import (
+        DiffusionBackendFactory,
+        DiffusionConfig,
+        set_diffusion_backend,
+    )
+    
+    try:
+        diffusion_config = DiffusionConfig(
+            model_id=config.model_id,
+            device=config.device,
+        )
+        
+        backend = DiffusionBackendFactory.create(
+            backend_type=config.backend_type,
+            config=diffusion_config,
+        )
+        
+        set_diffusion_backend(backend)
+        
+        return {
+            "success": True,
+            "backend_type": config.backend_type,
+            "model_id": config.model_id,
+            "available": backend.is_available(),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to configure backend: {e}")
+
+
+@app.post("/api/artist/generate", response_model=GeneratePanelsResponse)
+async def generate_panels_endpoint(request: GeneratePanelsRequest) -> dict[str, Any]:
+    """Generate manga panels with storage."""
+    from core.image_generation_engine import (
+        generate_and_store_panels,
+        ArtistRequest,
+        DiffusionConfig as IGEConfig,
+        atmosphere_preset,
+    )
+    from core.diffusion_backend import get_diffusion_backend
+    import hashlib
+    import time
+    
+    try:
+        job_id = f"artist-{hashlib.sha256(f'{request.scene_id}-{time.time()}'.encode()).hexdigest()[:12]}"
+        
+        # Build request
+        artist_request = ArtistRequest(
+            story_id=request.story_id,
+            branch_id=request.branch_id,
+            scene_prompt=request.scene_prompt,
+            panel_count=request.panel_count,
+            atmosphere=request.atmosphere,
+            diffusion_config=IGEConfig(),
+            seed=request.seed,
+        )
+        
+        # Generate and store
+        result = await generate_and_store_panels(
+            request=artist_request,
+            backend=get_diffusion_backend(),
+        )
+        
+        return {
+            "job_id": job_id,
+            "images": [
+                {
+                    "panel_index": img.panel_index,
+                    "image_id": img.image_id,
+                    "image_url": img.image_url,
+                    "prompt": img.prompt,
+                    "generation_time_ms": img.generation_time_ms,
+                    "quality_score": img.quality_score,
+                }
+                for img in result.images
+            ],
+            "continuity_score": result.continuity_score,
+            "overall_quality": result.overall_quality,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Generation failed: {e}")
+
+
+@app.get("/api/images/{image_id}")
+async def get_image(image_id: str) -> Any:
+    """Get an image by ID."""
+    from core.image_storage import get_image_storage
+    from fastapi.responses import Response
+    
+    try:
+        storage = get_image_storage()
+        image_data = await storage.get_image(image_id)
+        
+        if image_data is None:
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        return Response(
+            content=image_data,
+            media_type="image/png",
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get image: {e}")
+
+
+@app.get("/api/images/{image_id}/metadata")
+async def get_image_metadata_endpoint(image_id: str) -> dict[str, Any]:
+    """Get image metadata."""
+    from core.image_storage import get_image_storage
+    
+    try:
+        storage = get_image_storage()
+        metadata = await storage.get_metadata(image_id)
+        
+        if metadata is None:
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        return metadata.to_dict()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get metadata: {e}")
+
+
+@app.delete("/api/images/{image_id}")
+async def delete_image_endpoint(image_id: str) -> dict[str, Any]:
+    """Delete an image."""
+    from core.image_storage import get_image_storage
+    
+    try:
+        storage = get_image_storage()
+        deleted = await storage.delete_image(image_id)
+        
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        return {"success": True, "message": f"Image {image_id} deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete image: {e}")
+
+
+@app.get("/api/images")
+async def list_images(
+    story_id: str | None = None,
+    branch_id: str | None = None,
+    scene_id: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> dict[str, Any]:
+    """List images with optional filtering."""
+    from core.image_storage import get_image_storage
+    
+    try:
+        storage = get_image_storage()
+        images = await storage.list_images(
+            story_id=story_id,
+            branch_id=branch_id,
+            scene_id=scene_id,
+            limit=limit,
+            offset=offset,
+        )
+        
+        return {
+            "images": [
+                {
+                    "image_id": img.image_id,
+                    "image_url": img.image_url,
+                    "metadata": img.metadata.to_dict(),
+                }
+                for img in images
+            ],
+            "count": len(images),
+            "limit": limit,
+            "offset": offset,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list images: {e}")
+
+
+# ============ Sprint 25: LoRA Training Endpoints ============
+
+
+class LoRATrainRequest(CamelModel):
+    """Request to start LoRA training."""
+    character_id: str
+    character_name: str
+    base_model: str = "runwayml/stable-diffusion-v1-5"
+    training_steps: int = 1000
+    learning_rate: float = 1e-4
+    rank: int = 4  # LoRA rank (4, 8, 16)
+    trigger_word: str | None = None
+
+
+class LoRAStatusResponse(CamelModel):
+    """LoRA training status response."""
+    job_id: str
+    character_id: str
+    status: str  # pending, training, completed, failed
+    progress: float  # 0-100
+    current_step: int
+    total_steps: int
+    loss: float | None
+    eta_seconds: int | None
+
+
+class CharacterIdentityRequest(CamelModel):
+    """Request to build character identity pack."""
+    character_id: str
+    character_name: str
+    face_cues: list[str]
+    silhouette_cues: list[str]
+    costume_cues: list[str]
+
+
+# Training job storage (in-memory for now, would use database in production)
+_training_jobs: dict[str, dict[str, Any]] = {}
+
+
+@app.post("/api/lora/train")
+async def start_lora_training(request: LoRATrainRequest) -> dict[str, Any]:
+    """Start LoRA training for a character."""
+    import hashlib
+    import time
+    
+    job_id = f"lora-{hashlib.sha256(f'{request.character_id}-{time.time()}'.encode()).hexdigest()[:12]}"
+    
+    # Store job info
+    _training_jobs[job_id] = {
+        "job_id": job_id,
+        "character_id": request.character_id,
+        "character_name": request.character_name,
+        "status": "pending",
+        "progress": 0.0,
+        "current_step": 0,
+        "total_steps": request.training_steps,
+        "loss": None,
+        "created_at": datetime.now(UTC).isoformat(),
+    }
+    
+    # Start training in background (mock for now)
+    asyncio.create_task(_simulate_lora_training(job_id))
+    
+    return {
+        "job_id": job_id,
+        "character_id": request.character_id,
+        "status": "pending",
+        "estimated_time": request.training_steps * 2,  # ~2s per step
+    }
+
+
+async def _simulate_lora_training(job_id: str) -> None:
+    """Simulate LoRA training progress."""
+    import random
+    import time
+    
+    job = _training_jobs.get(job_id)
+    if job is None:
+        return
+    
+    # Pending phase
+    await asyncio.sleep(2)
+    job["status"] = "training"
+    
+    # Training phase
+    total_steps = job["total_steps"]
+    for step in range(total_steps):
+        await asyncio.sleep(0.1)  # Fast simulation
+        job["current_step"] = step + 1
+        job["progress"] = (step + 1) / total_steps * 100
+        job["loss"] = 0.5 * (1 - (step / total_steps)) + random.uniform(0, 0.1)
+    
+    # Completed
+    job["status"] = "completed"
+    job["progress"] = 100.0
+    job["adapter_id"] = f"lora-{job['character_id']}-v1"
+
+
+@app.get("/api/lora/status/{job_id}", response_model=LoRAStatusResponse)
+async def get_lora_training_status(job_id: str) -> dict[str, Any]:
+    """Get LoRA training status."""
+    job = _training_jobs.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Training job not found")
+    
+    # Calculate ETA
+    eta = None
+    if job["status"] == "training" and job["current_step"] < job["total_steps"]:
+        remaining_steps = job["total_steps"] - job["current_step"]
+        eta = remaining_steps * 2  # ~2s per step
+    
+    return {
+        "job_id": job_id,
+        "character_id": job["character_id"],
+        "status": job["status"],
+        "progress": job["progress"],
+        "current_step": job["current_step"],
+        "total_steps": job["total_steps"],
+        "loss": job.get("loss"),
+        "eta_seconds": eta,
+    }
+
+
+@app.post("/api/characters/identity-pack")
+async def build_character_identity(request: CharacterIdentityRequest) -> dict[str, Any]:
+    """Build character identity pack."""
+    from core.image_generation_engine import build_identity_pack
+    
+    try:
+        identity_pack = build_identity_pack(
+            character_id=request.character_id,
+            display_name=request.character_name,
+            face_cues=tuple(request.face_cues),
+            silhouette_cues=tuple(request.silhouette_cues),
+            costume_cues=tuple(request.costume_cues),
+        )
+        
+        return {
+            "character_id": identity_pack.character_id,
+            "display_name": identity_pack.display_name,
+            "identity_fingerprint": identity_pack.identity_fingerprint,
+            "face_cues": list(identity_pack.face_cues),
+            "silhouette_cues": list(identity_pack.silhouette_cues),
+            "costume_cues": list(identity_pack.costume_cues),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to build identity: {e}")
+
+
+@app.get("/api/characters/{character_id}/adapters")
+async def list_character_adapters(character_id: str) -> dict[str, Any]:
+    """List LoRA adapters for a character."""
+    # Filter jobs by character
+    adapters = []
+    for job in _training_jobs.values():
+        if job["character_id"] == character_id and job["status"] == "completed":
+            adapters.append({
+                "adapter_id": job.get("adapter_id", f"lora-{character_id}-v1"),
+                "version": 1,
+                "status": "ready",
+                "trained_steps": job["total_steps"],
+            })
+    
+    return {
+        "character_id": character_id,
+        "adapters": adapters,
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
 
