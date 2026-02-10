@@ -20,12 +20,13 @@ The Loom is a Python-first storytelling framework that analyzes source narrative
 | **🔄 State Integrity** | Event-sourced edit logs, idempotent jobs, and cross-modal synchronization |
 | **🎨 Interactive UI** | Graph-based branch visualization, dual-view editor, tuner controls |
 | **🔒 Operations & Governance** | Observability, incident readiness, privacy controls, content governance |
+| **📊 Evaluation & Release** | Benchmark suites, release gates, beta program, changelog |
 
 ---
 
 ## 🚀 Current Status
 
-**Phase 0–9 Complete** — The Loom has foundational scaffolding through full operations, security, and governance implementation.
+**Phase 0–10 Complete** — The Loom is release-ready with comprehensive benchmarks, release gates, beta program, and full documentation.
 
 | Phase | Status | Key Deliverables |
 |-------|--------|------------------|
@@ -39,7 +40,7 @@ The Loom is a Python-first storytelling framework that analyzes source narrative
 | Phase 7 | ✅ Complete | Orchestration engine with edit provenance and sync semantics |
 | Phase 8 | ✅ Complete | Interactive frontend and dual-view UI |
 | Phase 9 | ✅ Complete | Operations, security, and governance |
-| Phase 10 | 📝 Planned | Evaluation, hardening, and release |
+| Phase 10 | ✅ Complete | Evaluation, hardening, and release |
 
 ---
 

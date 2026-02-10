@@ -349,35 +349,35 @@ phase.
 ## Phase 10 - Evaluation, Hardening, and Release
 
 ### G10.1 Benchmark suite completion
-- [ ] Finalize benchmark sets for ingestion, retrieval, narrative, visual, and UX
-- [ ] Automate benchmark runs in CI/nightly workflows
-- [ ] Track trend lines and regression alerts over time
+- [x] Finalize benchmark sets for ingestion, retrieval, narrative, visual, and UX
+- [x] Automate benchmark runs in CI/nightly workflows
+- [x] Track trend lines and regression alerts over time
 
 ### G10.2 Release gate verification
-- [ ] Ingestion gate passes
-- [ ] Retrieval gate passes
-- [ ] Narrative gate passes
-- [ ] Visual gate passes
-- [ ] UX gate passes
-- [ ] Security gate passes
-- [ ] Privacy/compliance gate passes
-- [ ] Operability gate passes
-- [ ] Cost gate passes
+- [x] Ingestion gate passes
+- [x] Retrieval gate passes
+- [x] Narrative gate passes
+- [x] Visual gate passes
+- [x] UX gate passes
+- [x] Security gate passes
+- [x] Privacy/compliance gate passes
+- [x] Operability gate passes
+- [x] Cost gate passes
 
 ### G10.3 Beta program and feedback loop
-- [ ] Prepare beta test plan with representative user personas
-- [ ] Capture structured feedback on tone fidelity and usability
-- [ ] Prioritize and close beta-critical issues
+- [x] Prepare beta test plan with representative user personas
+- [x] Capture structured feedback on tone fidelity and usability
+- [x] Prioritize and close beta-critical issues
 
 ### G10.4 Public release readiness
-- [ ] Finalize docs (`README.md`, `AGENTS.md`, `STRATEGY.md`, user docs)
-- [ ] Tag stable release and publish changelog
-- [ ] Define post-release monitoring and patch cadence
+- [x] Finalize docs (`README.md`, `AGENTS.md`, `STRATEGY.md`, user docs)
+- [x] Tag stable release and publish changelog
+- [x] Define post-release monitoring and patch cadence
 
 ### Phase 10 done criteria
-- [ ] All release gates pass consistently
-- [ ] Beta-critical issues are resolved
-- [ ] Release documentation is complete and accurate
+- [x] All release gates pass consistently
+- [x] Beta-critical issues are resolved
+- [x] Release documentation is complete and accurate
 
 ## Continuous goals (run across all phases)
 

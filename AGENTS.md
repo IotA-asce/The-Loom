@@ -2,11 +2,12 @@
 Repository operating guide for coding agents in `The-Loom`.
 
 ## 1) Repository Snapshot
-- Repository now has phase-zero scaffolding plus project docs.
-- Core docs include `README.md`, `PRD.md`, `STRATEGY.md`, `GOALS.md`, `AGENTS.md`.
-- Base directories exist: `agents/`, `core/`, `tests/`, `ui/`, `models/`, `scripts/`, `docs/`.
-- Python tooling is configured via `pyproject.toml`, `requirements.txt`, `Makefile`, and CI.
-- Use this file as the default engineering policy while implementation expands.
+- Repository has complete implementation through Phase 10.
+- Core docs include `README.md`, `PRD.md`, `STRATEGY.md`, `GOALS.md`, `AGENTS.md`, `CHANGELOG.md`.
+- All base directories populated: `agents/`, `core/`, `tests/`, `ui/`, `models/`, `scripts/`, `docs/`.
+- Python tooling configured via `pyproject.toml`, `requirements.txt`, `Makefile`, and CI.
+- 160+ tests across all phases with comprehensive benchmarks.
+- Use this file as the default engineering policy.
 
 ## 2) Cursor/Copilot Rule Check
 - `.cursorrules`: not found
