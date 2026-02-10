@@ -10,6 +10,7 @@ export interface SceneMetadata {
   timeOfDay: string
   estimatedReadingTime: number
   moodTags: string[]
+  typeSpecific?: Record<string, unknown>
 }
 
 export interface NodeContent {
@@ -65,11 +66,15 @@ export interface Character {
   aliases: string[]
   traits: string[]
   description: string
+  importance?: number
+  appearanceCount?: number
   voiceProfile?: {
     speechPatterns: string[]
     vocabulary: string[]
     sampleQuotes: string[]
   }
+  voiceEnforced?: boolean
+  focusMode?: boolean
 }
 
 export interface TunerSettings {
@@ -126,6 +131,15 @@ export interface ContextChunk {
   source: string
   branchId: string
   pinned?: boolean
+  expanded?: boolean
+  tokenCount?: number
+}
+
+export interface ContextPreset {
+  id: string
+  name: string
+  chunkIds: string[]
+  createdAt: string
 }
 
 export interface StyleExemplar {
@@ -134,6 +148,13 @@ export interface StyleExemplar {
   similarityScore: number
   features: string[]
   selected?: boolean
+  isStyleGuide?: boolean
+}
+
+export interface StyleProfile {
+  name: string
+  confidence: number
+  attributes: Record<string, number>
 }
 
 export interface GenerationRequest {
@@ -165,6 +186,13 @@ export interface Contradiction {
   type: string
   description: string
   suggestedFix: string
+}
+
+export interface Toast {
+  id: string
+  message: string
+  type: 'info' | 'success' | 'warning' | 'error'
+  duration?: number
 }
 
 // ==================== APP STATE ====================
@@ -200,8 +228,14 @@ interface AppState {
     temperature: number
     maxTokens: number
     userPrompt: string
+    contextWindow: number
+    model: string
   }
+  contextPresets: ContextPreset[]
+  activePresetId: string | null
   contradictions: Contradiction[]
+  expandedContradictions: string[] // IDs of expanded contradiction details
+  styleProfile: StyleProfile | null
   
   // Branch state
   branches: Branch[]
@@ -237,6 +271,9 @@ interface AppState {
     nodes: string | null
     content: string | null
   }
+  
+  // Toast notifications
+  toasts: Toast[]
   
   // ==================== ACTIONS ====================
   
@@ -282,14 +319,30 @@ interface AppState {
   toggleWriterPanel: () => void
   retrieveContext: (query: string, branchId: string) => Promise<void>
   toggleContextChunk: (chunkId: string) => void
+  expandContextChunk: (chunkId: string, expanded: boolean) => void
+  removeContextChunk: (chunkId: string) => void
   reorderContextChunks: (chunkIds: string[]) => void
   retrieveStyleExemplars: (queryText: string) => Promise<void>
   toggleStyleExemplar: (exemplarId: string) => void
+  setStyleGuide: (exemplarId: string) => void
   generateText: (request: Partial<GenerationRequest>) => Promise<void>
+  cancelGeneration: () => void
   acceptGeneration: (generationId: string) => void
   rejectGeneration: (generationId: string) => void
   checkContradictions: (generatedText: string) => Promise<void>
+  expandContradiction: (contradictionId: string, expanded: boolean) => void
   updateGenerationParams: (params: Partial<AppState['generationParams']>) => void
+  
+  // Context presets
+  saveContextPreset: (name: string) => void
+  loadContextPreset: (presetId: string) => void
+  deleteContextPreset: (presetId: string) => void
+  
+  // Character voice management
+  toggleVoiceEnforcement: (characterId: string) => void
+  toggleCharacterFocus: (characterId: string) => void
+  filterCharacters: (query: string) => Character[]
+  sortCharacters: (by: 'name' | 'importance' | 'appearance') => void
   
   // Phase A: Keyboard navigation
   navigateGraph: (direction: 'up' | 'down' | 'left' | 'right') => void
@@ -323,6 +376,13 @@ interface AppState {
   
   // Error handling
   clearError: (key: 'nodes' | 'content') => void
+  
+  // Toast notifications
+  addToast: (toast: Omit<Toast, 'id'>) => void
+  removeToast: (id: string) => void
+  
+  // Inline editing
+  editGenerationInline: (generationId: string, newText: string) => void
 }
 
 const API_BASE = '/api'
@@ -364,8 +424,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     temperature: 0.7,
     maxTokens: 500,
     userPrompt: '',
+    contextWindow: 4096,
+    model: 'default',
   },
+  contextPresets: [],
+  activePresetId: null,
   contradictions: [],
+  expandedContradictions: [],
+  styleProfile: null,
   
   branches: [],
   tunerSettings: { violence: 0.5, humor: 0.5, romance: 0.5 },
@@ -379,6 +445,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   keyboardShortcuts: {},
   loading: { nodes: false, content: false, generation: false },
   error: { nodes: null, content: null },
+  toasts: [],
   
   // ==================== INITIALIZATION ====================
   initialize: () => {
@@ -921,6 +988,139 @@ export const useAppStore = create<AppState>((set, get) => ({
     }))
   },
   
+  // ==================== PHASE B: CONTEXT MANAGEMENT ====================
+  expandContextChunk: (chunkId, expanded) => {
+    set(state => ({
+      contextChunks: state.contextChunks.map(c =>
+        c.id === chunkId ? { ...c, expanded } : c
+      ),
+    }))
+  },
+  
+  removeContextChunk: (chunkId) => {
+    set(state => ({
+      contextChunks: state.contextChunks.filter(c => c.id !== chunkId),
+    }))
+  },
+  
+  // ==================== PHASE B: STYLE MANAGEMENT ====================
+  setStyleGuide: (exemplarId) => {
+    set(state => ({
+      styleExemplars: state.styleExemplars.map(e =>
+        e.id === exemplarId ? { ...e, isStyleGuide: !e.isStyleGuide } : { ...e, isStyleGuide: false }
+      ),
+    }))
+  },
+  
+  // ==================== PHASE B: GENERATION CONTROL ====================
+  cancelGeneration: () => {
+    set(state => ({
+      loading: { ...state.loading, generation: false },
+    }))
+  },
+  
+  // ==================== PHASE B: CONTRADICTION MANAGEMENT ====================
+  expandContradiction: (contradictionId, expanded) => {
+    set(state => ({
+      expandedContradictions: expanded
+        ? [...state.expandedContradictions, contradictionId]
+        : state.expandedContradictions.filter(id => id !== contradictionId),
+    }))
+  },
+  
+  // ==================== PHASE B: CONTEXT PRESETS ====================
+  saveContextPreset: (name) => {
+    const state = get()
+    const newPreset: ContextPreset = {
+      id: `preset-${Date.now()}`,
+      name,
+      chunkIds: state.contextChunks.filter(c => c.pinned).map(c => c.id),
+      createdAt: new Date().toISOString(),
+    }
+    set(state => ({
+      contextPresets: [...state.contextPresets, newPreset],
+    }))
+  },
+  
+  loadContextPreset: (presetId) => {
+    const state = get()
+    const preset = state.contextPresets.find(p => p.id === presetId)
+    if (!preset) return
+    
+    set(state => ({
+      contextChunks: state.contextChunks.map(c => ({
+        ...c,
+        pinned: preset.chunkIds.includes(c.id),
+      })),
+      activePresetId: presetId,
+    }))
+  },
+  
+  deleteContextPreset: (presetId) => {
+    set(state => ({
+      contextPresets: state.contextPresets.filter(p => p.id !== presetId),
+      activePresetId: state.activePresetId === presetId ? null : state.activePresetId,
+    }))
+  },
+  
+  // ==================== PHASE B: CHARACTER VOICE MANAGEMENT ====================
+  toggleVoiceEnforcement: (characterId) => {
+    set(state => ({
+      characters: state.characters.map(c =>
+        c.id === characterId ? { ...c, voiceEnforced: !c.voiceEnforced } : c
+      ),
+    }))
+  },
+  
+  toggleCharacterFocus: (characterId) => {
+    set(state => ({
+      characters: state.characters.map(c =>
+        c.id === characterId ? { ...c, focusMode: !c.focusMode } : { ...c, focusMode: false }
+      ),
+    }))
+  },
+  
+  filterCharacters: (query) => {
+    const state = get()
+    if (!query.trim()) return state.characters
+    const lower = query.toLowerCase()
+    return state.characters.filter(c =>
+      c.name.toLowerCase().includes(lower) ||
+      c.aliases.some(a => a.toLowerCase().includes(lower))
+    )
+  },
+  
+  sortCharacters: (by) => {
+    set(state => ({
+      characters: [...state.characters].sort((a, b) => {
+        switch (by) {
+          case 'name':
+            return a.name.localeCompare(b.name)
+          case 'importance':
+            return (b.importance || 0) - (a.importance || 0)
+          case 'appearance':
+            return (b.appearanceCount || 0) - (a.appearanceCount || 0)
+          default:
+            return 0
+        }
+      }),
+    }))
+  },
+  
+  // ==================== PHASE B: INLINE EDITING ====================
+  editGenerationInline: (generationId, newText) => {
+    set(state => ({
+      generationResults: state.generationResults.map(g =>
+        g.id === generationId
+          ? { ...g, generatedText: newText, wordCount: newText.split(/\s+/).filter(w => w.length > 0).length }
+          : g
+      ),
+      currentGeneration: state.currentGeneration?.id === generationId
+        ? { ...state.currentGeneration, generatedText: newText, wordCount: newText.split(/\s+/).filter(w => w.length > 0).length }
+        : state.currentGeneration,
+    }))
+  },
+  
   // ==================== PHASE A: KEYBOARD NAVIGATION ====================
   navigateGraph: (direction) => {
     const state = get()
@@ -1230,5 +1430,23 @@ export const useAppStore = create<AppState>((set, get) => ({
   // ==================== ERROR HANDLING ====================
   clearError: (key) => {
     set(state => ({ error: { ...state.error, [key]: null } }))
+  },
+  
+  // ==================== TOAST NOTIFICATIONS ====================
+  addToast: (toast) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    set(state => ({
+      toasts: [...state.toasts, { ...toast, id }]
+    }))
+    // Auto-remove after duration
+    setTimeout(() => {
+      get().removeToast(id)
+    }, toast.duration || 5000)
+  },
+  
+  removeToast: (id) => {
+    set(state => ({
+      toasts: state.toasts.filter(t => t.id !== id)
+    }))
   },
 }))

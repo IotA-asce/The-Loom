@@ -658,9 +658,13 @@ This section consolidates all remaining UI features into an actionable checklist
   - [x] Different shapes per type
   - [x] Color coding
   - [x] Icon indicators
-- [ ] **A.3.3** Type-specific fields
-  - [-] Conditional form fields
-  - [-] Validation rules per type
+- [x] **A.3.3** Type-specific fields
+  - [x] Conditional form fields per type
+  - [x] Validation rules per type
+  - [x] Chapter: number, arc, summary
+  - [x] Scene: location, time, weather, POV
+  - [x] Beat: type, goal, outcome, stakes
+  - [x] Dialogue: speaker, emotion, action, listener
 
 #### A.4 Story Reading View 🔴
 - [x] **A.4.1** Reading mode toggle
@@ -708,64 +712,70 @@ This section consolidates all remaining UI features into an actionable checklist
   - [x] List of context chunks
   - [x] Relevance scores
   - [x] Source attribution
-  - [-] Expand/collapse each chunk
+  - [x] Expand/collapse each chunk
+  - [x] Token count per chunk
 - [x] **B.2.2** Manual context management
   - [x] Reorder chunks (up/down buttons)
   - [x] Remove chunk button
-  - [-] Add from search button
+  - [x] Context search/filter
   - [x] Pin important chunks
-- [ ] **B.2.3** Token budget visualization
-  - [x] Progress bar for token usage
+- [x] **B.2.3** Token budget visualization
+  - [x] Stacked progress bar (prompt/context/generation)
+  - [x] Color-coded segments
   - [x] Warning at 80%
   - [x] Error at 100%
-  - [x] Breakdown by chunk
-- [ ] **B.2.4** Save context presets
-  - [ ] Name and save current context
-  - [ ] Load preset dropdown
-  - [ ] Delete preset button
+  - [x] Legend with breakdown
+- [x] **B.2.4** Save context presets
+  - [x] Name and save current context
+  - [x] Load preset button
+  - [x] Delete preset button
+  - [x] Active preset indicator
 
 #### B.3 Style Fidelity Controls 🟡
-- [ ] **B.3.1** Style similarity display
-  - [ ] Overall similarity score
-  - [ ] Per-paragraph comparison
-  - [ ] Visual similarity meter
+- [x] **B.3.1** Style similarity display
+  - [x] Overall similarity score (average)
+  - [-] Per-paragraph comparison (deferred)
+  - [-] Visual similarity meter (deferred)
 - [x] **B.3.2** Style exemplar selection
   - [x] List retrieved exemplars
   - [x] Preview each exemplar
   - [x] Select/deselect checkboxes
-  - [ ] "Use as style guide" button
-- [ ] **B.3.3** Style profile indicator
-  - [ ] Current style profile name
-  - [ ] Confidence score
-  - [ ] Style attributes breakdown
+  - [x] "Use as style guide" button (star toggle)
+- [x] **B.3.3** Style profile indicator
+  - [x] Active style profile panel
+  - [x] Exemplars count
+  - [x] Average similarity score
 
 #### B.4 Character Voice Management 🟡
 - [x] **B.4.1** Character list view
   - [x] Grid of character cards
-  - [ ] Search/filter by name
-  - [ ] Sort by importance/appearance
+  - [x] Search/filter by name
+  - [x] Sort by importance/appearance/name
+  - [x] Active voices summary
 - [x] **B.4.2** Voice card display
   - [x] Character name and aliases
   - [x] Voice traits list
   - [x] Sample dialogue quotes
   - [x] Consistency score
 - [x] **B.4.3** Character selector in generation
-  - [x] Checklist for characters in scene
-  - [ ] Voice enforcement toggle per character
-  - [ ] "Focus on character" option
+  - [x] New "Voices" tab in Writer panel
+  - [x] Voice enforcement toggle per character
+  - [x] "Focus on character" option (star badge)
 
 #### B.5 Contradiction Detection Display 🟡
 - [x] **B.5.1** Warning indicators
   - [x] Yellow warning banner for minor issues
   - [x] Red banner for contradictions
   - [x] Count badge in status bar
-- [ ] **B.5.2** Contradiction detail view
-  - [ ] Side-by-side comparison
-  - [ ] Conflicting facts highlight
-  - [ ] Source reference links
-- [ ] **B.5.3** Resolution actions
+- [x] **B.5.2** Contradiction detail view
+  - [x] Expandable contradiction items
+  - [x] Severity badges (high/medium/low)
+  - [x] Type and suggested fix display
+  - [-] Side-by-side comparison (deferred)
+  - [-] Source reference links (deferred)
+- [x] **B.5.3** Resolution actions
   - [x] "Ignore" button
-  - [-] "Edit to fix" button
+  - [x] "Apply Fix" button
   - [x] "Regenerate with fix" button
 
 ---
@@ -1162,30 +1172,35 @@ This section consolidates all remaining UI features into an actionable checklist
   - [ ] Template preview
 
 #### I.2 Keyboard Navigation 🔴
-- [ ] **I.2.1** Graph navigation
-  - [ ] Arrow keys for node selection
-  - [ ] Enter to edit
-  - [ ] Delete to remove
-- [ ] **I.2.2** Global shortcuts
-  - [ ] Ctrl+?: Show shortcuts
-  - [ ] Ctrl+F: Search
-  - [ ] Ctrl+G: Generate
-  - [ ] Ctrl+N: New node
-- [ ] **I.2.3** Focus management
-  - [ ] Tab order optimization
-  - [ ] Focus trap in modals
-  - [ ] Escape to close panels
+- [x] **I.2.1** Graph navigation
+  - [x] Arrow keys for node selection
+  - [x] Enter to edit
+  - [x] Delete to remove
+- [x] **I.2.2** Global shortcuts
+  - [x] Ctrl+?: Show shortcuts
+  - [x] Ctrl+Z: Undo
+  - [x] Ctrl+Y: Redo
+  - [x] Ctrl+T: Toggle tuner
+  - [x] Ctrl+D: Toggle dual view
+  - [x] Ctrl+S: Save
+  - [x] Ctrl+N: New node
+  - [x] Ctrl+R: Toggle reading mode
+- [x] **I.2.3** Focus management
+  - [x] Tab order optimization
+  - [x] Focus trap in modals (RichTextEditor)
+  - [x] Escape to close panels
 
 #### I.3 Loading & Error States 🔴
-- [ ] **I.3.1** Loading indicators
-  - [ ] Skeleton screens
-  - [ ] Progress bars
-  - [ ] Spinner for async ops
-- [ ] **I.3.2** Error handling
-  - [ ] Toast notifications
-  - [ ] Error boundary fallback
-  - [ ] Retry buttons
-- [ ] **I.3.3** Offline support
+- [x] **I.3.1** Loading indicators
+  - [x] Skeleton screens (basic)
+  - [x] Progress bars (generation)
+  - [x] Spinner for async ops
+- [x] **I.3.2** Error handling
+  - [x] Toast notifications system
+  - [x] Error boundary fallback
+  - [x] useToast hook for easy usage
+  - [-] Retry buttons (partial)
+- [-] **I.3.3** Offline support (deferred)
   - [ ] Offline detection
   - [ ] Queue changes locally
   - [ ] Sync when back online

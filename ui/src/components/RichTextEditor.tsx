@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAppStore } from '../store'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 import './RichTextEditor.css'
 
 interface RichTextEditorProps {
@@ -23,8 +24,21 @@ export function RichTextEditor({ nodeId, initialContent = '', onSave, onCancel }
   const [wordCount, setWordCount] = useState(0)
   const [showPreview, setShowPreview] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  
+  // Handlers defined before focus trap to avoid reference issues
+  const handleCancel = useCallback(() => {
+    if (isDirty && !confirm('Discard unsaved changes?')) return
+    stopEditingNode()
+    onCancel?.()
+  }, [isDirty, stopEditingNode, onCancel])
+  
+  // Set up focus trap for accessibility
+  const containerRef = useFocusTrap<HTMLDivElement>({
+    enabled: true,
+    onEscape: handleCancel,
+  })
   
   // Calculate word count
   useEffect(() => {
@@ -32,12 +46,8 @@ export function RichTextEditor({ nodeId, initialContent = '', onSave, onCancel }
     setWordCount(count)
   }, [content])
   
-  // Auto-focus textarea
-  useEffect(() => {
-    textareaRef.current?.focus()
-  }, [])
-  
   // Auto-save draft every 5 seconds when dirty
+  // (focus is handled by useFocusTrap)
   useEffect(() => {
     if (isDirty && content) {
       if (autoSaveRef.current) clearTimeout(autoSaveRef.current)
@@ -62,12 +72,6 @@ export function RichTextEditor({ nodeId, initialContent = '', onSave, onCancel }
       onSave?.()
     }
   }, [content, nodeId, updateNodeContent, saveNodeVersion, stopEditingNode, onSave])
-  
-  const handleCancel = useCallback(() => {
-    if (isDirty && !confirm('Discard unsaved changes?')) return
-    stopEditingNode()
-    onCancel?.()
-  }, [isDirty, stopEditingNode, onCancel])
   
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // Ctrl/Cmd + S to save
@@ -135,7 +139,14 @@ export function RichTextEditor({ nodeId, initialContent = '', onSave, onCancel }
   if (!node) return null
   
   return (
-    <div className="rich-text-editor" role="dialog" aria-label="Edit node content">
+    <div 
+      ref={containerRef}
+      className="rich-text-editor" 
+      role="dialog" 
+      aria-label="Edit node content"
+      aria-modal="true"
+      tabIndex={-1}
+    >
       <div className="editor-header">
         <h3 className="editor-title">
           Editing: {node.label}

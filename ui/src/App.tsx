@@ -8,6 +8,8 @@ import { SceneMetadata } from './components/SceneMetadata'
 import { ReadingView } from './components/ReadingView'
 import { WriterPanel } from './components/WriterPanel'
 import { StatusBar } from './components/StatusBar'
+import { ToastContainer } from './components/Toast'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { useAppStore } from './store'
 import './App.css'
 
@@ -63,7 +65,11 @@ function App() {
   }, [selectedNodeId])
 
   return (
+    <ErrorBoundary>
     <div className="app" role="application" aria-label="The Loom Story Editor">
+      {/* Toast Notifications */}
+      <ToastContainer />
+      
       {/* Reading View Overlay */}
       <ReadingView />
       
@@ -274,6 +280,7 @@ function App() {
 
       <StatusBar />
     </div>
+    </ErrorBoundary>
   )
 }
 
