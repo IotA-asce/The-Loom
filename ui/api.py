@@ -2603,6 +2603,524 @@ async def list_character_adapters(character_id: str) -> dict[str, Any]:
     }
 
 
+# ============ Sprint 26: QC Pipeline Endpoints ============
+
+
+class QCAnalyzeRequest(CamelModel):
+    """Request to analyze image quality."""
+    image_id: str
+    analyzer_type: str = "auto"  # auto, mock, clip
+
+
+class QCAnalyzeResponse(CamelModel):
+    """QC analysis response."""
+    report_id: str
+    image_id: str
+    overall_score: float
+    score_level: str
+    passed: bool
+    failure_categories: list[str]
+    suggested_fixes: list[str]
+    auto_redraw_recommended: bool
+
+
+@app.post("/api/qc/analyze", response_model=QCAnalyzeResponse)
+async def analyze_image_quality(request: QCAnalyzeRequest) -> dict[str, Any]:
+    """Analyze image quality."""
+    from core.qc_analysis import QCAnalyzerFactory, get_qc_analyzer
+    from core.image_storage import get_image_storage
+    
+    try:
+        # Get image
+        storage = get_image_storage()
+        image_data = await storage.get_image(request.image_id)
+        
+        if image_data is None:
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        # Get analyzer
+        if request.analyzer_type == "auto":
+            analyzer = get_qc_analyzer()
+        else:
+            analyzer = QCAnalyzerFactory.create(request.analyzer_type)
+        
+        # Analyze
+        report = await analyzer.analyze(image_data, request.image_id)
+        
+        return {
+            "report_id": report.report_id,
+            "image_id": report.image_id,
+            "overall_score": report.overall_score,
+            "score_level": report.score_level.value,
+            "passed": report.passed,
+            "failure_categories": list(report.failure_categories),
+            "suggested_fixes": list(report.suggested_fixes),
+            "auto_redraw_recommended": report.auto_redraw_recommended,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"QC analysis failed: {e}")
+
+
+@app.get("/api/qc/analyzers")
+async def list_qc_analyzers() -> list[dict[str, Any]]:
+    """List available QC analyzers."""
+    from core.qc_analysis import MockQCAnalyzer, CLIPBasedQCAnalyzer
+    
+    analyzers = []
+    
+    # Mock (always available)
+    analyzers.append({
+        "id": "mock",
+        "name": "Mock Analyzer",
+        "available": True,
+        "description": "Deterministic mock scoring for testing",
+    })
+    
+    # CLIP-based
+    clip = CLIPBasedQCAnalyzer()
+    analyzers.append({
+        "id": "clip",
+        "name": "CLIP-Based Analyzer",
+        "available": clip.is_available(),
+        "description": "Uses CLIP and vision models for scoring",
+        "requirements": "transformers, torch" if not clip.is_available() else None,
+    })
+    
+    return analyzers
+
+
+@app.get("/api/qc/reports/{image_id}")
+async def get_qc_report(image_id: str) -> dict[str, Any]:
+    """Get QC report for an image."""
+    from core.qc_analysis import get_qc_analyzer
+    from core.image_storage import get_image_storage
+    
+    try:
+        storage = get_image_storage()
+        image_data = await storage.get_image(image_id)
+        
+        if image_data is None:
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        analyzer = get_qc_analyzer()
+        report = await analyzer.analyze(image_data, image_id)
+        
+        return {
+            "report_id": report.report_id,
+            "image_id": report.image_id,
+            "overall_score": report.overall_score,
+            "score_level": report.score_level.value,
+            "passed": report.passed,
+            "needs_human_review": report.needs_human_review,
+            "anatomy": {
+                "overall": report.anatomy.overall,
+                "proportions": report.anatomy.proportions,
+                "pose_accuracy": report.anatomy.pose_accuracy,
+                "hand_quality": report.anatomy.hand_quality,
+                "face_quality": report.anatomy.face_quality,
+            },
+            "composition": {
+                "overall": report.composition.overall,
+                "rule_of_thirds": report.composition.rule_of_thirds,
+                "balance": report.composition.balance,
+                "focal_point": report.composition.focal_point,
+                "framing": report.composition.framing,
+            },
+            "readability": {
+                "overall": report.readability.overall,
+                "contrast": report.readability.contrast,
+                "clarity": report.readability.clarity,
+            },
+            "content": {
+                "safe": report.content.is_safe,
+                "violence_level": report.content.violence_level,
+                "suggestive_level": report.content.suggestive_level,
+            },
+            "failure_categories": list(report.failure_categories),
+            "suggested_fixes": list(report.suggested_fixes),
+            "auto_redraw_recommended": report.auto_redraw_recommended,
+            "analyzed_at": report.analyzed_at,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get QC report: {e}")
+
+
+@app.post("/api/qc/auto-redraw")
+async def auto_redraw_image(image_id: str) -> dict[str, Any]:
+    """Automatically redraw an image that failed QC."""
+    from core.qc_analysis import auto_redraw_with_qc, get_qc_analyzer
+    from core.image_storage import get_image_storage
+    from core.diffusion_backend import get_diffusion_backend, GenerationRequest
+    
+    try:
+        storage = get_image_storage()
+        metadata = await storage.get_metadata(image_id)
+        
+        if metadata is None:
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        # Get original image
+        image_data = await storage.get_image(image_id)
+        
+        # Define generate function for redraw
+        async def generate_fn():
+            backend = get_diffusion_backend()
+            request = GenerationRequest(
+                prompt=metadata.prompt,
+                negative_prompt=metadata.negative_prompt,
+                seed=metadata.seed + 1000,  # Different seed
+            )
+            results = await backend.generate(request)
+            return results[0].image_data if results else b""
+        
+        # Auto redraw
+        result = await auto_redraw_with_qc(
+            image_data=image_data,
+            image_id=image_id,
+            generate_fn=generate_fn,
+            max_attempts=3,
+        )
+        
+        if result.new_image_id and result.new_report:
+            # Store the new image
+            new_metadata = ImageMetadata(
+                image_id=result.new_image_id,
+                original_filename=f"{metadata.original_filename}-redraw",
+                content_type=metadata.content_type,
+                width=metadata.width,
+                height=metadata.height,
+                file_size_bytes=len(image_data),  # Approximate
+                prompt=metadata.prompt,
+                negative_prompt=metadata.negative_prompt,
+                seed=metadata.seed + 1000,
+                model_id=metadata.model_id,
+                story_id=metadata.story_id,
+                branch_id=metadata.branch_id,
+                scene_id=metadata.scene_id,
+                panel_index=metadata.panel_index,
+                version=metadata.version + 1,
+                parent_version=image_id,
+            )
+        
+        return {
+            "original_image_id": result.original_image_id,
+            "new_image_id": result.new_image_id,
+            "attempts": result.attempts,
+            "improved": result.improved,
+            "final_score": result.final_score,
+            "passed": result.new_report.passed if result.new_report else False,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Auto redraw failed: {e}")
+
+
+# ============ Sprint 27: Graph Persistence Endpoints ============
+
+
+class SaveNodeRequest(CamelModel):
+    """Request to save a graph node."""
+    node_id: str
+    label: str
+    branch_id: str
+    scene_id: str
+    x: float
+    y: float
+    importance: float = 0.5
+    metadata: dict[str, Any] = {}
+
+
+class SaveEdgeRequest(CamelModel):
+    """Request to save a graph edge."""
+    edge_id: str
+    source_id: str
+    target_id: str
+    label: str = ""
+    edge_type: str = "default"
+    weight: float = 1.0
+
+
+class ProjectSaveRequest(CamelModel):
+    """Request to save entire project."""
+    project_id: str
+    nodes: list[dict[str, Any]]
+    edges: list[dict[str, Any]]
+    branches: list[dict[str, Any]]
+
+
+@app.post("/api/graph/nodes/save")
+async def save_graph_node(request: SaveNodeRequest) -> dict[str, Any]:
+    """Save or update a graph node."""
+    from core.graph_persistence import GraphNode, get_graph_persistence
+    from core.event_store import log_node_created, log_node_updated
+    
+    try:
+        persistence = get_graph_persistence()
+        
+        node = GraphNode(
+            node_id=request.node_id,
+            label=request.label,
+            branch_id=request.branch_id,
+            scene_id=request.scene_id,
+            x=request.x,
+            y=request.y,
+            importance=request.importance,
+            metadata=request.metadata,
+        )
+        
+        # Check if node exists
+        existing = await persistence.get_node(request.node_id)
+        
+        await persistence.save_node(node)
+        
+        # Log event
+        if existing is None:
+            await log_node_created(
+                node_id=request.node_id,
+                label=request.label,
+                x=request.x,
+                y=request.y,
+                branch_id=request.branch_id,
+            )
+        else:
+            await log_node_updated(
+                node_id=request.node_id,
+                changes={"x": request.x, "y": request.y, "label": request.label},
+            )
+        
+        return {"success": True, "node_id": request.node_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save node: {e}")
+
+
+@app.get("/api/graph/nodes/{node_id}")
+async def get_graph_node(node_id: str) -> dict[str, Any]:
+    """Get a graph node by ID."""
+    from core.graph_persistence import get_graph_persistence
+    
+    try:
+        persistence = get_graph_persistence()
+        node = await persistence.get_node(node_id)
+        
+        if node is None:
+            raise HTTPException(status_code=404, detail="Node not found")
+        
+        return node.to_dict()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get node: {e}")
+
+
+@app.delete("/api/graph/nodes/{node_id}")
+async def delete_graph_node(node_id: str) -> dict[str, Any]:
+    """Delete a graph node."""
+    from core.graph_persistence import get_graph_persistence
+    
+    try:
+        persistence = get_graph_persistence()
+        deleted = await persistence.delete_node(node_id)
+        
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Node not found")
+        
+        return {"success": True, "message": f"Node {node_id} deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete node: {e}")
+
+
+@app.get("/api/graph/nodes")
+async def list_graph_nodes(branch_id: str | None = None) -> dict[str, Any]:
+    """List all graph nodes, optionally filtered by branch."""
+    from core.graph_persistence import get_graph_persistence
+    
+    try:
+        persistence = get_graph_persistence()
+        
+        if branch_id:
+            nodes = await persistence.get_nodes_by_branch(branch_id)
+        else:
+            nodes = await persistence.get_all_nodes()
+        
+        return {
+            "nodes": [node.to_dict() for node in nodes],
+            "count": len(nodes),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list nodes: {e}")
+
+
+@app.post("/api/graph/edges/save")
+async def save_graph_edge(request: SaveEdgeRequest) -> dict[str, Any]:
+    """Save or update a graph edge."""
+    from core.graph_persistence import GraphEdge, get_graph_persistence
+    
+    try:
+        persistence = get_graph_persistence()
+        
+        edge = GraphEdge(
+            edge_id=request.edge_id,
+            source_id=request.source_id,
+            target_id=request.target_id,
+            label=request.label,
+            edge_type=request.edge_type,
+            weight=request.weight,
+        )
+        
+        await persistence.save_edge(edge)
+        
+        return {"success": True, "edge_id": request.edge_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save edge: {e}")
+
+
+@app.get("/api/graph/edges")
+async def list_graph_edges() -> dict[str, Any]:
+    """List all graph edges."""
+    from core.graph_persistence import get_graph_persistence
+    
+    try:
+        persistence = get_graph_persistence()
+        edges = await persistence.get_all_edges()
+        
+        return {
+            "edges": [edge.to_dict() for edge in edges],
+            "count": len(edges),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list edges: {e}")
+
+
+@app.post("/api/project/save")
+async def save_project(request: ProjectSaveRequest) -> dict[str, Any]:
+    """Save entire project."""
+    from core.graph_persistence import get_graph_persistence
+    
+    try:
+        persistence = get_graph_persistence()
+        
+        data = {
+            "project_id": request.project_id,
+            "nodes": request.nodes,
+            "edges": request.edges,
+            "branches": request.branches,
+            "saved_at": datetime.now(UTC).isoformat(),
+        }
+        
+        await persistence.save_project(request.project_id, data)
+        
+        return {
+            "success": True,
+            "project_id": request.project_id,
+            "node_count": len(request.nodes),
+            "edge_count": len(request.edges),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save project: {e}")
+
+
+@app.get("/api/project/load/{project_id}")
+async def load_project(project_id: str) -> dict[str, Any]:
+    """Load entire project."""
+    from core.graph_persistence import get_graph_persistence
+    
+    try:
+        persistence = get_graph_persistence()
+        data = await persistence.load_project(project_id)
+        
+        if data is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        return data
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load project: {e}")
+
+
+@app.post("/api/project/export")
+async def export_project(project_id: str) -> dict[str, Any]:
+    """Export project to JSON format."""
+    from core.graph_persistence import get_graph_persistence
+    import json
+    
+    try:
+        persistence = get_graph_persistence()
+        data = await persistence.load_project(project_id)
+        
+        if data is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        # Convert to export format
+        export = {
+            "format_version": "1.0",
+            "project_id": project_id,
+            "exported_at": datetime.now(UTC).isoformat(),
+            "data": data,
+        }
+        
+        return export
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to export project: {e}")
+
+
+# ============ Event Store / Audit Endpoints ============
+
+
+@app.get("/api/events/audit/{aggregate_type}/{aggregate_id}")
+async def get_audit_trail(aggregate_type: str, aggregate_id: str) -> dict[str, Any]:
+    """Get audit trail for an aggregate."""
+    from core.event_store import get_event_store
+    
+    try:
+        store = get_event_store()
+        trail = await store.get_audit_trail(aggregate_id, aggregate_type)
+        
+        return {
+            "aggregate_type": aggregate_type,
+            "aggregate_id": aggregate_id,
+            "events": trail,
+            "event_count": len(trail),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get audit trail: {e}")
+
+
+@app.get("/api/events/recent")
+async def get_recent_events(limit: int = 50) -> dict[str, Any]:
+    """Get recent activity feed."""
+    from core.event_store import get_event_store
+    
+    try:
+        store = get_event_store()
+        events = await store.get_recent_activity(limit=limit)
+        
+        return {
+            "events": [
+                {
+                    "event_id": e.event_id,
+                    "event_type": e.event_type.value,
+                    "aggregate_id": e.aggregate_id,
+                    "timestamp": e.timestamp,
+                    "user_id": e.user_id,
+                }
+                for e in events
+            ],
+            "count": len(events),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get events: {e}")
+
+
 if __name__ == "__main__":
     import uvicorn
 

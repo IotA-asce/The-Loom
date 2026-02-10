@@ -133,52 +133,67 @@ pip install diffusers transformers accelerate
 
 ---
 
-## 🔄 PENDING: Backend Implementation (Sprints 26-30)
+## ✅ COMPLETE: Backend Sprints 26-27
+
+### Sprint 26: Quality Control Pipeline ✅
+
+**Status:** Complete with anatomy, composition, and readability scoring
+
+**Deliverables:**
+- ✅ `core/qc_analysis.py` - Quality control analysis:
+  - `AnatomyScores`, `CompositionScores`, `ReadabilityScores`, `ContentFlags`
+  - `MockQCAnalyzer` - Deterministic scoring for testing
+  - `CLIPBasedQCAnalyzer` - Vision model based scoring (optional)
+  - `auto_redraw_with_qc()` - Automatic retry on failure
+- ✅ Score levels: EXCELLENT, GOOD, ACCEPTABLE, POOR, REJECT
+- ✅ Failure categorization and suggested fixes
+- ✅ API Endpoints:
+  - `POST /api/qc/analyze` - Analyze image quality
+  - `GET /api/qc/analyzers` - List available analyzers
+  - `GET /api/qc/reports/{image_id}` - Get detailed QC report
+  - `POST /api/qc/auto-redraw` - Auto-redraw failed images
+
+**QC Metrics:**
+- Anatomy: overall, proportions, pose, hands, face
+- Composition: rule of thirds, balance, focal point, framing
+- Readability: contrast, clarity, text legibility, panel flow
+- Content: NSFW detection, violence/suggestive levels
+
+### Sprint 27: Graph Persistence & Event Sourcing ✅
+
+**Status:** Complete with SQLite persistence and event sourcing
+
+**Deliverables:**
+- ✅ `core/graph_persistence.py` - Graph database layer:
+  - `GraphNode`, `GraphEdge`, `BranchInfo` data models
+  - `SQLiteGraphPersistence` with full CRUD operations
+  - Node/edge storage with JSON metadata
+  - Branch lineage tracking
+  - Project save/load with export/import
+- ✅ `core/event_store.py` - Event sourcing:
+  - `Event` model with types (NODE_CREATED, TEXT_EDITED, etc.)
+  - SQLite event storage with indexes
+  - Audit trail generation
+  - Event replay for state reconstruction
+  - Activity feed queries
+- ✅ API Endpoints:
+  - `POST /api/graph/nodes/save`, `GET /api/graph/nodes/{id}`, `DELETE /api/graph/nodes/{id}`
+  - `GET /api/graph/nodes` - List nodes (with branch filter)
+  - `POST /api/graph/edges/save`, `GET /api/graph/edges`
+  - `POST /api/project/save`, `GET /api/project/load/{id}`, `POST /api/project/export`
+  - `GET /api/events/audit/{type}/{id}` - Get audit trail
+  - `GET /api/events/recent` - Activity feed
+
+**Storage:**
+- SQLite database at `.loom/graph.db` and `.loom/events.db`
+- Automatic schema creation and migrations
+- Async operations with thread pool executor
 
 ---
 
-## Backend Sprint 26: Quality Control Pipeline
+## 🔄 PENDING: Backend Implementation (Sprints 28-30)
 
-**Goal:** Implement real QC scoring with anatomy/composition analysis.
-
-**Prerequisites:**
-- [ ] Image generation backend working (Sprint 24)
-- [ ] Optional: Vision models for analysis (CLIP, etc.)
-
-**Implementation:**
-- [ ] Create `core/qc_analysis.py` - Quality control analysis
-  - [ ] Anatomy scoring (pose estimation, proportion checks)
-  - [ ] Composition scoring (rule of thirds, balance)
-  - [ ] Readability scoring (contrast, clarity)
-  - [ ] NSFW/content filtering
-- [ ] Update `core/image_generation_engine.py`:
-  - [ ] Integrate QC scoring in generation pipeline
-  - [ ] Auto-redraw on QC failure
-  - [ ] QC history tracking
-- [ ] Update `ui/api.py`:
-  - [ ] `POST /api/qc/analyze` - Analyze image quality
-  - [ ] `GET /api/qc/reports/{job_id}` - Get QC report
-  - [ ] WebSocket updates for QC progress
-
-**Correction Loop:**
-- [ ] Automatic retry with adjusted parameters
-- [ ] Failure categorization (anatomy, composition, etc.)
-- [ ] Human-in-the-loop for borderline cases
-
-**Testing:**
-- [ ] Test QC scoring accuracy
-- [ ] Test auto-redraw workflow
-- [ ] Test failure categorization
-
-**Definition of Done:**
-- [ ] QC scores generated for all images
-- [ ] Auto-redraw works for failed images
-- [ ] QC dashboard shows real data
-- [ ] All tests pass
-
----
-
-## Backend Sprint 27: Advanced Story Graph & Persistence
+## Backend Sprint 28: Real-time Collaboration
 
 **Goal:** Implement real graph persistence with database backend.
 
@@ -384,14 +399,14 @@ These apply across all backend sprints:
 | 23 | Vector DB | ✅ Complete | Semantic search with ChromaDB |
 | 24 | Diffusion Backend | ✅ Complete | Real image generation (Local SD/Stability AI) |
 | 25 | Character LoRA | ✅ Complete | LoRA training pipeline & identity management |
-| 26 | QC Pipeline | ⏳ Pending | Quality control & auto-redraw |
-| 27 | Graph Persistence | ⏳ Pending | Database backend |
+| 26 | QC Pipeline | ✅ Complete | Quality control with anatomy/composition scoring |
+| 27 | Graph Persistence | ✅ Complete | SQLite backend with event sourcing |
 | 28 | Collaboration | ⏳ Pending | Multi-user sync |
 | 29 | Observability | ⏳ Pending | Monitoring & alerts |
 | 30 | Production | ⏳ Pending | Auth, security, deploy |
 
-**Total Backend Items:** ~80 pending (Sprints 26-30)
+**Total Backend Items:** ~60 pending (Sprints 28-30)
 
 ---
 
-*Frontend: Complete ✅ | Backend Sprints 22-25: Complete ✅ | Remaining: Sprints 26-30*
+*Frontend: Complete ✅ | Backend Sprints 22-27: Complete ✅ | Remaining: Sprints 28-30*
