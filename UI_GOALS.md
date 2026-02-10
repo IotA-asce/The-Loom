@@ -594,3 +594,694 @@ For implementation details, see:
 - `core/` - Engine implementations  
 - `GOALS.md` - Full project goals
 - `PRD.md` - Product requirements
+
+
+---
+
+## 11. Comprehensive Implementation Checklist
+
+This section consolidates all remaining UI features into an actionable checklist. Use this as the master tracking document for UI development.
+
+### Legend
+- `[ ]` Not started
+- `[-]` In progress
+- `[x]` Complete
+- **🔴 Critical** - Blocks core workflows
+- **🟡 High** - Important for full functionality
+- **🟢 Low** - Nice to have
+
+---
+
+### 📚 A. Content Management (Phase A)
+
+#### A.1 Node Content Editing
+- [ ] **A.1.1** Rich text editor component
+  - [ ] Markdown support
+  - [ ] WYSIWYG toolbar
+  - [ ] Auto-save drafts
+  - [ ] Undo/redo within editor
+- [ ] **A.1.2** Inline node editing
+  - [ ] Double-click to edit
+  - [ ] ESC to cancel, Enter to save
+  - [ ] Visual edit mode indicator
+- [ ] **A.1.3** Node content display
+  - [ ] Preview on hover
+  - [ ] Expand/collapse long content
+  - [ ] Syntax highlighting for dialogue
+- [ ] **A.1.4** Version history
+  - [ ] Save revisions on edit
+  - [ ] Diff viewer between versions
+  - [ ] Restore previous version
+
+#### A.2 Scene Metadata 🔴
+- [ ] **A.2.1** Metadata form fields
+  - [ ] Title input
+  - [ ] Location selector
+  - [ ] Time-of-day picker
+  - [ ] Estimated reading time
+- [ ] **A.2.2** Character presence
+  - [ ] Multi-select character checklist
+  - [ ] Character entry/exit markers
+  - [ ] Auto-detect from content
+- [ ] **A.2.3** Mood/tone tags
+  - [ ] Tag input with autocomplete
+  - [ ] Preset mood options
+  - [ ] Color-coded mood indicators
+
+#### A.3 Node Type System
+- [ ] **A.3.1** Type definitions
+  - [ ] Chapter nodes
+  - [ ] Scene nodes
+  - [ ] Beat nodes
+  - [ ] Dialogue nodes
+- [ ] **A.3.2** Visual differentiation
+  - [ ] Different shapes per type
+  - [ ] Color coding
+  - [ ] Icon indicators
+- [ ] **A.3.3** Type-specific fields
+  - [ ] Conditional form fields
+  - [ ] Validation rules per type
+
+#### A.4 Story Reading View 🔴
+- [ ] **A.4.1** Reading mode toggle
+  - [ ] Hide graph, show content
+  - [ ] Scrollable narrative view
+  - [ ] Branch selection dropdown
+- [ ] **A.4.2** Navigation
+  - [ ] Previous/next scene buttons
+  - [ ] Chapter jump menu
+  - [ ] Progress indicator
+- [ ] **A.4.3** Reading preferences
+  - [ ] Font size controls
+  - [ ] Light/dark theme
+  - [ ] Line spacing options
+
+---
+
+### ✍️ B. Text Generation (Phase B)
+
+#### B.1 Writer Panel 🔴
+- [ ] **B.1.1** Generation request interface
+  - [ ] Context window selector
+  - [ ] Prompt composition textarea
+  - [ ] Temperature slider (0-2)
+  - [ ] Max tokens input
+  - [ ] Model selector (if multiple)
+- [ ] **B.1.2** Submit workflow
+  - [ ] Submit button with validation
+  - [ ] Cancel generation button
+  - [ ] Progress indicator (streaming)
+  - [ ] Estimated time display
+- [ ] **B.1.3** Generated content display
+  - [ ] Rich text output area
+  - [ ] Dialogue highlighting
+  - [ ] Paragraph numbering
+  - [ ] Word count display
+- [ ] **B.1.4** Action buttons
+  - [ ] Accept button (creates node)
+  - [ ] Reject button (discards)
+  - [ ] Regenerate button
+  - [ ] Edit inline button
+
+#### B.2 Context Assembly Viewer 🔴
+- [ ] **B.2.1** Retrieved chunks display
+  - [ ] List of context chunks
+  - [ ] Relevance scores
+  - [ ] Source attribution
+  - [ ] Expand/collapse each chunk
+- [ ] **B.2.2** Manual context management
+  - [ ] Reorder chunks (drag/drop)
+  - [ ] Remove chunk button
+  - [ ] Add from search button
+  - [ ] Pin important chunks
+- [ ] **B.2.3** Token budget visualization
+  - [ ] Progress bar for token usage
+  - [ ] Warning at 80%
+  - [ ] Error at 100%
+  - [ ] Breakdown by chunk
+- [ ] **B.2.4** Save context presets
+  - [ ] Name and save current context
+  - [ ] Load preset dropdown
+  - [ ] Delete preset button
+
+#### B.3 Style Fidelity Controls 🟡
+- [ ] **B.3.1** Style similarity display
+  - [ ] Overall similarity score
+  - [ ] Per-paragraph comparison
+  - [ ] Visual similarity meter
+- [ ] **B.3.2** Style exemplar selection
+  - [ ] List retrieved exemplars
+  - [ ] Preview each exemplar
+  - [ ] Select/deselect checkboxes
+  - [ ] "Use as style guide" button
+- [ ] **B.3.3** Style profile indicator
+  - [ ] Current style profile name
+  - [ ] Confidence score
+  - [ ] Style attributes breakdown
+
+#### B.4 Character Voice Management 🟡
+- [ ] **B.4.1** Character list view
+  - [ ] Grid of character cards
+  - [ ] Search/filter by name
+  - [ ] Sort by importance/appearance
+- [ ] **B.4.2** Voice card display
+  - [ ] Character name and aliases
+  - [ ] Voice traits list
+  - [ ] Sample dialogue quotes
+  - [ ] Consistency score
+- [ ] **B.4.3** Character selector in generation
+  - [ ] Checklist for characters in scene
+  - [ ] Voice enforcement toggle per character
+  - [ ] "Focus on character" option
+
+#### B.5 Contradiction Detection Display 🟡
+- [ ] **B.5.1** Warning indicators
+  - [ ] Yellow warning banner for minor issues
+  - [ ] Red banner for contradictions
+  - [ ] Count badge in status bar
+- [ ] **B.5.2** Contradiction detail view
+  - [ ] Side-by-side comparison
+  - [ ] Conflicting facts highlight
+  - [ ] Source reference links
+- [ ] **B.5.3** Resolution actions
+  - [ ] "Ignore" button
+  - [ ] "Edit to fix" button
+  - [ ] "Regenerate with fix" button
+
+---
+
+### 🎨 C. Image Generation (Phase C)
+
+#### C.1 Scene Blueprint Editor 🔴
+- [ ] **C.1.1** Scene elements form
+  - [ ] Setting description textarea
+  - [ ] Time of day selector
+  - [ ] Weather/atmosphere selector
+  - [ ] Lighting direction picker
+- [ ] **C.1.2** Character positioning
+  - [ ] Character presence checklist
+  - [ ] Position dropdown (left/center/right/background)
+  - [ ] Pose description input
+  - [ ] Expression selector per character
+- [ ] **C.1.3** Camera controls
+  - [ ] Shot type dropdown (wide/medium/close-up)
+  - [ ] Angle selector (eye-level/high/low)
+  - [ ] Focus point picker
+- [ ] **C.1.4** Environment/props
+  - [ ] Key props list
+  - [ ] Prop importance slider
+  - [ ] Background detail level
+
+#### C.2 Atmosphere Controls 🔴
+- [ ] **C.2.1** Preset selector
+  - [ ] Light/Wholesome preset
+  - [ ] Neutral/Dramatic preset
+  - [ ] Dark/Horror preset
+  - [ ] Custom preset
+- [ ] **C.2.2** Lighting constraints
+  - [ ] Light source direction
+  - [ ] Intensity slider
+  - [ ] Contrast slider
+  - [ ] Shadow hardness
+- [ ] **C.2.3** Texture constraints
+  - [ ] Texture detail level
+  - [ ] Style (clean/gritty)
+  - [ ] Weathering effects
+- [ ] **C.2.4** Live preview
+  - [ ] Atmosphere preview image
+  - [ ] Before/after comparison
+  - [ ] Preset save button
+
+#### C.3 Panel Sequence Viewer 🔴
+- [ ] **C.3.1** Grid view
+  - [ ] 2x2, 3x3, 4x4 layout options
+  - [ ] Thumbnail size slider
+  - [ ] Panel numbering
+  - [ ] Selection checkbox per panel
+- [ ] **C.3.2** Sequential reader mode
+  - [ ] Full-screen panel viewer
+  - [ ] Previous/next navigation
+  - [ ] Progress bar
+  - [ ] Keyboard navigation (←/→)
+- [ ] **C.3.3** Comparison view
+  - [ ] Split view with source text
+  - [ ] Highlight corresponding text
+  - [ ] Sync scroll option
+- [ ] **C.3.4** Continuity indicators
+  - [ ] Character consistency badges
+  - [ ] Warning icons for drift
+  - [ ] Color-coded continuity score
+
+#### C.4 Character Identity Management 🟡
+- [ ] **C.4.1** Character gallery
+  - [ ] Grid of character portraits
+  - [ ] Filter by importance
+  - [ ] Search by name
+  - [ ] Sort by panel appearance
+- [ ] **C.4.2** Identity pack builder
+  - [ ] Face reference upload
+  - [ ] Silhouette reference upload
+  - [ ] Costume reference upload
+  - [ ] Reference image preview
+- [ ] **C.4.3** LoRA training interface
+  - [ ] Training trigger button
+  - [ ] Progress indicator
+  - [ ] Training history log
+  - [ ] Model version selector
+- [ ] **C.4.4** Drift detection alerts
+  - [ ] Alert banner when drift detected
+  - [ ] Affected panels list
+  - [ ] "Retrain LoRA" button
+  - [ ] Ignore/accept current option
+
+#### C.5 Quality Control Dashboard 🟡
+- [ ] **C.5.1** QC scores display
+  - [ ] Overall quality meter
+  - [ ] Per-panel scores
+  - [ ] Category breakdown (anatomy/composition/color)
+- [ ] **C.5.2** Failure categorization
+  - [ ] Filter by failure type
+  - [ ] Count per category
+  - [ ] Example thumbnails
+- [ ] **C.5.3** Correction workflow
+  - [ ] Select panels for correction
+  - [ ] Correction reason input
+  - [ ] Priority selector
+  - [ ] Submit correction batch
+- [ ] **C.5.4** Pass/retry queue
+  - [ ] Queue status display
+  - [ ] Retry failed generations
+  - [ ] Cancel pending jobs
+  - [ ] Results notification
+
+#### C.6 Generation Request Interface 🔴
+- [ ] **C.6.1** Request form
+  - [ ] Scene/scenes selector
+  - [ ] Panel count input
+  - [ ] Aspect ratio selector
+  - [ ] Seed input (optional)
+- [ ] **C.6.2** Advanced options
+  - [ ] CFG scale slider
+  - [ ] Step count selector
+  - [ ] Sampler method dropdown
+  - [ ] Negative prompt input
+- [ ] **C.6.3** Batch controls
+  - [ ] Batch size selector
+  - [ ] Queue multiple scenes
+  - [ ] Priority setting
+- [ ] **C.6.4** Progress tracking
+  - [ ] Overall progress bar
+  - [ ] Current step indicator
+  - [ ] ETA display
+  - [ ] Cancel button
+
+---
+
+### 🔎 D. Retrieval & Memory (Phase D)
+
+#### D.1 Semantic Search Interface 🟡
+- [ ] **D.1.1** Search input
+  - [ ] Natural language query box
+  - [ ] Search history dropdown
+  - [ ] Saved searches list
+  - [ ] Voice input (optional)
+- [ ] **D.1.2** Filter controls
+  - [ ] Branch selector
+  - [ ] Time range picker
+  - [ ] Entity filter (character/location)
+  - [ ] Content type filter
+- [ ] **D.1.3** Results display
+  - [ ] List view with snippets
+  - [ ] Relevance score per result
+  - [ ] Source metadata (chapter, scene)
+  - [ ] "Add to context" button per result
+- [ ] **D.1.4** Result preview
+  - [ ] Expand to full content
+  - [ ] Highlight search terms
+  - [ ] Navigation to source node
+
+#### D.2 Memory Browser 🟡
+- [ ] **D.2.1** Hierarchical navigation
+  - [ ] Arc level view
+  - [ ] Chapter level view
+  - [ ] Scene level view
+  - [ ] Breadcrumb navigation
+- [ ] **D.2.2** Summary display
+  - [ ] Arc summaries
+  - [ ] Chapter summaries
+  - [ ] Scene summaries
+  - [ ] Summary edit button
+- [ ] **D.2.3** Thread tracking
+  - [ ] Unresolved threads list
+  - [ ] Thread status indicators
+  - [ ] "Resolve thread" button
+  - [ ] Thread visualization graph
+- [ ] **D.2.4** Freshness indicators
+  - [ ] Stale content badges
+  - [ ] Last updated timestamp
+  - [ ] Update in progress spinner
+  - [ ] Refresh button
+
+---
+
+### 🌿 E. Consequence Simulation
+
+#### E.1 What-If Simulator 🟡
+- [ ] **E.1.1** Change input
+  - [ ] Select node to modify
+  - [ ] Proposed change textarea
+  - [ ] Change type selector
+- [ ] **E.1.2** Impact preview
+  - [ ] Affected nodes list
+  - [ ] Visual diff in graph
+  - [ ] Affected subgraph highlight
+- [ ] **E.1.3** Consistency scoring
+  - [ ] Overall consistency score
+  - [ ] Per-node impact score
+  - [ ] Risk level indicator
+- [ ] **E.1.4** Cost estimation
+  - [ ] Token usage estimate
+  - [ ] Time estimate
+  - [ ] Cost in credits/currency
+
+#### E.2 Recommendation Panel 🟢
+- [ ] **E.2.1** High-impact suggestions
+  - [ ] Suggested branch points list
+  - [ ] Divergence score per suggestion
+  - [ ] Impact summary
+- [ ] **E.2.2** One-click actions
+  - [ ] "Create branch here" button
+  - [ ] Preview impact button
+  - [ ] Dismiss suggestion button
+
+#### E.3 Constraint Violation Display 🟢
+- [ ] **E.3.1** Canon constraint checker
+  - [ ] Active constraints list
+  - [ ] Violation count badge
+  - [ ] Severity indicators
+- [ ] **E.3.2** Violation details
+  - [ ] Violated constraint description
+  - [ ] Affected content preview
+  - [ ] Suggested fixes list
+
+---
+
+### 📊 F. Profile & Analysis
+
+#### F.1 Tone Analysis Visualization 🟡
+- [ ] **F.1.1** Tone heatmap
+  - [ ] Color-coded scene tones
+  - [ ] Timeline x-axis
+  - [ ] Intensity y-axis
+  - [ ] Zoom/pan controls
+- [ ] **F.1.2** Intensity peaks
+  - [ ] Peak detection markers
+  - [ ] Peak type classification
+  - [ ] Click to navigate to scene
+- [ ] **F.1.3** Genre indicators
+  - [ ] Genre classification display
+  - [ ] Multi-genre tag cloud
+  - [ ] Confidence score
+
+#### F.2 Maturity Rating Display 🟢
+- [ ] **F.2.1** Overall rating
+  - [ ] Rating badge (G/PG/PG-13/R/etc)
+  - [ ] Rating justification summary
+- [ ] **F.2.2** Category breakdown
+  - [ ] Violence score bar
+  - [ ] Language score bar
+  - [ ] Sexual content score bar
+  - [ ] Mature themes score bar
+- [ ] **F.2.3** Audience comparison
+  - [ ] Target audience selector
+  - [ ] Suitability indicator
+  - [ ] Content warnings list
+
+#### F.3 Profile Editor 🟢
+- [ ] **F.3.1** Manual corrections
+  - [ ] Tone override controls
+  - [ ] Intensity adjustment sliders
+  - [ ] Genre tag editor
+- [ ] **F.3.2** Version history
+  - [ ] Profile versions list
+  - [ ] Diff between versions
+  - [ ] Restore previous version
+- [ ] **F.3.3** Override logging
+  - [ ] Reason input field
+  - [ ] Timestamp and author
+  - [ ] Audit trail view
+
+---
+
+### ⚙️ G. Operations & System
+
+#### G.1 System Dashboard 🟢
+- [ ] **G.1.1** SLO metrics
+  - [ ] Latency charts
+  - [ ] Success rate gauges
+  - [ ] Error rate trends
+- [ ] **G.1.2** Job queue status
+  - [ ] Pending jobs count
+  - [ ] In-progress jobs list
+  - [ ] Completed jobs history
+- [ ] **G.1.3** Recent alerts
+  - [ ] Error notifications
+  - [ ] Warning messages
+  - [ ] Dismiss/clear buttons
+
+#### G.2 Budget Controls 🟡
+- [ ] **G.2.1** Usage display
+  - [ ] Current period usage
+  - [ ] Usage by branch
+  - [ ] Usage by operation type
+- [ ] **G.2.2** Cost estimation
+  - [ ] Pre-generation estimate
+  - [ ] Confidence interval
+  - [ ] Budget remaining
+- [ ] **G.2.3** Limit warnings
+  - [ ] 50% warning
+  - [ ] 80% warning
+  - [ ] 100% block with override option
+
+#### G.3 Privacy Settings 🟢
+- [ ] **G.3.1** Provider toggles
+  - [ ] Local-only mode checkbox
+  - [ ] External provider opt-in
+  - [ ] Provider selection dropdown
+- [ ] **G.3.2** Data retention
+  - [ ] Retention period selector
+  - [ ] Auto-delete toggle
+  - [ ] Manual purge button
+- [ ] **G.3.3** Export/delete
+  - [ ] Export all data button
+  - [ ] Delete account/data button
+  - [ ] Confirmation dialogs
+
+---
+
+### 🕸️ H. Enhanced Graph Features
+
+#### H.1 Edge Management 🟢
+- [ ] **H.1.1** Visual edge creation
+  - [ ] Drag from node to node
+  - [ ] Connection preview line
+  - [ ] Snap to node highlight
+- [ ] **H.1.2** Edge configuration
+  - [ ] Edge type selector
+  - [ ] Edge label input
+  - [ ] Line style selector (solid/dashed)
+  - [ ] Color picker
+- [ ] **H.1.3** Edge display
+  - [ ] Label visibility toggle
+  - [ ] Edge weight visualization
+  - [ ] Arrow direction indicators
+
+#### H.2 Advanced Navigation 🟢
+- [ ] **H.2.1** Minimap
+  - [ ] Overview of full graph
+  - [ ] Viewport rectangle
+  - [ ] Click to jump
+- [ ] **H.2.2** Search and jump
+  - [ ] Node search box
+  - [ ] Fuzzy matching
+  - [ ] Enter to focus and center
+- [ ] **H.2.3** Bookmarks
+  - [ ] Bookmark current node
+  - [ ] Bookmarks list dropdown
+  - [ ] Click to navigate
+- [ ] **H.2.4** History
+  - [ ] Recent nodes list
+  - [ ] Back/forward navigation
+  - [ ] Clear history button
+
+#### H.3 Graph Layout 🟢
+- [ ] **H.3.1** Layout algorithms
+  - [ ] Hierarchical layout
+  - [ ] Force-directed layout
+  - [ ] Circular layout
+  - [ ] Timeline layout
+- [ ] **H.3.2** Branch clustering
+  - [ ] Group by branch
+  - [ ] Collapse/expand branches
+  - [ ] Branch color coding
+- [ ] **H.3.3** Layout controls
+  - [ ] Layout selector dropdown
+  - [ ] Apply layout button
+  - [ ] Animate transitions toggle
+
+#### H.4 Collaboration 🟢
+- [ ] **H.4.1** Multi-user indicators
+  - [ ] Other user cursors
+  - [ ] User color coding
+  - [ ] User name labels
+- [ ] **H.4.2** Comments
+  - [ ] Add comment to node
+  - [ ] Comment thread view
+  - [ ] Resolve comment button
+- [ ] **H.4.3** Notifications
+  - [ ] Change notifications
+  - [ ] Mention notifications
+  - [ ] Notification settings
+
+---
+
+### 🎯 I. UX & Workflow Improvements
+
+#### I.1 Onboarding
+- [ ] **I.1.1** Welcome modal
+  - [ ] App introduction
+  - [ ] Feature highlights
+  - [ ] Get started button
+- [ ] **I.1.2** Interactive tutorial
+  - [ ] Step-by-step guide
+  - [ ] Highlight UI elements
+  - [ ] Skip option
+- [ ] **I.1.3** Sample templates
+  - [ ] Template gallery
+  - [ ] One-click import
+  - [ ] Template preview
+
+#### I.2 Keyboard Navigation 🔴
+- [ ] **I.2.1** Graph navigation
+  - [ ] Arrow keys for node selection
+  - [ ] Enter to edit
+  - [ ] Delete to remove
+- [ ] **I.2.2** Global shortcuts
+  - [ ] Ctrl+?: Show shortcuts
+  - [ ] Ctrl+F: Search
+  - [ ] Ctrl+G: Generate
+  - [ ] Ctrl+N: New node
+- [ ] **I.2.3** Focus management
+  - [ ] Tab order optimization
+  - [ ] Focus trap in modals
+  - [ ] Escape to close panels
+
+#### I.3 Loading & Error States 🔴
+- [ ] **I.3.1** Loading indicators
+  - [ ] Skeleton screens
+  - [ ] Progress bars
+  - [ ] Spinner for async ops
+- [ ] **I.3.2** Error handling
+  - [ ] Toast notifications
+  - [ ] Error boundary fallback
+  - [ ] Retry buttons
+- [ ] **I.3.3** Offline support
+  - [ ] Offline detection
+  - [ ] Queue changes locally
+  - [ ] Sync when back online
+
+#### I.4 Responsive Design 🟡
+- [ ] **I.4.1** Mobile optimization
+  - [ ] Touch gestures
+  - [ ] Collapsible panels
+  - [ ] Mobile-optimized graph
+- [ ] **I.4.2** Tablet support
+  - [ ] Split view layouts
+  - [ ] Touch-friendly controls
+  - [ ] Orientation handling
+
+---
+
+### 🔧 J. Technical Infrastructure
+
+#### J.1 State Management
+- [ ] **J.1.1** Store separation
+  - [ ] Graph store
+  - [ ] Generation store
+  - [ ] Retrieval store
+  - [ ] System store
+- [ ] **J.1.2** Async state
+  - [ ] Loading states
+  - [ ] Error states
+  - [ ] Optimistic updates
+
+#### J.2 API Layer
+- [ ] **J.2.1** API client
+  - [ ] Request/response interceptors
+  - [ ] Error handling
+  - [ ] Request deduplication
+- [ ] **J.2.2** Caching
+  - [ ] Request caching
+  - [ ] Cache invalidation
+  - [ ] Stale-while-revalidate
+- [ ] **J.2.3** Retry logic
+  - [ ] Exponential backoff
+  - [ ] Max retry count
+  - [ ] Circuit breaker
+
+#### J.3 Real-Time Updates 🟡
+- [ ] **J.3.1** WebSocket/SSE
+  - [ ] Connection management
+  - [ ] Reconnection logic
+  - [ ] Message handling
+- [ ] **J.3.2** Progress streaming
+  - [ ] Generation progress
+  - [ ] Upload progress
+  - [ ] Processing status
+
+---
+
+## 12. Quick Stats
+
+| Category | Total Items | Critical | High | Low |
+|----------|-------------|----------|------|-----|
+| Content Management | 28 | 4 | 12 | 12 |
+| Text Generation | 32 | 12 | 12 | 8 |
+| Image Generation | 44 | 16 | 16 | 12 |
+| Retrieval & Memory | 20 | 0 | 20 | 0 |
+| Consequence Simulation | 12 | 0 | 6 | 6 |
+| Profile & Analysis | 16 | 0 | 4 | 12 |
+| Operations & System | 16 | 0 | 4 | 12 |
+| Enhanced Graph | 24 | 0 | 0 | 24 |
+| UX & Workflow | 20 | 4 | 8 | 8 |
+| Technical Infrastructure | 12 | 0 | 4 | 8 |
+| **TOTAL** | **224** | **36** | **86** | **102** |
+
+---
+
+## 13. Recommended Sprint Planning
+
+### Sprint 1-2: Content Foundation (36 items)
+Focus: A.1, A.2, A.3, A.4, I.2, I.3
+
+### Sprint 3-4: Text Generation (32 items)
+Focus: B.1, B.2, B.3, B.4, B.5
+
+### Sprint 5-6: Image Generation (44 items)
+Focus: C.1, C.2, C.3, C.6
+
+### Sprint 7-8: Advanced Features (60 items)
+Focus: D.1, D.2, E.1, F.1, H.1, H.2, H.3
+
+### Sprint 9-10: Polish & Infrastructure (52 items)
+Focus: I.1, I.4, J.1, J.2, J.3, remaining items
+
+---
+
+**End of Document**
+
+For questions or clarifications, refer to:
+- `agents/` - Backend agent implementations
+- `core/` - Engine implementations
+- `GOALS.md` - Full project goals
+- `PRD.md` - Product requirements
