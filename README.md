@@ -61,6 +61,73 @@ python -c "from core.benchmark_engine import ReleaseEngine; e = ReleaseEngine();
 
 ---
 
+## 🎮 Running the Application
+
+### Option 1: Start the Web UI (Recommended)
+
+The Loom includes a React-based web interface with a FastAPI backend.
+
+```bash
+# Terminal 1: Start the backend API
+cd The-Loom
+source .venv/bin/activate
+python -m ui.api
+
+# Terminal 2: Start the frontend (in a new terminal)
+cd The-Loom/ui
+npm install  # First time only
+npm run dev
+```
+
+Then open http://localhost:3000 in your browser.
+
+### Option 2: Use Python API Directly
+
+```python
+# Create a script (e.g., run_loom.py)
+from agents.archivist import ingest_text_file
+from core.story_graph_engine import BranchLifecycleManager
+
+# 1. Ingest a story
+result = ingest_text_file("my_story.txt")
+print(f"Ingested {result.chunk_count} chunks")
+
+# 2. Create a branch
+manager = BranchLifecycleManager()
+manager.create_root_branch("main")
+branch = manager.create_divergence_node(
+    parent_branch_id="main",
+    divergence_event_id="evt-001",
+    label="Alternate Ending"
+)
+print(f"Created branch: {branch.branch_id}")
+
+# 3. Run generation (requires configured LLM backend)
+# See docs/ for LLM setup instructions
+```
+
+Run it:
+```bash
+source .venv/bin/activate
+python run_loom.py
+```
+
+### Option 3: Interactive Python Shell
+
+```bash
+source .venv/bin/activate
+python
+```
+
+```python
+>>> from core.benchmark_engine import ReleaseEngine
+>>> engine = ReleaseEngine()
+>>> metrics = engine.evaluate_phase10_done_criteria()
+>>> print(f"Release ready: {metrics.release_ready}")
+```
+
+---
+
 ## 📖 Usage Examples
 
 ### Basic Story Ingestion
