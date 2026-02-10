@@ -188,6 +188,67 @@ export interface Contradiction {
   suggestedFix: string
 }
 
+// Phase C: Image Generation types
+export interface SceneBlueprint {
+  setting: string
+  timeOfDay: string
+  weather: string
+  lightingDirection: string
+  lightingIntensity: number
+  shotType: string
+  cameraAngle: string
+  focusPoint: string
+  props: string[]
+  characters: Array<{
+    characterId: string
+    position: 'left' | 'center' | 'right' | 'background'
+    pose: string
+    expression: string
+  }>
+}
+
+export interface AtmosphereSettings {
+  presetId: string
+  direction: string
+  intensity: number
+  contrast: number
+  shadowHardness: number
+  textureDetail: number
+  textureStyle: 'clean' | 'gritty'
+  weathering: number
+}
+
+export interface GeneratedPanel {
+  id: string
+  nodeId: string
+  url: string | null
+  seed: number
+  status: 'pending' | 'generating' | 'completed' | 'failed'
+  createdAt: string
+}
+
+export interface GenerationQueueItem {
+  id: string
+  nodeId: string
+  panelCount: number
+  aspectRatio: string
+  status: 'pending' | 'processing' | 'completed' | 'cancelled'
+}
+
+export interface ActiveGeneration {
+  id: string
+  progress: number
+  currentStep: string
+  eta: number
+}
+
+export interface ContinuityIssue {
+  panelId: string
+  severity: 'low' | 'medium' | 'high'
+  message: string
+  type: 'character_drift' | 'lighting_mismatch' | 'pose_inconsistency'
+}
+
 export interface Toast {
   id: string
   message: string
@@ -236,6 +297,17 @@ interface AppState {
   contradictions: Contradiction[]
   expandedContradictions: string[] // IDs of expanded contradiction details
   styleProfile: StyleProfile | null
+  
+  // Phase C: Image Generation state
+  artistPanelOpen: boolean
+  sceneBlueprints: Record<string, SceneBlueprint>
+  atmosphereSettings: AtmosphereSettings
+  generatedPanels: GeneratedPanel[]
+  generationQueue: GenerationQueueItem[]
+  activeGeneration: ActiveGeneration | null
+  viewerMode: 'grid' | 'sequential' | 'split'
+  selectedPanelId: string | null
+  continuityIssues: ContinuityIssue[]
   
   // Branch state
   branches: Branch[]
@@ -383,6 +455,20 @@ interface AppState {
   
   // Inline editing
   editGenerationInline: (generationId: string, newText: string) => void
+  
+  // Phase C: Image Generation actions
+  toggleArtistPanel: () => void
+  createSceneBlueprint: (nodeId: string, blueprint: SceneBlueprint) => void
+  updateSceneBlueprint: (nodeId: string, updates: Partial<SceneBlueprint>) => void
+  setAtmospherePreset: (presetId: string) => void
+  updateAtmosphereSettings: (settings: Partial<AtmosphereSettings>) => void
+  generatePanels: (request: { nodeId: string; blueprint: SceneBlueprint; atmosphere: AtmosphereSettings; params: Record<string, unknown> }) => Promise<void>
+  cancelPanelGeneration: () => void
+  queuePanelGeneration: (request: Omit<GenerationQueueItem, 'id' | 'status'>) => void
+  deleteGeneratedPanel: (panelId: string) => void
+  regeneratePanel: (panelId: string) => void
+  setViewerMode: (mode: 'grid' | 'sequential' | 'split') => void
+  selectPanel: (panelId: string | null) => void
 }
 
 const API_BASE = '/api'
@@ -432,6 +518,26 @@ export const useAppStore = create<AppState>((set, get) => ({
   contradictions: [],
   expandedContradictions: [],
   styleProfile: null,
+  
+  // Phase C: Image Generation initial state
+  artistPanelOpen: false,
+  sceneBlueprints: {},
+  atmosphereSettings: {
+    presetId: 'neutral',
+    direction: 'top',
+    intensity: 0.6,
+    contrast: 0.5,
+    shadowHardness: 0.5,
+    textureDetail: 0.6,
+    textureStyle: 'clean' as const,
+    weathering: 0.3,
+  },
+  generatedPanels: [],
+  generationQueue: [],
+  activeGeneration: null,
+  viewerMode: 'grid',
+  selectedPanelId: null,
+  continuityIssues: [],
   
   branches: [],
   tunerSettings: { violence: 0.5, humor: 0.5, romance: 0.5 },
@@ -1449,4 +1555,106 @@ export const useAppStore = create<AppState>((set, get) => ({
       toasts: state.toasts.filter(t => t.id !== id)
     }))
   },
+  
+  // ==================== PHASE C: IMAGE GENERATION ====================
+  toggleArtistPanel: () => set(state => ({ artistPanelOpen: !state.artistPanelOpen })),
+  
+  createSceneBlueprint: (nodeId, blueprint) => {
+    set(state => ({
+      sceneBlueprints: { ...state.sceneBlueprints, [nodeId]: blueprint }
+    }))
+  },
+  
+  updateSceneBlueprint: (nodeId, updates) => {
+    set(state => ({
+      sceneBlueprints: {
+        ...state.sceneBlueprints,
+        [nodeId]: { ...state.sceneBlueprints[nodeId], ...updates }
+      }
+    }))
+  },
+  
+  setAtmospherePreset: (presetId) => {
+    set(state => ({
+      atmosphereSettings: { ...state.atmosphereSettings, presetId }
+    }))
+  },
+  
+  updateAtmosphereSettings: (settings) => {
+    set(state => ({
+      atmosphereSettings: { ...state.atmosphereSettings, ...settings }
+    }))
+  },
+  
+  generatePanels: async (request) => {
+    set({ activeGeneration: { id: `gen-${Date.now()}`, progress: 0, currentStep: 'Initializing...', eta: 30 } })
+    
+    // Simulate generation progress
+    const steps = ['Analyzing blueprint...', 'Generating panels...', 'Applying atmosphere...', 'Finalizing...']
+    let progress = 0
+    
+    const interval = setInterval(() => {
+      progress += 10
+      const stepIndex = Math.min(Math.floor(progress / 25), steps.length - 1)
+      set({
+        activeGeneration: {
+          id: `gen-${Date.now()}`,
+          progress,
+          currentStep: steps[stepIndex],
+          eta: Math.max(0, 30 - progress)
+        }
+      })
+      
+      if (progress >= 100) {
+        clearInterval(interval)
+        // Create mock panels
+        const newPanels: GeneratedPanel[] = Array.from({ length: 4 }, (_, i) => ({
+          id: `panel-${Date.now()}-${i}`,
+          nodeId: request.nodeId,
+          url: null,
+          seed: Math.floor(Math.random() * 1000000),
+          status: 'completed',
+          createdAt: new Date().toISOString(),
+        }))
+        
+        set(state => ({
+          generatedPanels: [...state.generatedPanels, ...newPanels],
+          activeGeneration: null
+        }))
+      }
+    }, 500)
+  },
+  
+  cancelPanelGeneration: () => {
+    set({ activeGeneration: null })
+  },
+  
+  queuePanelGeneration: (request) => {
+    const newItem: GenerationQueueItem = {
+      id: `queue-${Date.now()}`,
+      ...request,
+      status: 'pending'
+    }
+    set(state => ({
+      generationQueue: [...state.generationQueue, newItem]
+    }))
+  },
+  
+  deleteGeneratedPanel: (panelId) => {
+    set(state => ({
+      generatedPanels: state.generatedPanels.filter(p => p.id !== panelId)
+    }))
+  },
+  
+  regeneratePanel: (panelId) => {
+    set(state => ({
+      generatedPanels: state.generatedPanels.map(p =>
+        p.id === panelId ? { ...p, status: 'pending' as const } : p
+      )
+    }))
+  },
+  
+  setViewerMode: (mode) => set({ viewerMode: mode }),
+  
+  selectPanel: (panelId) => set({ selectedPanelId: panelId }),
 }))

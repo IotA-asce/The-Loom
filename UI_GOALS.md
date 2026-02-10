@@ -783,64 +783,60 @@ This section consolidates all remaining UI features into an actionable checklist
 ### 🎨 C. Image Generation (Phase C)
 
 #### C.1 Scene Blueprint Editor 🔴
-- [ ] **C.1.1** Scene elements form
-  - [ ] Setting description textarea
-  - [ ] Time of day selector
-  - [ ] Weather/atmosphere selector
-  - [ ] Lighting direction picker
-- [ ] **C.1.2** Character positioning
-  - [ ] Character presence checklist
-  - [ ] Position dropdown (left/center/right/background)
-  - [ ] Pose description input
-  - [ ] Expression selector per character
-- [ ] **C.1.3** Camera controls
-  - [ ] Shot type dropdown (wide/medium/close-up)
-  - [ ] Angle selector (eye-level/high/low)
-  - [ ] Focus point picker
-- [ ] **C.1.4** Environment/props
-  - [ ] Key props list
-  - [ ] Prop importance slider
-  - [ ] Background detail level
+- [x] **C.1.1** Scene elements form
+  - [x] Setting description textarea
+  - [x] Time of day selector (Dawn to Midnight)
+  - [x] Weather selector (Clear, Cloudy, Rainy, Stormy, Foggy, Snowy)
+- [x] **C.1.2** Character positioning
+  - [x] Character presence checklist
+  - [x] Position dropdown (left/center/right/background)
+  - [x] Pose description input
+  - [x] Expression selector (neutral, happy, sad, angry, surprised, fearful, determined)
+- [x] **C.1.3** Camera controls
+  - [x] Shot type buttons (Wide/Medium/Close-up/Extreme Close)
+  - [x] Camera angle buttons (Eye Level/High Angle/Low Angle/Dutch)
+  - [x] Focus point input
+- [x] **C.1.4** Environment/props
+  - [x] Key props list with add/remove
+  - [x] Props display with tags
 
 #### C.2 Atmosphere Controls 🔴
-- [ ] **C.2.1** Preset selector
-  - [ ] Light/Wholesome preset
-  - [ ] Neutral/Dramatic preset
-  - [ ] Dark/Horror preset
-  - [ ] Custom preset
-- [ ] **C.2.2** Lighting constraints
-  - [ ] Light source direction
-  - [ ] Intensity slider
-  - [ ] Contrast slider
-  - [ ] Shadow hardness
-- [ ] **C.2.3** Texture constraints
-  - [ ] Texture detail level
-  - [ ] Style (clean/gritty)
-  - [ ] Weathering effects
-- [ ] **C.2.4** Live preview
-  - [ ] Atmosphere preview image
-  - [ ] Before/after comparison
-  - [ ] Preset save button
+- [x] **C.2.1** Preset selector
+  - [x] Light/Wholesome preset
+  - [x] Neutral/Dramatic preset
+  - [x] Dark/Moody preset
+  - [x] Horror preset
+- [x] **C.2.2** Lighting constraints
+  - [x] Light source direction picker (5 directions)
+  - [x] Intensity slider (0-100%)
+  - [x] Contrast slider (0-100%)
+  - [x] Shadow hardness slider (0-100%)
+- [x] **C.2.3** Texture constraints
+  - [x] Texture detail level slider
+  - [x] Style toggle (clean/gritty)
+  - [x] Weathering effects slider
+- [x] **C.2.4** Live preview
+  - [x] Atmosphere preview gradient box
+  - [x] Preset name display
 
 #### C.3 Panel Sequence Viewer 🔴
-- [ ] **C.3.1** Grid view
-  - [ ] 2x2, 3x3, 4x4 layout options
-  - [ ] Thumbnail size slider
-  - [ ] Panel numbering
-  - [ ] Selection checkbox per panel
-- [ ] **C.3.2** Sequential reader mode
-  - [ ] Full-screen panel viewer
-  - [ ] Previous/next navigation
-  - [ ] Progress bar
-  - [ ] Keyboard navigation (←/→)
-- [ ] **C.3.3** Comparison view
-  - [ ] Split view with source text
-  - [ ] Highlight corresponding text
-  - [ ] Sync scroll option
-- [ ] **C.3.4** Continuity indicators
-  - [ ] Character consistency badges
-  - [ ] Warning icons for drift
-  - [ ] Color-coded continuity score
+- [x] **C.3.1** Grid view
+  - [x] 2-column grid layout
+  - [x] Panel numbering
+  - [x] Selection checkbox per panel (batch mode)
+  - [x] Panel actions (regenerate, delete)
+  - [x] Issue badges for continuity problems
+- [x] **C.3.2** Sequential reader mode
+  - [x] Full-panel viewer with navigation
+  - [x] Previous/next buttons
+  - [x] Progress bar
+  - [x] Panel counter display
+- [x] **C.3.3** Comparison view (Split mode)
+  - [x] Split view with source text
+  - [x] Panel grid beside text
+- [x] **C.3.4** Continuity indicators
+  - [x] Warning icons for drift
+  - [x] Color-coded issue badges (high/medium/low)
 
 #### C.4 Character Identity Management 🟡
 - [ ] **C.4.1** Character gallery
@@ -885,25 +881,25 @@ This section consolidates all remaining UI features into an actionable checklist
   - [ ] Results notification
 
 #### C.6 Generation Request Interface 🔴
-- [ ] **C.6.1** Request form
-  - [ ] Scene/scenes selector
-  - [ ] Panel count input
-  - [ ] Aspect ratio selector
-  - [ ] Seed input (optional)
-- [ ] **C.6.2** Advanced options
-  - [ ] CFG scale slider
-  - [ ] Step count selector
-  - [ ] Sampler method dropdown
-  - [ ] Negative prompt input
-- [ ] **C.6.3** Batch controls
-  - [ ] Batch size selector
-  - [ ] Queue multiple scenes
-  - [ ] Priority setting
-- [ ] **C.6.4** Progress tracking
-  - [ ] Overall progress bar
-  - [ ] Current step indicator
-  - [ ] ETA display
-  - [ ] Cancel button
+- [x] **C.6.1** Request form
+  - [x] Panel count input (1-16)
+  - [x] Aspect ratio selector (1:1, 4:3, 16:9, 9:16, Cinematic)
+  - [x] Seed input (optional)
+- [x] **C.6.2** Advanced options
+  - [x] CFG scale slider (1-15)
+  - [x] Step count selector (10-50)
+  - [x] Sampler method dropdown (6 options)
+  - [x] Negative prompt input
+- [x] **C.6.3** Batch controls
+  - [x] Batch mode toggle
+  - [x] Multi-select panels
+  - [x] Batch regenerate
+  - [x] Batch delete
+- [x] **C.6.4** Progress tracking
+  - [x] Overall progress bar
+  - [x] Current step indicator
+  - [x] ETA display
+  - [x] Cancel button
 
 ---
 

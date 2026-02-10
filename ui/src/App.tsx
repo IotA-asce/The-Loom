@@ -7,6 +7,7 @@ import { ImportPanel } from './components/ImportPanel'
 import { SceneMetadata } from './components/SceneMetadata'
 import { ReadingView } from './components/ReadingView'
 import { WriterPanel } from './components/WriterPanel'
+import { ArtistPanel } from './components/ArtistPanel'
 import { StatusBar } from './components/StatusBar'
 import { ToastContainer } from './components/Toast'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -162,6 +163,14 @@ function App() {
           </button>
           <button 
             className="nav-button" 
+            onClick={() => useAppStore.getState().toggleArtistPanel()}
+            aria-label="Open artist panel"
+            title="Artist (Generate Images)"
+          >
+            🎨 Art
+          </button>
+          <button 
+            className="nav-button" 
             onClick={() => useAppStore.getState().toggleTuner()}
             aria-label="Open tuner panel (Ctrl+T)"
             title="Tuner (Ctrl+T)"
@@ -273,6 +282,7 @@ function App() {
         
         <aside className="app-panel" aria-label="Control panel">
           <WriterPanel />
+          <ArtistPanel />
           <TunerPanel />
           <DualView />
         </aside>
