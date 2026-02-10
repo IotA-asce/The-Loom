@@ -22,7 +22,23 @@ from pydantic import BaseModel, Field
 
 
 # Pydantic models for API
-class GraphNodeCreate(BaseModel):
+
+
+def to_camel_case(snake_str: str) -> str:
+    """Convert snake_case to camelCase."""
+    components = snake_str.split("_")
+    return components[0] + "".join(word.capitalize() for word in components[1:])
+
+
+class CamelModel(BaseModel):
+    """Base model with camelCase alias generation."""
+
+    class Config:
+        alias_generator = to_camel_case
+        populate_by_name = True
+
+
+class GraphNodeCreate(CamelModel):
     node_id: str
     label: str
     branch_id: str
@@ -81,7 +97,7 @@ class ReconcileRequest(BaseModel):
     image_version: str
 
 
-class GraphMetricsResponse(BaseModel):
+class GraphMetricsResponse(CamelModel):
     total_nodes: int
     visible_nodes: int
     visible_edges: int
@@ -91,7 +107,7 @@ class GraphMetricsResponse(BaseModel):
     performance_usable: bool
 
 
-class SyncStateResponse(BaseModel):
+class SyncStateResponse(CamelModel):
     scene_id: str
     text_version: str
     image_version: str
@@ -102,7 +118,7 @@ class SyncStateResponse(BaseModel):
     sync_accurate: bool
 
 
-class AccessibilityResponse(BaseModel):
+class AccessibilityResponse(CamelModel):
     keyboard_coverage: float
     semantic_label_coverage: float
     non_color_indicator_coverage: float
@@ -111,7 +127,7 @@ class AccessibilityResponse(BaseModel):
     critical_flows_usable: bool
 
 
-class Phase8MetricsResponse(BaseModel):
+class Phase8MetricsResponse(CamelModel):
     graph_performance_usable: bool
     keyboard_mobile_usable: bool
     dual_sync_visible_and_accurate: bool
