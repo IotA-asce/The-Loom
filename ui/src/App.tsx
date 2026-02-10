@@ -27,8 +27,14 @@ import { QCDashboard } from './components/QCDashboard'
 import { BookmarkDropdown } from './components/BookmarkDropdown'
 import { OperationsDashboard } from './components/OperationsDashboard'
 import { MaturityRating, RatingBadge } from './components/MaturityRating'
+import { RecommendationsPanel } from './components/RecommendationsPanel'
+import { ProfileEditor } from './components/ProfileEditor'
+import { CommentsPanel } from './components/CommentsPanel'
 import { useOperationsStore } from './stores/operationsStore'
 import { useMaturityStore } from './stores/maturityStore'
+import { useRecommendationsStore } from './stores/recommendationsStore'
+import { useProfileStore } from './stores/profileStore'
+import { useCommentsStore } from './stores/commentsStore'
 import './App.css'
 
 // Tutorial steps configuration
@@ -91,6 +97,9 @@ function App() {
   const [showQCDashboard, setShowQCDashboard] = useState(false)
   const [showOperations, setShowOperations] = useState(false)
   const [showMaturity, setShowMaturity] = useState(false)
+  const [showRecommendations, setShowRecommendations] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
+  const [showComments, setShowComments] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false)
   const isMobile = useIsMobile()
@@ -98,6 +107,9 @@ function App() {
   // Get stores
   const { operationsPanelOpen, toggleOperationsPanel } = useOperationsStore()
   const { maturityPanelOpen, toggleMaturityPanel, currentRating } = useMaturityStore()
+  const { recommendationsPanelOpen, toggleRecommendationsPanel, getAllUnresolvedCount } = useRecommendationsStore()
+  const { profilePanelOpen, toggleProfilePanel } = useProfileStore()
+  const { commentsPanelOpen, closeCommentsPanel, openCommentsForNode, getUnresolvedCount } = useCommentsStore()
   
   // Get navigation history from store
   const { 
@@ -278,6 +290,33 @@ function App() {
         onClose={() => {
           setShowMaturity(false)
           if (maturityPanelOpen) toggleMaturityPanel()
+        }}
+      />
+      
+      {/* Recommendations Panel */}
+      <RecommendationsPanel
+        isOpen={showRecommendations || recommendationsPanelOpen}
+        onClose={() => {
+          setShowRecommendations(false)
+          if (recommendationsPanelOpen) toggleRecommendationsPanel()
+        }}
+      />
+      
+      {/* Profile Editor */}
+      <ProfileEditor
+        isOpen={showProfile || profilePanelOpen}
+        onClose={() => {
+          setShowProfile(false)
+          if (profilePanelOpen) toggleProfilePanel()
+        }}
+      />
+      
+      {/* Comments Panel */}
+      <CommentsPanel
+        isOpen={showComments || commentsPanelOpen}
+        onClose={() => {
+          setShowComments(false)
+          closeCommentsPanel()
         }}
       />
       
@@ -519,6 +558,43 @@ function App() {
             title="Rating"
           >
             <RatingBadge rating={currentRating} showLabel={false} size="small" />
+          </button>
+          <button 
+            className="nav-button recommendations-btn" 
+            onClick={() => setShowRecommendations(true)}
+            aria-label="Recommendations"
+            title="Recommendations"
+          >
+            💡
+            {getAllUnresolvedCount() > 0 && (
+              <span className="nav-badge">{getAllUnresolvedCount()}</span>
+            )}
+          </button>
+          <button 
+            className="nav-button" 
+            onClick={() => setShowProfile(true)}
+            aria-label="Profile Editor"
+            title="Profile"
+          >
+            👤 Profile
+          </button>
+          <button 
+            className="nav-button comments-btn" 
+            onClick={() => {
+              if (selectedNodeId) {
+                openCommentsForNode(selectedNodeId)
+              } else {
+                setShowComments(true)
+              }
+            }}
+            aria-label="Comments"
+            title="Comments"
+            disabled={!selectedNodeId}
+          >
+            💬
+            {selectedNodeId && getUnresolvedCount(selectedNodeId) > 0 && (
+              <span className="nav-badge">{getUnresolvedCount(selectedNodeId)}</span>
+            )}
           </button>
           <button 
             className="nav-button" 

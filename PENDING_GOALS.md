@@ -373,12 +373,12 @@
 | Backend - API Endpoints | 14 | Core integration gap |
 | Backend - Continuous Goals | 9 | Ongoing discipline |
 | Frontend - Image Generation | 20 | C.4, C.5 missing |
-| Frontend - Consequence Sim | 10 | E.2, E.3 missing |
-| Frontend - Profile & Analysis | 7 | F.3 missing |
+| Frontend - Consequence Sim | 0 | Complete ✅ |
+| Frontend - Profile & Analysis | 0 | Complete ✅ |
 | Frontend - Operations | 0 | Complete ✅ |
 | Frontend - Graph Features | 12 | H.2, H.4 missing |
 | Frontend - UX Polish | 6 | Mobile/offline |
-| **TOTAL** | **100** | **~9% of total 224 items** |
+| **TOTAL** | **83** | **~7% of total 224 items** |
 
 ### Completion Status
 
@@ -394,6 +394,7 @@
 | Sprints 11-14 | 40 | 40 | 0 | 100% ✅ |
 | Sprints 15-16 | 20 | 20 | 0 | 100% ✅ |
 | Sprints 17-18 | 21 | 21 | 0 | 100% ✅ |
+| Sprints 19-20 | 20 | 20 | 0 | 100% ✅ |
 | Phase 9 (Operations) | ~20 | 20 | 0 | 100% ✅ |
 | Phase 10 (Release) | ~15 | 15 | 0 | 100% ✅ |
 | **Frontend Sprints 1-10** | **224** | **~190** | **~34** | **~85%** |
@@ -739,53 +740,80 @@ The following sprints are designed to be completed sequentially, with each sprin
 
 ---
 
-### Sprint 19: Consequence Recommendations (1 week)
+### Sprint 19: Consequence Recommendations (1 week) ✅ COMPLETE
 **Theme:** AI-assisted branch suggestions
 
 **Goal:** Provide intelligent recommendations for high-impact branch points.
 
-| Item | Description | Effort |
-|------|-------------|--------|
-| E.2.1.1 | Suggested branch points list | 2d |
-| E.2.1.2 | Divergence score per suggestion | 1d |
-| E.2.1.3 | Impact summary | 1d |
-| E.2.2.1 | "Create branch here" button | 1d |
-| E.2.2.2 | Preview impact button | 0.5d |
-| E.2.2.3 | Dismiss suggestion button | 0.5d |
-| E.3.1.1 | Active constraints list | 1d |
-| E.3.1.2 | Violation count badge | 0.5d |
-| GC.1.3 | Tests for recommendation engine | 1d |
+| Item | Description | Effort | Status |
+|------|-------------|--------|--------|
+| E.2.1.1 | Suggested branch points list | 2d | ✅ |
+| E.2.1.2 | Divergence score per suggestion | 1d | ✅ |
+| E.2.1.3 | Impact summary | 1d | ✅ |
+| E.2.2.1 | "Create branch here" button | 1d | ✅ |
+| E.2.2.2 | Preview impact button | 0.5d | ✅ |
+| E.2.2.3 | Dismiss suggestion button | 0.5d | ✅ |
+| E.3.1.1 | Active constraints list | 1d | ✅ |
+| E.3.1.2 | Violation count badge | 0.5d | ✅ |
+| GC.1.3 | Tests for recommendation engine | 1d | ✅ |
 
 **Sprint 19 Done Criteria:**
-- [ ] Recommendations appear for high-impact nodes
-- [ ] Users can create branches from suggestions
-- [ ] Constraint violations are visible
+- [x] Recommendations appear for high-impact nodes
+- [x] Users can create branches from suggestions
+- [x] Constraint violations are visible
+
+**Implemented:**
+- `recommendationsStore` with suggestions, constraints, violations
+- `RecommendationsPanel` component with 2 tabs:
+  - **Suggestions Tab**: Branch suggestions with divergence scores (0-100)
+  - Impact preview showing affected nodes and consistency score
+  - Create branch, preview impact, dismiss actions
+  - **Constraints Tab**: Active violations with severity indicators
+  - Constraint list with violation count badges
+  - Acknowledge violation functionality
+- Violation badge on navigation button
 
 ---
 
-### Sprint 20: Profile Editor & Collaboration Foundation (2 weeks)
+### Sprint 20: Profile Editor & Collaboration Foundation (2 weeks) ✅ COMPLETE
 **Theme:** Advanced editing and multi-user preparation
 
 **Goal:** Enable manual profile corrections and lay groundwork for collaboration.
 
-| Item | Description | Effort |
-|------|-------------|--------|
-| F.3.1.1 | Tone override controls | 1d |
-| F.3.1.2 | Intensity adjustment sliders | 1d |
-| F.3.1.3 | Genre tag editor | 1d |
-| F.3.2.1 | Profile versions list | 1d |
-| F.3.2.2 | Diff between versions | 2d |
-| F.3.3.1 | Override logging UI | 1d |
-| F.3.3.2 | Audit trail view | 1d |
-| H.4.2.1 | Add comment to node | 2d |
-| H.4.2.2 | Comment thread view | 1d |
-| H.4.2.3 | Resolve comment button | 0.5d |
-| GC.3.1 | Record tradeoffs and deferred work | 0.5d |
+| Item | Description | Effort | Status |
+|------|-------------|--------|--------|
+| F.3.1.1 | Tone override controls | 1d | ✅ |
+| F.3.1.2 | Intensity adjustment sliders | 1d | ✅ |
+| F.3.1.3 | Genre tag editor | 1d | ✅ |
+| F.3.2.1 | Profile versions list | 1d | ✅ |
+| F.3.2.2 | Diff between versions | 2d | ✅ |
+| F.3.3.1 | Override logging UI | 1d | ✅ |
+| F.3.3.2 | Audit trail view | 1d | ✅ |
+| H.4.2.1 | Add comment to node | 2d | ✅ |
+| H.4.2.2 | Comment thread view | 1d | ✅ |
+| H.4.2.3 | Resolve comment button | 0.5d | ✅ |
+| GC.3.1 | Record tradeoffs and deferred work | 0.5d | ✅ |
 
 **Sprint 20 Done Criteria:**
-- [ ] Users can manually edit profiles
-- [ ] Override history is tracked
-- [ ] Comments can be added to nodes
+- [x] Users can manually edit profiles
+- [x] Override history is tracked
+- [x] Comments can be added to nodes
+
+**Implemented:**
+- `profileStore` with persistence for tones, overrides, genres, versions, audit
+- `ProfileEditor` component with 3 tabs:
+  - **Editor Tab**: 8 tone sliders (narrative, dialogue, description, pacing, atmosphere, humor, intensity, romance)
+  - Override management with reason tracking
+  - Genre tag editor (primary/secondary/theme categories)
+  - **Versions Tab**: Version history with diff view (added/removed/changed)
+  - Version restore functionality
+  - **Audit Tab**: Complete audit trail of all changes
+- `commentsStore` for node-based comments
+- `CommentsPanel` component:
+  - Add comments to any node
+  - Threaded replies
+  - Resolve/reopen comments
+  - Unresolved comment count badges on nodes and nav
 
 ---
 
@@ -824,10 +852,10 @@ The following sprints are designed to be completed sequentially, with each sprin
 | 16 | Minimap & Bookmarks | 1 week | Week 10 | ✅ Complete |
 | 17 | Operations Dashboard | 2 weeks | Week 12 | ✅ Complete |
 | 18 | Maturity Rating | 1 week | Week 13 | ✅ Complete |
-| 19 | Consequence Recommendations | 1 week | Week 14 | Pending |
-| 20 | Profile Editor & Comments | 2 weeks | Week 16 | Pending |
+| 19 | Consequence Recommendations | 1 week | Week 14 | ✅ Complete |
+| 20 | Profile Editor & Comments | 2 weeks | Week 16 | ✅ Complete |
 | 21 | Offline Support & Polish | 1 week | Week 17 | Pending |
-| **TOTAL** | | **17 weeks** | **~4 months** | **77% Complete** |
+| **TOTAL** | | **17 weeks** | **~4 months** | **89% Complete** |
 
 ---
 
