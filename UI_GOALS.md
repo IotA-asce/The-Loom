@@ -615,105 +615,105 @@ This section consolidates all remaining UI features into an actionable checklist
 ### 📚 A. Content Management (Phase A)
 
 #### A.1 Node Content Editing
-- [ ] **A.1.1** Rich text editor component
-  - [ ] Markdown support
-  - [ ] WYSIWYG toolbar
-  - [ ] Auto-save drafts
-  - [ ] Undo/redo within editor
-- [ ] **A.1.2** Inline node editing
-  - [ ] Double-click to edit
-  - [ ] ESC to cancel, Enter to save
-  - [ ] Visual edit mode indicator
-- [ ] **A.1.3** Node content display
-  - [ ] Preview on hover
-  - [ ] Expand/collapse long content
+- [x] **A.1.1** Rich text editor component
+  - [x] Markdown support
+  - [x] WYSIWYG toolbar
+  - [x] Auto-save drafts
+  - [x] Undo/redo within editor
+- [x] **A.1.2** Inline node editing
+  - [x] Double-click to edit
+  - [x] ESC to cancel, Enter to save
+  - [x] Visual edit mode indicator
+- [x] **A.1.3** Node content display
+  - [x] Preview on hover
+  - [x] Expand/collapse long content
   - [ ] Syntax highlighting for dialogue
-- [ ] **A.1.4** Version history
-  - [ ] Save revisions on edit
+- [x] **A.1.4** Version history
+  - [x] Save revisions on edit
   - [ ] Diff viewer between versions
-  - [ ] Restore previous version
+  - [x] Restore previous version
 
 #### A.2 Scene Metadata 🔴
-- [ ] **A.2.1** Metadata form fields
-  - [ ] Title input
-  - [ ] Location selector
-  - [ ] Time-of-day picker
-  - [ ] Estimated reading time
-- [ ] **A.2.2** Character presence
-  - [ ] Multi-select character checklist
+- [x] **A.2.1** Metadata form fields
+  - [x] Title input
+  - [x] Location selector
+  - [x] Time-of-day picker
+  - [x] Estimated reading time
+- [x] **A.2.2** Character presence
+  - [x] Multi-select character checklist
   - [ ] Character entry/exit markers
   - [ ] Auto-detect from content
-- [ ] **A.2.3** Mood/tone tags
+- [x] **A.2.3** Mood/tone tags
   - [ ] Tag input with autocomplete
-  - [ ] Preset mood options
-  - [ ] Color-coded mood indicators
+  - [x] Preset mood options
+  - [x] Color-coded mood indicators
 
 #### A.3 Node Type System
-- [ ] **A.3.1** Type definitions
-  - [ ] Chapter nodes
-  - [ ] Scene nodes
-  - [ ] Beat nodes
-  - [ ] Dialogue nodes
-- [ ] **A.3.2** Visual differentiation
-  - [ ] Different shapes per type
-  - [ ] Color coding
-  - [ ] Icon indicators
+- [x] **A.3.1** Type definitions
+  - [x] Chapter nodes
+  - [x] Scene nodes
+  - [x] Beat nodes
+  - [x] Dialogue nodes
+- [x] **A.3.2** Visual differentiation
+  - [x] Different shapes per type
+  - [x] Color coding
+  - [x] Icon indicators
 - [ ] **A.3.3** Type-specific fields
   - [ ] Conditional form fields
   - [ ] Validation rules per type
 
 #### A.4 Story Reading View 🔴
-- [ ] **A.4.1** Reading mode toggle
-  - [ ] Hide graph, show content
-  - [ ] Scrollable narrative view
-  - [ ] Branch selection dropdown
-- [ ] **A.4.2** Navigation
-  - [ ] Previous/next scene buttons
-  - [ ] Chapter jump menu
-  - [ ] Progress indicator
-- [ ] **A.4.3** Reading preferences
-  - [ ] Font size controls
-  - [ ] Light/dark theme
-  - [ ] Line spacing options
+- [x] **A.4.1** Reading mode toggle
+  - [x] Hide graph, show content
+  - [x] Scrollable narrative view
+  - [x] Branch selection dropdown
+- [x] **A.4.2** Navigation
+  - [x] Previous/next scene buttons
+  - [x] Chapter jump menu
+  - [x] Progress indicator
+- [x] **A.4.3** Reading preferences
+  - [x] Font size controls
+  - [x] Light/dark theme
+  - [x] Line spacing options
 
 ---
 
 ### ✍️ B. Text Generation (Phase B)
 
 #### B.1 Writer Panel 🔴
-- [ ] **B.1.1** Generation request interface
+- [x] **B.1.1** Generation request interface
   - [ ] Context window selector
-  - [ ] Prompt composition textarea
-  - [ ] Temperature slider (0-2)
-  - [ ] Max tokens input
+  - [x] Prompt composition textarea
+  - [x] Temperature slider (0-2)
+  - [x] Max tokens input
   - [ ] Model selector (if multiple)
-- [ ] **B.1.2** Submit workflow
-  - [ ] Submit button with validation
+- [x] **B.1.2** Submit workflow
+  - [x] Submit button with validation
   - [ ] Cancel generation button
-  - [ ] Progress indicator (streaming)
+  - [x] Progress indicator (streaming)
   - [ ] Estimated time display
-- [ ] **B.1.3** Generated content display
-  - [ ] Rich text output area
+- [x] **B.1.3** Generated content display
+  - [x] Rich text output area
   - [ ] Dialogue highlighting
   - [ ] Paragraph numbering
-  - [ ] Word count display
-- [ ] **B.1.4** Action buttons
-  - [ ] Accept button (creates node)
-  - [ ] Reject button (discards)
-  - [ ] Regenerate button
+  - [x] Word count display
+- [x] **B.1.4** Action buttons
+  - [x] Accept button (creates node)
+  - [x] Reject button (discards)
+  - [x] Regenerate button
   - [ ] Edit inline button
 
 #### B.2 Context Assembly Viewer 🔴
-- [ ] **B.2.1** Retrieved chunks display
-  - [ ] List of context chunks
-  - [ ] Relevance scores
-  - [ ] Source attribution
+- [x] **B.2.1** Retrieved chunks display
+  - [x] List of context chunks
+  - [x] Relevance scores
+  - [x] Source attribution
   - [ ] Expand/collapse each chunk
-- [ ] **B.2.2** Manual context management
+- [x] **B.2.2** Manual context management
   - [ ] Reorder chunks (drag/drop)
   - [ ] Remove chunk button
   - [ ] Add from search button
-  - [ ] Pin important chunks
+  - [x] Pin important chunks
 - [ ] **B.2.3** Token budget visualization
   - [ ] Progress bar for token usage
   - [ ] Warning at 80%
@@ -729,10 +729,10 @@ This section consolidates all remaining UI features into an actionable checklist
   - [ ] Overall similarity score
   - [ ] Per-paragraph comparison
   - [ ] Visual similarity meter
-- [ ] **B.3.2** Style exemplar selection
-  - [ ] List retrieved exemplars
-  - [ ] Preview each exemplar
-  - [ ] Select/deselect checkboxes
+- [x] **B.3.2** Style exemplar selection
+  - [x] List retrieved exemplars
+  - [x] Preview each exemplar
+  - [x] Select/deselect checkboxes
   - [ ] "Use as style guide" button
 - [ ] **B.3.3** Style profile indicator
   - [ ] Current style profile name
@@ -740,33 +740,33 @@ This section consolidates all remaining UI features into an actionable checklist
   - [ ] Style attributes breakdown
 
 #### B.4 Character Voice Management 🟡
-- [ ] **B.4.1** Character list view
-  - [ ] Grid of character cards
+- [x] **B.4.1** Character list view
+  - [x] Grid of character cards
   - [ ] Search/filter by name
   - [ ] Sort by importance/appearance
-- [ ] **B.4.2** Voice card display
-  - [ ] Character name and aliases
-  - [ ] Voice traits list
-  - [ ] Sample dialogue quotes
-  - [ ] Consistency score
-- [ ] **B.4.3** Character selector in generation
-  - [ ] Checklist for characters in scene
+- [x] **B.4.2** Voice card display
+  - [x] Character name and aliases
+  - [x] Voice traits list
+  - [x] Sample dialogue quotes
+  - [x] Consistency score
+- [x] **B.4.3** Character selector in generation
+  - [x] Checklist for characters in scene
   - [ ] Voice enforcement toggle per character
   - [ ] "Focus on character" option
 
 #### B.5 Contradiction Detection Display 🟡
-- [ ] **B.5.1** Warning indicators
-  - [ ] Yellow warning banner for minor issues
-  - [ ] Red banner for contradictions
+- [x] **B.5.1** Warning indicators
+  - [x] Yellow warning banner for minor issues
+  - [x] Red banner for contradictions
   - [ ] Count badge in status bar
 - [ ] **B.5.2** Contradiction detail view
   - [ ] Side-by-side comparison
   - [ ] Conflicting facts highlight
   - [ ] Source reference links
 - [ ] **B.5.3** Resolution actions
-  - [ ] "Ignore" button
+  - [x] "Ignore" button
   - [ ] "Edit to fix" button
-  - [ ] "Regenerate with fix" button
+  - [x] "Regenerate with fix" button
 
 ---
 

@@ -6,6 +6,7 @@ import { BranchPanel } from './components/BranchPanel'
 import { ImportPanel } from './components/ImportPanel'
 import { SceneMetadata } from './components/SceneMetadata'
 import { ReadingView } from './components/ReadingView'
+import { WriterPanel } from './components/WriterPanel'
 import { StatusBar } from './components/StatusBar'
 import { useAppStore } from './store'
 import './App.css'
@@ -147,6 +148,14 @@ function App() {
           </button>
           <button 
             className="nav-button" 
+            onClick={() => useAppStore.getState().toggleWriterPanel()}
+            aria-label="Open writer panel"
+            title="Writer (Generate Text)"
+          >
+            ✍️ Write
+          </button>
+          <button 
+            className="nav-button" 
             onClick={() => useAppStore.getState().toggleTuner()}
             aria-label="Open tuner panel (Ctrl+T)"
             title="Tuner (Ctrl+T)"
@@ -257,6 +266,7 @@ function App() {
         </section>
         
         <aside className="app-panel" aria-label="Control panel">
+          <WriterPanel />
           <TunerPanel />
           <DualView />
         </aside>

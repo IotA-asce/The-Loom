@@ -118,6 +118,55 @@ export interface ReadingPreferences {
   lineSpacing: 'compact' | 'normal' | 'relaxed'
 }
 
+// Phase B: Generation types
+export interface ContextChunk {
+  id: string
+  text: string
+  relevanceScore: number
+  source: string
+  branchId: string
+  pinned?: boolean
+}
+
+export interface StyleExemplar {
+  id: string
+  text: string
+  similarityScore: number
+  features: string[]
+  selected?: boolean
+}
+
+export interface GenerationRequest {
+  nodeId: string
+  userPrompt: string
+  temperature: number
+  maxTokens: number
+  contextChunks: string[] // IDs of selected chunks
+  styleExemplars: string[] // IDs of selected exemplars
+  characterIds: string[] // IDs of characters to include
+  tunerSettings: TunerSettings
+}
+
+export interface GenerationResult {
+  id: string
+  generatedText: string
+  wordCount: number
+  timestamp: string
+  requestId: string
+  appliedSettings: {
+    tuner: TunerSettings
+    contextCount: number
+    exemplarCount: number
+  }
+}
+
+export interface Contradiction {
+  severity: 'low' | 'medium' | 'high'
+  type: string
+  description: string
+  suggestedFix: string
+}
+
 // ==================== APP STATE ====================
 
 interface AppState {
@@ -140,6 +189,19 @@ interface AppState {
   
   // Phase A: Characters
   characters: Character[]
+  
+  // Phase B: Generation state
+  writerPanelOpen: boolean
+  contextChunks: ContextChunk[]
+  styleExemplars: StyleExemplar[]
+  generationResults: GenerationResult[]
+  currentGeneration: GenerationResult | null
+  generationParams: {
+    temperature: number
+    maxTokens: number
+    userPrompt: string
+  }
+  contradictions: Contradiction[]
   
   // Branch state
   branches: Branch[]
@@ -216,6 +278,19 @@ interface AppState {
   jumpToNodeInReading: (nodeId: string) => void
   updateReadingPreferences: (prefs: Partial<ReadingPreferences>) => void
   
+  // Phase B: Generation actions
+  toggleWriterPanel: () => void
+  retrieveContext: (query: string, branchId: string) => Promise<void>
+  toggleContextChunk: (chunkId: string) => void
+  reorderContextChunks: (chunkIds: string[]) => void
+  retrieveStyleExemplars: (queryText: string) => Promise<void>
+  toggleStyleExemplar: (exemplarId: string) => void
+  generateText: (request: Partial<GenerationRequest>) => Promise<void>
+  acceptGeneration: (generationId: string) => void
+  rejectGeneration: (generationId: string) => void
+  checkContradictions: (generatedText: string) => Promise<void>
+  updateGenerationParams: (params: Partial<AppState['generationParams']>) => void
+  
   // Phase A: Keyboard navigation
   navigateGraph: (direction: 'up' | 'down' | 'left' | 'right') => void
   selectNextNode: () => void
@@ -278,6 +353,19 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   // Phase A: Characters
   characters: [],
+  
+  // Phase B: Generation state
+  writerPanelOpen: false,
+  contextChunks: [],
+  styleExemplars: [],
+  generationResults: [],
+  currentGeneration: null,
+  generationParams: {
+    temperature: 0.7,
+    maxTokens: 500,
+    userPrompt: '',
+  },
+  contradictions: [],
   
   branches: [],
   tunerSettings: { violence: 0.5, humor: 0.5, romance: 0.5 },
@@ -674,6 +762,162 @@ export const useAppStore = create<AppState>((set, get) => ({
   updateReadingPreferences: (prefs) => {
     set(state => ({
       readingPreferences: { ...state.readingPreferences, ...prefs },
+    }))
+  },
+  
+  // ==================== PHASE B: TEXT GENERATION ====================
+  toggleWriterPanel: () => set(state => ({ writerPanelOpen: !state.writerPanelOpen })),
+  
+  retrieveContext: async (query, branchId) => {
+    set(state => ({ loading: { ...state.loading, generation: true } }))
+    try {
+      const response = await fetch(`${API_BASE}/retrieve/context`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, branchId, topK: 6 }),
+      })
+      if (response.ok) {
+        const result = await response.json()
+        set({ contextChunks: result.chunks })
+      }
+    } catch (error) {
+      console.error('Failed to retrieve context:', error)
+    } finally {
+      set(state => ({ loading: { ...state.loading, generation: false } }))
+    }
+  },
+  
+  toggleContextChunk: (chunkId) => {
+    set(state => ({
+      contextChunks: state.contextChunks.map(c =>
+        c.id === chunkId ? { ...c, pinned: !c.pinned } : c
+      ),
+    }))
+  },
+  
+  reorderContextChunks: (chunkIds) => {
+    set(state => ({
+      contextChunks: chunkIds
+        .map(id => state.contextChunks.find(c => c.id === id))
+        .filter(Boolean) as ContextChunk[],
+    }))
+  },
+  
+  retrieveStyleExemplars: async (queryText) => {
+    try {
+      const response = await fetch(`${API_BASE}/retrieve/style-exemplars`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ queryText, topK: 3 }),
+      })
+      if (response.ok) {
+        const result = await response.json()
+        set({ styleExemplars: result.exemplars })
+      }
+    } catch (error) {
+      console.error('Failed to retrieve style exemplars:', error)
+    }
+  },
+  
+  toggleStyleExemplar: (exemplarId) => {
+    set(state => ({
+      styleExemplars: state.styleExemplars.map(e =>
+        e.id === exemplarId ? { ...e, selected: !e.selected } : e
+      ),
+    }))
+  },
+  
+  generateText: async (request) => {
+    const state = get()
+    set(state => ({ loading: { ...state.loading, generation: true } }))
+    
+    try {
+      const payload = {
+        nodeId: request.nodeId || state.selectedNodeId,
+        userPrompt: request.userPrompt || state.generationParams.userPrompt,
+        temperature: request.temperature || state.generationParams.temperature,
+        maxTokens: request.maxTokens || state.generationParams.maxTokens,
+        context: state.contextChunks.filter(c => c.pinned).map(c => c.id),
+        styleExemplars: state.styleExemplars.filter(e => e.selected).map(e => e.id),
+        characterIds: state.nodes.find(n => n.id === (request.nodeId || state.selectedNodeId))?.characters || [],
+        tuner: state.tunerSettings,
+      }
+      
+      const response = await fetch(`${API_BASE}/generate/text`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        const generation: GenerationResult = {
+          id: `gen-${Date.now()}`,
+          generatedText: result.generatedText,
+          wordCount: result.wordCount,
+          timestamp: new Date().toISOString(),
+          requestId: result.requestId,
+          appliedSettings: {
+            tuner: result.tunerApplied,
+            contextCount: result.contextUsed,
+            exemplarCount: payload.styleExemplars.length,
+          },
+        }
+        
+        set(state => ({
+          generationResults: [generation, ...state.generationResults],
+          currentGeneration: generation,
+        }))
+        
+        // Auto-check for contradictions
+        await get().checkContradictions(result.generatedText)
+      }
+    } catch (error) {
+      console.error('Failed to generate text:', error)
+      set(state => ({
+        error: { ...state.error, content: 'Generation failed' },
+      }))
+    } finally {
+      set(state => ({ loading: { ...state.loading, generation: false } }))
+    }
+  },
+  
+  acceptGeneration: (generationId) => {
+    const state = get()
+    const generation = state.generationResults.find(g => g.id === generationId)
+    if (generation && state.selectedNodeId) {
+      get().updateNodeContent(state.selectedNodeId, generation.generatedText)
+    }
+  },
+  
+  rejectGeneration: (generationId) => {
+    set(state => ({
+      generationResults: state.generationResults.filter(g => g.id !== generationId),
+      currentGeneration: state.currentGeneration?.id === generationId 
+        ? null 
+        : state.currentGeneration,
+    }))
+  },
+  
+  checkContradictions: async (generatedText) => {
+    try {
+      const response = await fetch(`${API_BASE}/check/contradictions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ generatedText }),
+      })
+      if (response.ok) {
+        const result = await response.json()
+        set({ contradictions: result.contradictions })
+      }
+    } catch (error) {
+      console.error('Failed to check contradictions:', error)
+    }
+  },
+  
+  updateGenerationParams: (params) => {
+    set(state => ({
+      generationParams: { ...state.generationParams, ...params },
     }))
   },
   

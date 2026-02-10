@@ -691,6 +691,189 @@ async def get_supported_formats() -> dict[str, list[str]]:
     }
 
 
+@app.post("/api/generate/text")
+async def generate_text(request: dict[str, Any]) -> dict[str, Any]:
+    """Generate text continuation for a scene."""
+    from core.text_generation_engine import WriterEngine, WriterRequest, TunerSettings
+
+    try:
+        # Create mock generation for now (replace with actual engine call)
+        user_prompt = request.get("userPrompt", "")
+        context = request.get("context", [])
+        tuner = request.get("tuner", {"violence": 0.5, "humor": 0.5, "romance": 0.5})
+        
+        # Simulate generation delay
+        await __import__('asyncio').sleep(0.5)
+        
+        # Generate mock content based on prompt
+        generated_text = f"""{user_prompt}
+
+[Generated content based on {len(context)} context chunks]
+
+The scene unfolded with a tension that gripped the air. Characters moved through the space with purpose, their actions guided by the underlying currents of the narrative. As the moment stretched, decisions were made that would ripple through the story's unfolding path.
+
+"We cannot turn back now," the voice rang out, carrying weight beyond mere words. The response came not in speech, but in the set of shoulders, the firmness of steps forward into uncertainty.
+
+The world responded in kind—shadows lengthening, sounds sharpening, the very atmosphere bending to the gravity of choice."""
+
+        return {
+            "success": True,
+            "generatedText": generated_text,
+            "wordCount": len(generated_text.split()),
+            "requestId": f"req-{__import__('time').time()}",
+            "tunerApplied": tuner,
+            "contextUsed": len(context),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/retrieve/context")
+async def retrieve_context(request: dict[str, Any]) -> dict[str, Any]:
+    """Retrieve relevant context chunks for a query."""
+    query = request.get("query", "")
+    branch_id = request.get("branchId", "main")
+    top_k = request.get("topK", 6)
+    
+    # Mock retrieved chunks
+    mock_chunks = [
+        {
+            "id": "chunk-1",
+            "text": "The protagonist stood at the crossroads, the weight of decision pressing upon their shoulders.",
+            "relevanceScore": 0.95,
+            "source": "Chapter 1, Scene 3",
+            "branchId": branch_id,
+        },
+        {
+            "id": "chunk-2",
+            "text": "Echoes of the past whispered through the corridor, memories threading through present tension.",
+            "relevanceScore": 0.87,
+            "source": "Chapter 2, Scene 1",
+            "branchId": branch_id,
+        },
+        {
+            "id": "chunk-3",
+            "text": "The antagonist's motivations remained clouded, yet their actions spoke of deeper purpose.",
+            "relevanceScore": 0.82,
+            "source": "Chapter 1, Scene 5",
+            "branchId": branch_id,
+        },
+        {
+            "id": "chunk-4",
+            "text": "Setting details: the room was dimly lit, shadows pooling in corners like gathered secrets.",
+            "relevanceScore": 0.76,
+            "source": "Chapter 3, Scene 2",
+            "branchId": branch_id,
+        },
+    ]
+    
+    return {
+        "success": True,
+        "query": query,
+        "chunks": mock_chunks[:top_k],
+        "totalAvailable": len(mock_chunks),
+    }
+
+
+@app.post("/api/retrieve/style-exemplars")
+async def retrieve_style_exemplars(request: dict[str, Any]) -> dict[str, Any]:
+    """Retrieve style exemplars matching the query."""
+    query_text = request.get("queryText", "")
+    source_windows = request.get("sourceWindows", [])
+    top_k = request.get("topK", 3)
+    
+    mock_exemplars = [
+        {
+            "id": "ex-1",
+            "text": "The rain fell in sheets, each drop a percussion against the rooftop symphony.",
+            "similarityScore": 0.91,
+            "features": ["atmospheric", "sensory", "metaphorical"],
+        },
+        {
+            "id": "ex-2",
+            "text": "She moved with purpose, each step calculated, each breath measured against the pressing silence.",
+            "similarityScore": 0.85,
+            "features": ["character-focused", "tense", "deliberate pacing"],
+        },
+        {
+            "id": "ex-3",
+            "text": "Words hung between them, heavy with unspoken meaning, the space filling with what remained unsaid.",
+            "similarityScore": 0.79,
+            "features": ["dialogue-adjacent", "emotional", "subtext-heavy"],
+        },
+    ]
+    
+    return {
+        "success": True,
+        "exemplars": mock_exemplars[:top_k],
+        "queryAnalyzed": True,
+    }
+
+
+@app.get("/api/characters")
+async def list_characters() -> list[dict[str, Any]]:
+    """List all characters with voice profiles."""
+    return [
+        {
+            "id": "char-1",
+            "name": "Protagonist",
+            "aliases": ["Hero", "MC"],
+            "traits": ["brave", "determined", "conflicted"],
+            "description": "The main character driven by a need for justice",
+            "voiceProfile": {
+                "speechPatterns": ["direct", "introspective", "hesitant in emotional moments"],
+                "vocabulary": ["precise", "occasionally poetic", "avoids contractions when serious"],
+                "sampleQuotes": [
+                    "I won't stand by while this happens.",
+                    "There's more to this than meets the eye.",
+                ],
+            },
+            "consistencyScore": 0.94,
+        },
+        {
+            "id": "char-2",
+            "name": "Antagonist",
+            "aliases": ["Villain"],
+            "traits": ["cunning", "ruthless", "charming"],
+            "description": "Opposing force with hidden vulnerabilities",
+            "voiceProfile": {
+                "speechPatterns": ["measured", "uses questions to control conversation", "metaphorical"],
+                "vocabulary": ["sophisticated", "technical terms", "euphemisms for violence"],
+                "sampleQuotes": [
+                    "Don't you see? This is the only way.",
+                    "Sacrifices must be made for progress.",
+                ],
+            },
+            "consistencyScore": 0.89,
+        },
+    ]
+
+
+@app.post("/api/check/contradictions")
+async def check_contradictions(request: dict[str, Any]) -> dict[str, Any]:
+    """Check generated text for contradictions against canon."""
+    generated_text = request.get("generatedText", "")
+    canon_facts = request.get("canonFacts", [])
+    
+    # Mock contradiction check
+    contradictions = []
+    
+    if "dead" in generated_text.lower() and "alive" in generated_text.lower():
+        contradictions.append({
+            "severity": "high",
+            "type": "state_contradiction",
+            "description": "Character mentioned as both dead and alive",
+            "suggestedFix": "Verify character status in timeline",
+        })
+    
+    return {
+        "success": True,
+        "contradictions": contradictions,
+        "checkPassed": len(contradictions) == 0,
+        "warnings": [],
+    }
+
+
 @app.get("/api/health")
 async def health_check() -> dict[str, str]:
     """Health check endpoint."""
