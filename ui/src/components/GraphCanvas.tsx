@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { useAppStore, type NodeType, type GraphNode } from '../store'
 import { RichTextEditor } from './RichTextEditor'
+
 import './GraphCanvas.css'
 
 const NODE_TYPE_STYLES: Record<NodeType, { icon: string; color: string; shape: string }> = {
@@ -15,6 +16,8 @@ export function GraphCanvas() {
   const [previewNode, setPreviewNode] = useState<GraphNode | null>(null)
   const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 })
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null)
+  const [isTouchDragging, setIsTouchDragging] = useState(false)
+  const [touchNodeId, setTouchNodeId] = useState<string | null>(null)
   
   const {
     nodes,
@@ -145,7 +148,7 @@ export function GraphCanvas() {
     }
   }, [handleWheel, handleKeyDown, setViewport])
 
-  // Handle node drag
+  // Handle node drag (mouse)
   const handleMouseDown = (e: React.MouseEvent, nodeId: string) => {
     if (e.button !== 0) return // Only left click
     e.stopPropagation()
@@ -171,6 +174,59 @@ export function GraphCanvas() {
     
     window.addEventListener('mousemove', handleMouseMove)
     window.addEventListener('mouseup', handleMouseUp)
+  }
+  
+  // Handle touch events for mobile
+  const handleTouchStart = (e: React.TouchEvent, nodeId: string) => {
+    e.stopPropagation()
+    setTouchNodeId(nodeId)
+    setIsTouchDragging(false)
+    
+    const touch = e.touches[0]
+    const node = nodes.find(n => n.id === nodeId)
+    if (!node) return
+    
+    const startX = touch.clientX
+    const startY = touch.clientY
+    const startNodeX = node.x
+    const startNodeY = node.y
+    
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault() // Prevent scrolling while dragging
+      setIsTouchDragging(true)
+      const touch = e.touches[0]
+      const dx = (touch.clientX - startX) / zoom
+      const dy = (touch.clientY - startY) / zoom
+      updateNodePosition(nodeId, startNodeX + dx, startNodeY + dy)
+    }
+    
+    const handleTouchEnd = (_e: TouchEvent) => {
+      window.removeEventListener('touchmove', handleTouchMove)
+      window.removeEventListener('touchend', handleTouchEnd)
+      
+      // If it wasn't a drag, treat as a tap (select node)
+      if (!isTouchDragging && touchNodeId) {
+        selectNode(touchNodeId)
+      }
+      
+      setTouchNodeId(null)
+      setIsTouchDragging(false)
+    }
+    
+    window.addEventListener('touchmove', handleTouchMove, { passive: false })
+    window.addEventListener('touchend', handleTouchEnd)
+  }
+  
+  // Handle double tap for edit on mobile
+  const [lastTapTime, setLastTapTime] = useState(0)
+  const handleTap = (nodeId: string) => {
+    const now = Date.now()
+    if (now - lastTapTime < 300) {
+      // Double tap - edit node
+      selectNode(nodeId)
+      startEditingNode(nodeId)
+    }
+    setLastTapTime(now)
   }
 
   // Get zoom mode label
@@ -231,7 +287,7 @@ export function GraphCanvas() {
     return (
       <div
         key={node.id}
-        className={`graph-node ${node.type} ${isSelected ? 'selected' : ''} ${isEditing ? 'editing' : ''}`}
+        className={`graph-node ${node.type} ${isSelected ? 'selected' : ''} ${isEditing ? 'editing' : ''} ${isTouchDragging && touchNodeId === node.id ? 'touch-dragging' : ''}`}
         style={nodeStyle}
         onClick={(e) => { e.stopPropagation(); selectNode(node.id) }}
         onDoubleClick={(e) => handleDoubleClick(e, node.id)}
@@ -239,6 +295,8 @@ export function GraphCanvas() {
         onMouseEnter={(e) => handleMouseEnter(e, node)}
         onMouseLeave={handleMouseLeave}
         onContextMenu={(e) => handleContextMenu(e, node.id)}
+        onTouchStart={(e) => handleTouchStart(e, node.id)}
+        onTouchEnd={() => handleTap(node.id)}
         role="button"
         tabIndex={0}
         aria-label={`${style.icon} ${node.type} node: ${node.label}. ${node.content.wordCount} words. Press Enter to edit, Delete to remove.`}

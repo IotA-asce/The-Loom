@@ -21,6 +21,7 @@ import { TemplateGallery } from './components/TemplateGallery'
 import { useAppStore } from './store'
 import { useIsMobile } from './hooks/useMediaQuery'
 import type { Template } from './components/TemplateGallery'
+import { NodeSearch } from './components/NodeSearch'
 import './App.css'
 
 // Tutorial steps configuration
@@ -78,7 +79,21 @@ function App() {
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
+  const [showNodeSearch, setShowNodeSearch] = useState(false)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false)
   const isMobile = useIsMobile()
+  
+  // Get navigation history from store
+  const { 
+    recentNodes, 
+    navigationHistory, 
+    historyIndex, 
+    navigateHistory,
+    clearHistory,
+    selectNode,
+    nodes 
+  } = useAppStore()
   
   // Tutorial state
   const { 
@@ -153,6 +168,24 @@ function App() {
         e.preventDefault()
         setShowShortcuts(true)
       }
+      
+      // Toggle node search
+      if (e.ctrlKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        setShowNodeSearch(true)
+      }
+      
+      // Navigate back
+      if (e.altKey && e.key === 'ArrowLeft') {
+        e.preventDefault()
+        navigateHistory('back')
+      }
+      
+      // Navigate forward
+      if (e.altKey && e.key === 'ArrowRight') {
+        e.preventDefault()
+        navigateHistory('forward')
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
@@ -195,6 +228,12 @@ function App() {
         isOpen={showTemplates}
         onClose={() => setShowTemplates(false)}
         onImport={handleImportTemplate}
+      />
+      
+      {/* Node Search */}
+      <NodeSearch
+        isOpen={showNodeSearch}
+        onClose={() => setShowNodeSearch(false)}
       />
       
       {/* Shortcuts Help Modal */}
@@ -258,6 +297,18 @@ function App() {
                 <kbd>Ctrl</kbd>+<kbd>H</kbd>
                 <span>Restart tutorial</span>
               </div>
+              <div className="shortcut-item">
+                <kbd>Ctrl</kbd>+<kbd>F</kbd>
+                <span>Find node</span>
+              </div>
+              <div className="shortcut-item">
+                <kbd>Alt</kbd>+<kbd>←</kbd>
+                <span>Navigate back</span>
+              </div>
+              <div className="shortcut-item">
+                <kbd>Alt</kbd>+<kbd>→</kbd>
+                <span>Navigate forward</span>
+              </div>
             </div>
             <div className="shortcuts-footer">
               <button 
@@ -290,7 +341,19 @@ function App() {
       )}
 
       <header className="app-header">
-        <h1>🧵 The Loom</h1>
+        <div className="app-header-left">
+          {isMobile && (
+            <button
+              className="mobile-menu-toggle"
+              onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+              aria-label="Toggle sidebar"
+              aria-expanded={mobileSidebarOpen}
+            >
+              ☰
+            </button>
+          )}
+          <h1>🧵 The Loom</h1>
+        </div>
         <nav className="app-nav" aria-label="Main navigation">
           <button 
             className="nav-button" 
@@ -374,6 +437,32 @@ function App() {
           </button>
           <button 
             className="nav-button" 
+            onClick={() => setShowNodeSearch(true)}
+            aria-label="Search nodes (Ctrl+F)"
+            title="Find Node (Ctrl+F)"
+          >
+            🔍 Find
+          </button>
+          <button 
+            className="nav-button" 
+            onClick={() => navigateHistory('back')}
+            disabled={historyIndex <= 0}
+            aria-label="Go back (Alt+←)"
+            title="Back (Alt+←)"
+          >
+            ← Back
+          </button>
+          <button 
+            className="nav-button" 
+            onClick={() => navigateHistory('forward')}
+            disabled={historyIndex >= navigationHistory.length - 1}
+            aria-label="Go forward (Alt+→)"
+            title="Forward (Alt+→)"
+          >
+            → Fwd
+          </button>
+          <button 
+            className="nav-button" 
             onClick={() => setShowTemplates(true)}
             aria-label="Template gallery"
             title="Templates"
@@ -396,11 +485,33 @@ function App() {
           >
             ⌨️ ?
           </button>
+          {isMobile && (
+            <button
+              className="mobile-panel-toggle"
+              onClick={() => setMobilePanelOpen(!mobilePanelOpen)}
+              aria-label="Toggle control panel"
+              aria-expanded={mobilePanelOpen}
+            >
+              ⚙️
+            </button>
+          )}
         </nav>
       </header>
 
       <main className="app-main">
-        <aside className="app-sidebar" aria-label="Left panel">
+        <aside 
+          className={`app-sidebar ${mobileSidebarOpen ? 'open' : ''}`} 
+          aria-label="Left panel"
+        >
+          {isMobile && (
+            <button
+              className="mobile-sidebar-close"
+              onClick={() => setMobileSidebarOpen(false)}
+              aria-label="Close sidebar"
+            >
+              ×
+            </button>
+          )}
           <div className="sidebar-tabs" role="tablist" aria-label="Sidebar tabs">
             <button
               role="tab"
@@ -437,6 +548,41 @@ function App() {
             {sidebarTab === 'branches' && (
               <div id="branches-panel" role="tabpanel" aria-labelledby="branches-tab">
                 <BranchPanel />
+                
+                {/* Recent Nodes Section */}
+                {recentNodes.length > 0 && (
+                  <div className="recent-nodes-section">
+                    <div className="recent-nodes-header">
+                      <h3>Recent Nodes</h3>
+                      <button 
+                        className="clear-history-btn"
+                        onClick={clearHistory}
+                        aria-label="Clear history"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <ul className="recent-nodes-list">
+                      {recentNodes.slice(0, 10).map(nodeId => {
+                        const node = nodes.find(n => n.id === nodeId)
+                        if (!node) return null
+                        return (
+                          <li 
+                            key={nodeId}
+                            className={`recent-node-item ${selectedNodeId === nodeId ? 'selected' : ''}`}
+                            onClick={() => {
+                              selectNode(nodeId)
+                              if (isMobile) setMobileSidebarOpen(false)
+                            }}
+                          >
+                            <span className="recent-node-label">{node.label}</span>
+                            {selectedNodeId === nodeId && <span className="current-indicator">●</span>}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
             {sidebarTab === 'metadata' && (
@@ -477,7 +623,19 @@ function App() {
           )}
         </section>
         
-        <aside className="app-panel" aria-label="Control panel">
+        <aside 
+          className={`app-panel ${mobilePanelOpen ? 'open' : ''}`} 
+          aria-label="Control panel"
+        >
+          {isMobile && (
+            <button
+              className="mobile-panel-close"
+              onClick={() => setMobilePanelOpen(false)}
+              aria-label="Close panel"
+            >
+              ×
+            </button>
+          )}
           <SearchPanel />
           <MemoryBrowser />
           <ConsequenceSimulator />

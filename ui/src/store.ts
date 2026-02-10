@@ -522,6 +522,14 @@ interface AppState {
   subscribeToJob: (jobId: string) => void
   initializeWebSocket: () => void
   closeWebSocket: () => void
+  
+  // Sprint 12: Navigation History
+  recentNodes: string[]
+  navigationHistory: string[]
+  historyIndex: number
+  addToRecentNodes: (nodeId: string) => void
+  navigateHistory: (direction: 'back' | 'forward') => void
+  clearHistory: () => void
 }
 
 const API_BASE = '/api'
@@ -607,6 +615,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   wsConnection: null,
   wsConnected: false,
   generationProgress: null,
+  
+  // Sprint 12: Navigation History state
+  recentNodes: [],
+  navigationHistory: [],
+  historyIndex: -1,
   
   branches: [],
   tunerSettings: { violence: 0.5, humor: 0.5, romance: 0.5 },
@@ -751,7 +764,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   
-  selectNode: (nodeId) => set({ selectedNodeId: nodeId }),
+  selectNode: (nodeId) => {
+    set({ selectedNodeId: nodeId })
+    if (nodeId) {
+      get().addToRecentNodes(nodeId)
+    }
+  },
   
   deleteNode: async (nodeId) => {
     try {
@@ -1845,5 +1863,45 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ action: 'subscribe', jobId }))
     }
+  },
+  
+  // ==================== SPRINT 12: NAVIGATION HISTORY ====================
+  addToRecentNodes: (nodeId) => {
+    const state = get()
+    
+    // Add to recent nodes (keep last 20)
+    const newRecent = [nodeId, ...state.recentNodes.filter(id => id !== nodeId)].slice(0, 20)
+    
+    // Add to navigation history
+    const newHistory = state.navigationHistory.slice(0, state.historyIndex + 1)
+    if (newHistory[newHistory.length - 1] !== nodeId) {
+      newHistory.push(nodeId)
+    }
+    
+    set({
+      recentNodes: newRecent,
+      navigationHistory: newHistory,
+      historyIndex: newHistory.length - 1,
+    })
+  },
+  
+  navigateHistory: (direction) => {
+    const state = get()
+    const newIndex = direction === 'back' 
+      ? Math.max(0, state.historyIndex - 1)
+      : Math.min(state.navigationHistory.length - 1, state.historyIndex + 1)
+    
+    if (newIndex !== state.historyIndex && state.navigationHistory[newIndex]) {
+      set({ historyIndex: newIndex })
+      get().selectNode(state.navigationHistory[newIndex])
+    }
+  },
+  
+  clearHistory: () => {
+    set({
+      recentNodes: [],
+      navigationHistory: [],
+      historyIndex: -1,
+    })
   },
 }))
