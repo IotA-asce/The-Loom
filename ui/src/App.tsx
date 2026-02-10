@@ -8,6 +8,10 @@ import { SceneMetadata } from './components/SceneMetadata'
 import { ReadingView } from './components/ReadingView'
 import { WriterPanel } from './components/WriterPanel'
 import { ArtistPanel } from './components/ArtistPanel'
+import { SearchPanel } from './components/SearchPanel'
+import { MemoryBrowser } from './components/MemoryBrowser'
+import { ConsequenceSimulator } from './components/ConsequenceSimulator'
+import { ToneHeatmap } from './components/ToneHeatmap'
 import { StatusBar } from './components/StatusBar'
 import { ToastContainer } from './components/Toast'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -171,6 +175,38 @@ function App() {
           </button>
           <button 
             className="nav-button" 
+            onClick={() => useAppStore.getState().toggleSearchPanel()}
+            aria-label="Open search panel"
+            title="Search"
+          >
+            🔎 Search
+          </button>
+          <button 
+            className="nav-button" 
+            onClick={() => useAppStore.getState().toggleMemoryBrowser()}
+            aria-label="Open memory browser"
+            title="Memory Browser"
+          >
+            🧠 Memory
+          </button>
+          <button 
+            className="nav-button" 
+            onClick={() => useAppStore.getState().toggleSimulator()}
+            aria-label="Open consequence simulator"
+            title="What-If Simulator"
+          >
+            🔮 What-If
+          </button>
+          <button 
+            className="nav-button" 
+            onClick={() => useAppStore.getState().toggleToneHeatmap()}
+            aria-label="Open tone analysis"
+            title="Tone Analysis"
+          >
+            🎭 Tones
+          </button>
+          <button 
+            className="nav-button" 
             onClick={() => useAppStore.getState().toggleTuner()}
             aria-label="Open tuner panel (Ctrl+T)"
             title="Tuner (Ctrl+T)"
@@ -281,6 +317,10 @@ function App() {
         </section>
         
         <aside className="app-panel" aria-label="Control panel">
+          <SearchPanel />
+          <MemoryBrowser />
+          <ConsequenceSimulator />
+          <ToneHeatmap />
           <WriterPanel />
           <ArtistPanel />
           <TunerPanel />

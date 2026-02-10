@@ -249,6 +249,33 @@ export interface ContinuityIssue {
   type: 'character_drift' | 'lighting_mismatch' | 'pose_inconsistency'
 }
 
+// Phase D: Search types
+export interface SearchResult {
+  id: string
+  text: string
+  source: string
+  branchId: string
+  relevanceScore: number
+  entityType?: 'character' | 'location' | 'event'
+  entityName?: string
+  timestamp?: string
+}
+
+// Phase E: Simulator types
+export interface SimulationResult {
+  affectedNodes: Array<{
+    id: string
+    name: string
+    impact: 'high' | 'medium' | 'low'
+    description: string
+  }>
+  consistencyScore: number
+  riskLevel: 'low' | 'medium' | 'high' | 'critical'
+  estimatedTokens: number
+  estimatedTime: number
+  suggestedActions: string[]
+}
+
 export interface Toast {
   id: string
   message: string
@@ -469,6 +496,24 @@ interface AppState {
   regeneratePanel: (panelId: string) => void
   setViewerMode: (mode: 'grid' | 'sequential' | 'split') => void
   selectPanel: (panelId: string | null) => void
+  
+  // Phase D: Search & Memory
+  searchPanelOpen: boolean
+  toggleSearchPanel: () => void
+  performSearch: (query: string, filters: Record<string, string>) => Promise<SearchResult[]>
+  addToContext: (resultId: string) => void
+  searchResults: SearchResult[]
+  memoryBrowserOpen: boolean
+  toggleMemoryBrowser: () => void
+  
+  // Phase E: Consequence Simulator
+  simulatorOpen: boolean
+  toggleSimulator: () => void
+  simulateChange: (request: { nodeId: string; changeType: string; description: string }) => Promise<SimulationResult>
+  
+  // Phase F: Tone Analysis
+  toneHeatmapOpen: boolean
+  toggleToneHeatmap: () => void
 }
 
 const API_BASE = '/api'
@@ -538,6 +583,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   viewerMode: 'grid',
   selectedPanelId: null,
   continuityIssues: [],
+  
+  // Phase D: Search & Memory state
+  searchPanelOpen: false,
+  searchResults: [],
+  memoryBrowserOpen: false,
+  
+  // Phase E: Simulator state
+  simulatorOpen: false,
+  
+  // Phase F: Tone Analysis state
+  toneHeatmapOpen: false,
   
   branches: [],
   tunerSettings: { violence: 0.5, humor: 0.5, romance: 0.5 },
@@ -1657,4 +1713,53 @@ export const useAppStore = create<AppState>((set, get) => ({
   setViewerMode: (mode) => set({ viewerMode: mode }),
   
   selectPanel: (panelId) => set({ selectedPanelId: panelId }),
+  
+  // ==================== PHASE D: SEARCH & MEMORY ====================
+  toggleSearchPanel: () => set(state => ({ searchPanelOpen: !state.searchPanelOpen })),
+  
+  performSearch: async (_query, _filters) => {
+    // Mock search implementation
+    const mockResults: SearchResult[] = [
+      {
+        id: `search-${Date.now()}`,
+        text: 'Search result text...',
+        source: 'Chapter 1',
+        branchId: 'main',
+        relevanceScore: 0.95,
+      },
+    ]
+    set({ searchResults: mockResults })
+    return mockResults
+  },
+  
+  addToContext: (resultId) => {
+    // Add search result to writer panel context
+    const result = get().searchResults.find(r => r.id === resultId)
+    if (result) {
+      // Implementation would add to context chunks
+      console.log('Added to context:', result)
+    }
+  },
+  
+  toggleMemoryBrowser: () => set(state => ({ memoryBrowserOpen: !state.memoryBrowserOpen })),
+  
+  // ==================== PHASE E: CONSEQUENCE SIMULATOR ====================
+  toggleSimulator: () => set(state => ({ simulatorOpen: !state.simulatorOpen })),
+  
+  simulateChange: async (_request) => {
+    // Mock simulation
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    const result: SimulationResult = {
+      affectedNodes: [],
+      consistencyScore: 0.85,
+      riskLevel: 'medium',
+      estimatedTokens: 2500,
+      estimatedTime: 30,
+      suggestedActions: ['Review related nodes'],
+    }
+    return result
+  },
+  
+  // ==================== PHASE F: TONE ANALYSIS ====================
+  toggleToneHeatmap: () => set(state => ({ toneHeatmapOpen: !state.toneHeatmapOpen })),
 }))

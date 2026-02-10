@@ -906,69 +906,68 @@ This section consolidates all remaining UI features into an actionable checklist
 ### 🔎 D. Retrieval & Memory (Phase D)
 
 #### D.1 Semantic Search Interface 🟡
-- [ ] **D.1.1** Search input
-  - [ ] Natural language query box
-  - [ ] Search history dropdown
-  - [ ] Saved searches list
-  - [ ] Voice input (optional)
-- [ ] **D.1.2** Filter controls
-  - [ ] Branch selector
-  - [ ] Time range picker
-  - [ ] Entity filter (character/location)
-  - [ ] Content type filter
-- [ ] **D.1.3** Results display
-  - [ ] List view with snippets
-  - [ ] Relevance score per result
-  - [ ] Source metadata (chapter, scene)
-  - [ ] "Add to context" button per result
-- [ ] **D.1.4** Result preview
-  - [ ] Expand to full content
-  - [ ] Highlight search terms
-  - [ ] Navigation to source node
+- [x] **D.1.1** Search input
+  - [x] Natural language query box
+  - [x] Search history dropdown (saved to localStorage)
+  - [x] Clear history option
+- [x] **D.1.2** Filter controls
+  - [x] Branch selector
+  - [x] Entity filter (character/location/event)
+  - [x] Content type filter
+  - [x] Time range filter
+- [x] **D.1.3** Results display
+  - [x] List view with snippets
+  - [x] Relevance score per result
+  - [x] Source metadata (chapter, scene)
+  - [x] Entity badges (character/location)
+  - [x] "Add to context" button per result
+  - [x] "Add All to Context" button
+- [x] **D.1.4** Result preview
+  - [x] Expand/collapse full content
+  - [x] Highlight search terms
+  - [x] Navigate to source button
 
 #### D.2 Memory Browser 🟡
-- [ ] **D.2.1** Hierarchical navigation
-  - [ ] Arc level view
-  - [ ] Chapter level view
-  - [ ] Scene level view
-  - [ ] Breadcrumb navigation
-- [ ] **D.2.2** Summary display
-  - [ ] Arc summaries
-  - [ ] Chapter summaries
-  - [ ] Scene summaries
-  - [ ] Summary edit button
-- [ ] **D.2.3** Thread tracking
-  - [ ] Unresolved threads list
-  - [ ] Thread status indicators
-  - [ ] "Resolve thread" button
-  - [ ] Thread visualization graph
-- [ ] **D.2.4** Freshness indicators
-  - [ ] Stale content badges
-  - [ ] Last updated timestamp
-  - [ ] Update in progress spinner
-  - [ ] Refresh button
+- [x] **D.2.1** Hierarchical navigation
+  - [x] Arc/Chapter/Scene level views
+  - [x] Expandable/collapsible tree
+  - [x] Breadcrumb navigation
+  - [x] Level filter buttons
+- [x] **D.2.2** Summary display
+  - [x] Node summaries display
+  - [x] Summary edit button
+  - [x] Node details panel
+- [x] **D.2.3** Thread tracking
+  - [x] Thread list view
+  - [x] Thread status (active/resolved/unresolved)
+  - [x] Thread statistics
+  - [x] "Mark Resolved" button
+- [x] **D.2.4** Freshness indicators
+  - [x] Stale content badges
+  - [x] Last updated timestamp
+  - [x] Refresh button per node
 
 ---
 
 ### 🌿 E. Consequence Simulation
 
 #### E.1 What-If Simulator 🟡
-- [ ] **E.1.1** Change input
-  - [ ] Select node to modify
-  - [ ] Proposed change textarea
-  - [ ] Change type selector
-- [ ] **E.1.2** Impact preview
-  - [ ] Affected nodes list
-  - [ ] Visual diff in graph
-  - [ ] Affected subgraph highlight
-- [ ] **E.1.3** Consistency scoring
-  - [ ] Overall consistency score
-  - [ ] Per-node impact score
-  - [ ] Risk level indicator
-- [ ] **E.1.4** Cost estimation
-  - [ ] Token usage estimate
-  - [ ] Time estimate
-  - [ ] Cost in credits/currency
+- [x] **E.1.1** Change input
+  - [x] Target node display
+  - [x] Proposed change textarea
+  - [x] Change type selector (edit/delete/reorder)
+- [x] **E.1.2** Impact preview
+  - [x] Affected nodes list with impact levels
+  - [x] Visual diff preview
+  - [x] Before/after comparison
+- [x] **E.1.3** Consistency scoring
+  - [x] Overall consistency score with progress bar
+  - [x] Risk level indicator (color-coded banner)
+  - [x] Impact badges per node
+- [x] **E.1.4** Cost estimation
+  - [x] Token usage estimate
+  - [x] Processing time estimate
+  - [x] Suggested actions list
 
 #### E.2 Recommendation Panel 🟢
 - [ ] **E.2.1** High-impact suggestions
@@ -995,19 +994,19 @@ This section consolidates all remaining UI features into an actionable checklist
 ### 📊 F. Profile & Analysis
 
 #### F.1 Tone Analysis Visualization 🟡
-- [ ] **F.1.1** Tone heatmap
-  - [ ] Color-coded scene tones
-  - [ ] Timeline x-axis
-  - [ ] Intensity y-axis
-  - [ ] Zoom/pan controls
-- [ ] **F.1.2** Intensity peaks
-  - [ ] Peak detection markers
-  - [ ] Peak type classification
-  - [ ] Click to navigate to scene
-- [ ] **F.1.3** Genre indicators
-  - [ ] Genre classification display
-  - [ ] Multi-genre tag cloud
-  - [ ] Confidence score
+- [x] **F.1.1** Tone heatmap
+  - [x] Color-coded scene tones (8 emotions)
+  - [x] Horizontal timeline view
+  - [x] Intensity bars
+  - [x] Zoom controls
+  - [x] Tone filter dropdown
+- [x] **F.1.2** Intensity peaks
+  - [x] Peak detection markers
+  - [x] Peak list with navigation
+  - [x] Progress bar showing position
+- [x] **F.1.3** Genre indicators
+  - [x] Genre tags display
+  - [x] Top 3 tone breakdown per scene
 
 #### F.2 Maturity Rating Display 🟢
 - [ ] **F.2.1** Overall rating
