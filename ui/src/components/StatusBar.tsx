@@ -7,6 +7,7 @@ export function StatusBar() {
     graphMetrics, 
     nodes,
     selectedNodeId,
+    contradictions,
     loading,
     error,
     clearError,
@@ -96,6 +97,14 @@ export function StatusBar() {
           <span className="metric-item" title="Nodes with content">
             With Content: {nodesWithContent}/{nodes.length}
           </span>
+          {contradictions.length > 0 && (
+            <span 
+              className="metric-item contradictions-badge"
+              title={`${contradictions.length} contradiction(s) detected`}
+            >
+              ⚠️ {contradictions.length} Issues
+            </span>
+          )}
           {selectedNode && (
             <span className="metric-item selected" title="Selected node word count">
               Selected: {selectedNode.content.wordCount}w

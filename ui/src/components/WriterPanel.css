@@ -144,6 +144,104 @@
   border-radius: 4px;
 }
 
+/* Token Budget Visualization */
+.token-budget {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: var(--color-bg, #0f0f0f);
+  border-radius: 4px;
+}
+
+.token-budget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.token-label {
+  font-size: 0.875rem;
+  color: var(--color-text, #e0e0e0);
+  font-weight: 500;
+}
+
+.token-count {
+  font-size: 0.875rem;
+  font-family: var(--font-mono, monospace);
+  color: #4caf50;
+}
+
+.token-count.warning {
+  color: #ff9800;
+}
+
+.token-count.exceeded {
+  color: #f44336;
+}
+
+.token-progress-bar {
+  height: 8px;
+  background: var(--color-surface-hover, #252525);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.token-progress-fill {
+  height: 100%;
+  background: #4caf50;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.token-progress-fill.warning {
+  background: #ff9800;
+}
+
+.token-progress-fill.exceeded {
+  background: #f44336;
+}
+
+.token-breakdown {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #888);
+}
+
+.generation-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cancel-button {
+  width: 100%;
+  padding: 0.875rem;
+  background: #f44336;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: background 0.15s ease;
+}
+
+.cancel-button:hover {
+  background: #d32f2f;
+}
+
+.cancel-button .eta {
+  margin-left: auto;
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+
 .param-row {
   display: flex;
   align-items: center;
@@ -474,6 +572,47 @@
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
+}
+
+.chunk-actions {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.chunk-move-btn,
+.chunk-remove-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-hover, #252525);
+  border: 1px solid var(--color-border, #333);
+  border-radius: 4px;
+  color: var(--color-text-secondary, #888);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chunk-move-btn:hover:not(:disabled),
+.chunk-remove-btn:hover {
+  background: var(--color-bg, #0f0f0f);
+  color: var(--color-text, #e0e0e0);
+}
+
+.chunk-move-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.chunk-remove-btn {
+  color: #f44336;
+}
+
+.chunk-remove-btn:hover {
+  background: rgba(244, 67, 54, 0.1);
 }
 
 .chunk-header input,

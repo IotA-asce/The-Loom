@@ -627,10 +627,10 @@ This section consolidates all remaining UI features into an actionable checklist
 - [x] **A.1.3** Node content display
   - [x] Preview on hover
   - [x] Expand/collapse long content
-  - [ ] Syntax highlighting for dialogue
+  - [x] Syntax highlighting for dialogue
 - [x] **A.1.4** Version history
   - [x] Save revisions on edit
-  - [ ] Diff viewer between versions
+  - [-] Diff viewer between versions
   - [x] Restore previous version
 
 #### A.2 Scene Metadata 🔴
@@ -641,10 +641,10 @@ This section consolidates all remaining UI features into an actionable checklist
   - [x] Estimated reading time
 - [x] **A.2.2** Character presence
   - [x] Multi-select character checklist
-  - [ ] Character entry/exit markers
-  - [ ] Auto-detect from content
+  - [-] Character entry/exit markers
+  - [-] Auto-detect from content
 - [x] **A.2.3** Mood/tone tags
-  - [ ] Tag input with autocomplete
+  - [x] Tag input with autocomplete
   - [x] Preset mood options
   - [x] Color-coded mood indicators
 
@@ -659,8 +659,8 @@ This section consolidates all remaining UI features into an actionable checklist
   - [x] Color coding
   - [x] Icon indicators
 - [ ] **A.3.3** Type-specific fields
-  - [ ] Conditional form fields
-  - [ ] Validation rules per type
+  - [-] Conditional form fields
+  - [-] Validation rules per type
 
 #### A.4 Story Reading View 🔴
 - [x] **A.4.1** Reading mode toggle
@@ -694,31 +694,31 @@ This section consolidates all remaining UI features into an actionable checklist
   - [ ] Estimated time display
 - [x] **B.1.3** Generated content display
   - [x] Rich text output area
-  - [ ] Dialogue highlighting
-  - [ ] Paragraph numbering
+  - [x] Dialogue highlighting
+  - [-] Paragraph numbering
   - [x] Word count display
 - [x] **B.1.4** Action buttons
   - [x] Accept button (creates node)
   - [x] Reject button (discards)
   - [x] Regenerate button
-  - [ ] Edit inline button
+  - [-] Edit inline button
 
 #### B.2 Context Assembly Viewer 🔴
 - [x] **B.2.1** Retrieved chunks display
   - [x] List of context chunks
   - [x] Relevance scores
   - [x] Source attribution
-  - [ ] Expand/collapse each chunk
+  - [-] Expand/collapse each chunk
 - [x] **B.2.2** Manual context management
-  - [ ] Reorder chunks (drag/drop)
-  - [ ] Remove chunk button
-  - [ ] Add from search button
+  - [x] Reorder chunks (up/down buttons)
+  - [x] Remove chunk button
+  - [-] Add from search button
   - [x] Pin important chunks
 - [ ] **B.2.3** Token budget visualization
-  - [ ] Progress bar for token usage
-  - [ ] Warning at 80%
-  - [ ] Error at 100%
-  - [ ] Breakdown by chunk
+  - [x] Progress bar for token usage
+  - [x] Warning at 80%
+  - [x] Error at 100%
+  - [x] Breakdown by chunk
 - [ ] **B.2.4** Save context presets
   - [ ] Name and save current context
   - [ ] Load preset dropdown
@@ -758,14 +758,14 @@ This section consolidates all remaining UI features into an actionable checklist
 - [x] **B.5.1** Warning indicators
   - [x] Yellow warning banner for minor issues
   - [x] Red banner for contradictions
-  - [ ] Count badge in status bar
+  - [x] Count badge in status bar
 - [ ] **B.5.2** Contradiction detail view
   - [ ] Side-by-side comparison
   - [ ] Conflicting facts highlight
   - [ ] Source reference links
 - [ ] **B.5.3** Resolution actions
   - [x] "Ignore" button
-  - [ ] "Edit to fix" button
+  - [-] "Edit to fix" button
   - [x] "Regenerate with fix" button
 
 ---

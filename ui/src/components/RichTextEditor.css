@@ -177,6 +177,17 @@
   margin: 0.375rem 0;
 }
 
+/* Dialogue highlighting */
+.editor-preview .dialogue {
+  color: #4caf50;
+  font-weight: 500;
+}
+
+.editor-preview .dialogue-inner {
+  color: #81c784;
+  font-style: italic;
+}
+
 .editor-saving {
   display: flex;
   align-items: center;

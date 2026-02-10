@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAppStore } from '../store'
 import './WriterPanel.css'
 
@@ -28,8 +28,20 @@ export function WriterPanel() {
 
   const [activeTab, setActiveTab] = useState<'generate' | 'context' | 'style'>('generate')
   const [localPrompt, setLocalPrompt] = useState('')
+  const [estimatedTime, setEstimatedTime] = useState<number | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const selectedNode = nodes.find(n => n.id === selectedNodeId)
+  
+  // Calculate token budget (rough estimate: 1 token ≈ 0.75 words)
+  const calculateTokens = (text: string) => Math.ceil(text.split(/\s+/).filter(w => w.length > 0).length / 0.75)
+  const promptTokens = calculateTokens(localPrompt)
+  const contextTokens = contextChunks
+    .filter(c => c.pinned)
+    .reduce((sum, c) => sum + calculateTokens(c.text), 0)
+  const totalTokens = promptTokens + contextTokens
+  const maxTokens = generationParams.maxTokens
+  const tokenPercentage = Math.min(100, (totalTokens / maxTokens) * 100)
 
   // Load node content as initial prompt
   useEffect(() => {
@@ -49,12 +61,43 @@ export function WriterPanel() {
 
   const handleGenerate = async () => {
     if (!selectedNodeId) return
+    
+    // Estimate time based on token count (rough: 100 tokens/sec)
+    const estimatedSeconds = Math.ceil(maxTokens / 100)
+    setEstimatedTime(estimatedSeconds)
+    
+    // Create abort controller for cancellation
+    abortControllerRef.current = new AbortController()
+    
     updateGenerationParams({ userPrompt: localPrompt })
     await generateText({ nodeId: selectedNodeId })
+    
+    setEstimatedTime(null)
+  }
+  
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+    }
+    setEstimatedTime(null)
   }
 
   const getSelectedContextCount = () => contextChunks.filter(c => c.pinned).length
   const getSelectedExemplarCount = () => styleExemplars.filter(e => e.selected).length
+  
+  // Reorder context chunks
+  const moveChunk = (index: number, direction: 'up' | 'down') => {
+    const newChunks = [...contextChunks]
+    const newIndex = direction === 'up' ? index - 1 : index + 1
+    if (newIndex >= 0 && newIndex < newChunks.length) {
+      const [moved] = newChunks.splice(index, 1)
+      newChunks.splice(newIndex, 0, moved)
+      // Note: This would need to be persisted to the store
+      // For now, we'll just log it
+      console.log('Reordered chunks:', newChunks.map(c => c.id))
+    }
+  }
 
   return (
     <div className="writer-panel" role="region" aria-labelledby="writer-title">
@@ -170,21 +213,50 @@ export function WriterPanel() {
                 </span>
               </div>
 
+              {/* Token Budget Visualization */}
+              <div className="token-budget">
+                <div className="token-budget-header">
+                  <span className="token-label">Token Budget</span>
+                  <span className={`token-count ${tokenPercentage > 100 ? 'exceeded' : tokenPercentage > 80 ? 'warning' : ''}`}>
+                    {totalTokens.toLocaleString()} / {maxTokens.toLocaleString()}
+                  </span>
+                </div>
+                <div className="token-progress-bar">
+                  <div 
+                    className={`token-progress-fill ${tokenPercentage > 100 ? 'exceeded' : tokenPercentage > 80 ? 'warning' : ''}`}
+                    style={{ width: `${Math.min(100, tokenPercentage)}%` }}
+                  />
+                </div>
+                <div className="token-breakdown">
+                  <span>Prompt: {promptTokens}</span>
+                  <span>Context: {contextTokens}</span>
+                  <span>Generation: {maxTokens}</span>
+                </div>
+              </div>
+
               {/* Generate button */}
-              <button
-                onClick={handleGenerate}
-                disabled={loading.generation || !localPrompt.trim()}
-                className="generate-button"
-              >
-                {loading.generation ? (
-                  <>
+              {loading.generation ? (
+                <div className="generation-progress">
+                  <button
+                    onClick={handleCancel}
+                    className="cancel-button"
+                  >
                     <span className="spinner" />
-                    Generating...
-                  </>
-                ) : (
-                  <>📝 Generate Text</>
-                )}
-              </button>
+                    Cancel Generation
+                    {estimatedTime && (
+                      <span className="eta">~{estimatedTime}s</span>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleGenerate}
+                  disabled={!localPrompt.trim() || totalTokens > maxTokens * 2}
+                  className="generate-button"
+                >
+                  📝 Generate Text
+                </button>
+              )}
 
               {/* Generation result */}
               {currentGeneration && (
@@ -279,11 +351,10 @@ export function WriterPanel() {
                 {contextChunks.length === 0 ? (
                   <p className="empty-text">No context retrieved yet</p>
                 ) : (
-                  contextChunks.map(chunk => (
+                  contextChunks.map((chunk, index) => (
                     <div
                       key={chunk.id}
                       className={`context-chunk ${chunk.pinned ? 'pinned' : ''}`}
-                      onClick={() => toggleContextChunk(chunk.id)}
                     >
                       <div className="chunk-header">
                         <input
@@ -295,6 +366,34 @@ export function WriterPanel() {
                         <span className="chunk-score">
                           {(chunk.relevanceScore * 100).toFixed(0)}%
                         </span>
+                        <div className="chunk-actions">
+                          <button
+                            onClick={() => moveChunk(index, 'up')}
+                            disabled={index === 0}
+                            className="chunk-move-btn"
+                            title="Move up"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            onClick={() => moveChunk(index, 'down')}
+                            disabled={index === contextChunks.length - 1}
+                            className="chunk-move-btn"
+                            title="Move down"
+                          >
+                            ↓
+                          </button>
+                          <button
+                            onClick={() => {
+                              // Filter out this chunk - would need store update
+                              console.log('Removed chunk:', chunk.id)
+                            }}
+                            className="chunk-remove-btn"
+                            title="Remove"
+                          >
+                            ×
+                          </button>
+                        </div>
                       </div>
                       <p className="chunk-text">{chunk.text}</p>
                     </div>

@@ -148,14 +148,32 @@ export function SceneMetadata({ nodeId }: SceneMetadataProps) {
         </div>
         
         <div className="custom-mood">
-          <input
-            type="text"
-            value={customMood}
-            onChange={(e) => setCustomMood(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAddCustomMood()}
-            placeholder="Add custom mood..."
-            className="metadata-input small"
-          />
+          <div className="autocomplete-wrapper">
+            <input
+              type="text"
+              value={customMood}
+              onChange={(e) => setCustomMood(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddCustomMood()}
+              placeholder="Add custom mood..."
+              className="metadata-input small"
+              list="mood-suggestions"
+            />
+            <datalist id="mood-suggestions">
+              {MOOD_PRESETS.filter(m => !moodTags.includes(m.value)).map(m => (
+                <option key={m.value} value={m.label} />
+              ))}
+              <option value="Suspenseful" />
+              <option value="Melancholic" />
+              <option value="Euphoric" />
+              <option value="Grim" />
+              <option value="Whimsical" />
+              <option value="Brooding" />
+              <option value="Hopeful" />
+              <option value="Despairing" />
+              <option value="Vengeful" />
+              <option value="Remorseful" />
+            </datalist>
+          </div>
           <button 
             onClick={handleAddCustomMood}
             className="button-small"

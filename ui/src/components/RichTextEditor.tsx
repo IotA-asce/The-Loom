@@ -87,9 +87,15 @@ export function RichTextEditor({ nodeId, initialContent = '', onSave, onCancel }
     setIsDirty(true)
   }
   
-  // Simple markdown preview
+  // Simple markdown preview with dialogue highlighting
   const renderPreview = (text: string) => {
-    return text
+    // First escape HTML to prevent XSS
+    const escaped = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+    
+    return escaped
       .replace(/^# (.*$)/gim, '<h1>$1</h1>')
       .replace(/^## (.*$)/gim, '<h2>$1</h2>')
       .replace(/^### (.*$)/gim, '<h3>$1</h3>')
@@ -98,6 +104,11 @@ export function RichTextEditor({ nodeId, initialContent = '', onSave, onCancel }
       .replace(/`([^`]+)`/gim, '<code>$1</code>')
       .replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>')
       .replace(/^(\*|\-|\d\.) (.*$)/gim, '<li>$2</li>')
+      // Dialogue highlighting: "quoted text" or 'quoted text'
+      .replace(/&quot;([^&]*?)&quot;/g, '<span class="dialogue">"$1"</span>')
+      .replace(/&#x27;([^&#]*?)&#x27;/g, '<span class="dialogue-inner">\'$1\'</span>')
+      // Alternative: "text" with smart quotes
+      .replace(/&ldquo;([^&]*?)&rdquo;/g, '<span class="dialogue">"$1"</span>')
       .replace(/\n/gim, '<br />')
   }
   
