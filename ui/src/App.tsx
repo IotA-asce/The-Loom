@@ -1,14 +1,16 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { GraphCanvas } from './components/GraphCanvas'
 import { TunerPanel } from './components/TunerPanel'
 import { DualView } from './components/DualView'
 import { BranchPanel } from './components/BranchPanel'
+import { ImportPanel } from './components/ImportPanel'
 import { StatusBar } from './components/StatusBar'
 import { useAppStore } from './store'
 import './App.css'
 
 function App() {
   const { initialize, keyboardShortcuts } = useAppStore()
+  const [sidebarTab, setSidebarTab] = useState<'branches' | 'import'>('branches')
 
   useEffect(() => {
     initialize()
@@ -68,8 +70,41 @@ function App() {
       </header>
 
       <main className="app-main">
-        <aside className="app-sidebar" aria-label="Branch panel">
-          <BranchPanel />
+        <aside className="app-sidebar" aria-label="Left panel">
+          <div className="sidebar-tabs" role="tablist" aria-label="Sidebar tabs">
+            <button
+              role="tab"
+              aria-selected={sidebarTab === 'branches'}
+              aria-controls="branches-panel"
+              id="branches-tab"
+              className={`sidebar-tab ${sidebarTab === 'branches' ? 'active' : ''}`}
+              onClick={() => setSidebarTab('branches')}
+            >
+              🌿 Branches
+            </button>
+            <button
+              role="tab"
+              aria-selected={sidebarTab === 'import'}
+              aria-controls="import-panel"
+              id="import-tab"
+              className={`sidebar-tab ${sidebarTab === 'import' ? 'active' : ''}`}
+              onClick={() => setSidebarTab('import')}
+            >
+              📥 Import
+            </button>
+          </div>
+          <div className="sidebar-content">
+            {sidebarTab === 'branches' && (
+              <div id="branches-panel" role="tabpanel" aria-labelledby="branches-tab">
+                <BranchPanel />
+              </div>
+            )}
+            {sidebarTab === 'import' && (
+              <div id="import-panel" role="tabpanel" aria-labelledby="import-tab">
+                <ImportPanel />
+              </div>
+            )}
+          </div>
         </aside>
         
         <section className="app-content" aria-label="Graph workspace">

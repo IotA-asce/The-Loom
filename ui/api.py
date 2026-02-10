@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from core.frontend_workflow_engine import (
@@ -16,10 +17,9 @@ from core.frontend_workflow_engine import (
     evaluate_phase8_done_criteria,
 )
 from core.story_graph_engine import BranchLifecycleManager
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-
 
 # Pydantic models for API
 
@@ -617,6 +617,77 @@ async def get_phase8_metrics(
         "estimated_frame_ms": metrics.estimated_frame_ms,
         "keyboard_coverage": metrics.keyboard_coverage,
         "mismatch_rate": metrics.mismatch_rate,
+    }
+
+
+@app.post("/api/ingest/text")
+async def ingest_text(file: UploadFile) -> dict[str, Any]:
+    """Ingest a text document (txt, pdf, epub)."""
+    from agents.archivist import ingest_text_document
+
+    temp_path = Path(f"/tmp/loom_upload_{file.filename}")
+    try:
+        content = await file.read()
+        temp_path.write_bytes(content)
+
+        report = ingest_text_document(temp_path)
+
+        return {
+            "success": True,
+            "source": str(report.source_path),
+            "parser": report.parser_used,
+            "chapters": len(report.chapters),
+            "confidence": report.confidence,
+            "hash": report.source_hash,
+            "warnings": list(report.warnings),
+            "errors": list(report.errors),
+        }
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
+
+
+@app.post("/api/ingest/manga")
+async def ingest_manga(file: UploadFile) -> dict[str, Any]:
+    """Ingest manga/comic files (cbz, folder of images)."""
+    from agents.archivist import ingest_cbz_pages
+
+    temp_path = Path(f"/tmp/loom_upload_{file.filename}")
+    try:
+        content = await file.read()
+        temp_path.write_bytes(content)
+
+        # Detect file type
+        suffix = Path(file.filename or "").suffix.lower()
+
+        if suffix == ".cbz":
+            report = ingest_cbz_pages(temp_path)
+        else:
+            raise HTTPException(
+                status_code=400, detail=f"Unsupported manga format: {suffix}"
+            )
+
+        return {
+            "success": True,
+            "source": str(report.source_path),
+            "pages": report.page_count,
+            "spreads": report.spread_count,
+            "formats": list(report.page_formats),
+            "hash": report.source_hash,
+            "warnings": list(report.warnings),
+        }
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
+
+
+@app.get("/api/ingest/supported-formats")
+async def get_supported_formats() -> dict[str, list[str]]:
+    """Get list of supported ingestion formats."""
+    return {
+        "text": [".txt", ".pdf", ".epub"],
+        "manga": [".cbz", ".zip"],
+        "images": [".png", ".jpg", ".jpeg", ".webp"],
     }
 
 

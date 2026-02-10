@@ -91,6 +91,9 @@ interface AppState {
   graphMetrics: GraphMetrics | null
   phase8Metrics: Phase8Metrics | null
   
+  // Import
+  supportedFormats: { text: string[]; manga: string[]; images: string[] }
+  
   // Keyboard shortcuts
   keyboardShortcuts: Record<string, () => void>
   
@@ -123,6 +126,9 @@ interface AppState {
   
   // Metrics
   refreshMetrics: () => Promise<void>
+  
+  // Import actions
+  ingestFile: (file: File) => Promise<{ success: boolean; [key: string]: any }>
 }
 
 const API_BASE = '/api'
@@ -142,6 +148,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   syncState: null,
   graphMetrics: null,
   phase8Metrics: null,
+  supportedFormats: { text: ['.txt', '.pdf', '.epub'], manga: ['.cbz', '.zip'], images: ['.png', '.jpg', '.jpeg', '.webp'] },
   keyboardShortcuts: {},
   
   // Initialize
@@ -417,6 +424,39 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     } catch (error) {
       console.error('Failed to refresh metrics:', error)
+    }
+  },
+  
+  // Import actions
+  ingestFile: async (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    // Determine endpoint based on file type
+    const extension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
+    const isText = ['.txt', '.pdf', '.epub'].includes(extension)
+    const isManga = ['.cbz', '.zip'].includes(extension)
+    
+    const endpoint = isText ? 'ingest/text' : isManga ? 'ingest/manga' : 'ingest/text'
+    
+    try {
+      const response = await fetch(`${API_BASE}/${endpoint}`, {
+        method: 'POST',
+        body: formData,
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        // Refresh metrics after successful import
+        get().refreshMetrics()
+        return result
+      } else {
+        const error = await response.text()
+        return { success: false, message: error }
+      }
+    } catch (error) {
+      console.error('Failed to ingest file:', error)
+      return { success: false, message: String(error) }
     }
   },
 }))
