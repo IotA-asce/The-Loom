@@ -7,5 +7,22 @@ Pillow>=11.0.0
 pytest>=8.3.0
 ruff>=0.8.0
 fastapi>=0.109.0
-uvicorn>=0.27.0
+uvicorn[standard]>=0.27.0
 pydantic>=2.5.0
+websockets>=12.0
+
+# LLM Providers (optional - at least one recommended)
+# openai>=1.0.0
+# anthropic>=0.18.0
+google-generativeai>=0.7.0
+
+# Vector Store & Embeddings (optional)
+# chromadb>=0.4.0
+# sentence-transformers>=2.2.0
+
+# Image Generation (optional)
+# diffusers>=0.24.0
+# transformers>=4.36.0
+# accelerate>=0.25.0
+# controlnet-aux>=0.0.7
+# safetensors>=0.4.0

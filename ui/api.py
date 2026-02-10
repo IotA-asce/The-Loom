@@ -20,7 +20,7 @@ from core.frontend_workflow_engine import (
 from core.story_graph_engine import BranchLifecycleManager
 from fastapi import FastAPI, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 # Pydantic models for API
 
@@ -34,9 +34,10 @@ def to_camel_case(snake_str: str) -> str:
 class CamelModel(BaseModel):
     """Base model with camelCase alias generation."""
 
-    class Config:
-        alias_generator = to_camel_case
-        populate_by_name = True
+    model_config = ConfigDict(
+        alias_generator=to_camel_case,
+        populate_by_name=True,
+    )
 
 
 class GraphNodeCreate(CamelModel):
@@ -994,8 +995,12 @@ async def generate_text(request: WriterGenerateRequest) -> dict[str, Any]:
     )
 
     try:
-        # Initialize engine
-        engine = WriterEngine(prompt_registry=PromptRegistry())
+        # Initialize engine with LLM backend
+        llm_backend = get_llm_backend()
+        engine = WriterEngine(
+            prompt_registry=PromptRegistry(),
+            llm_backend=llm_backend,
+        )
         
         # Build tuner settings
         tuner = TunerSettings(
@@ -1034,45 +1039,34 @@ async def generate_text(request: WriterGenerateRequest) -> dict[str, Any]:
         
         # Create writer request
         writer_request = WriterRequest(
+            story_id="default",
             branch_id=request.branch_id,
-            scene_id=request.node_id,
             user_prompt=request.user_prompt,
-            temperature=request.temperature,
-            max_tokens=request.max_tokens,
-            context_assembly=context,
-            style_exemplars=exemplars,
-            voice_cards=(),
-            tuner_settings=tuner,
+            intensity=0.6,
+            tuner=tuner,
+            source_windows=exemplars,
         )
         
-        # Generate (mock for now - would call actual LLM)
+        # Generate using LLM backend
         import hashlib
         import time
         
         job_id = f"writer-{hashlib.sha256(f'{request.node_id}-{time.time()}'.encode()).hexdigest()[:12]}"
         
-        # Simulate generation with prompt
-        generated_text = f"""{prompt_package.layered_prompt[:200]}...
-
-[Generated content based on {len(request.context_chunks)} context chunks and {len(request.style_exemplars)} style exemplars]
-
-The story continues with faithful adherence to the established tone and character voices.
-"""
-        
-        # Check contradictions
-        contradiction_report = check_contradictions(generated_text, {})
-        
-        # Calculate metrics
-        word_count = len(generated_text.split())
-        style_similarity = 0.85  # Mock value
+        # Use the async generate method with LLM backend
+        result = await engine.generate(
+            request=writer_request,
+            retrieval_index=None,
+            memory_model=None,
+        )
         
         return {
             "jobId": job_id,
-            "generatedText": generated_text,
-            "wordCount": word_count,
-            "styleSimilarity": style_similarity,
-            "contradictionRate": contradiction_report.contradiction_rate,
-            "promptVersion": prompt_package.version_id,
+            "generatedText": result.text,
+            "wordCount": len(result.text.split()),
+            "styleSimilarity": result.style_similarity,
+            "contradictionRate": result.contradiction_rate,
+            "promptVersion": result.prompt_version,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}") from e
@@ -1295,6 +1289,183 @@ async def simulate_impact(request: SimulateImpactRequest) -> dict[str, Any]:
     }
 
 
+# ============ Sprint 22: LLM Configuration Endpoints ============
+
+
+class LLMConfigRequest(CamelModel):
+    """Request to configure LLM provider."""
+    provider: str  # openai, anthropic, ollama, mock
+    model: str
+    api_key: str | None = None
+    base_url: str | None = None
+
+
+class LLMConfigResponse(CamelModel):
+    """LLM configuration response."""
+    provider: str
+    model: str
+    available: bool
+    message: str
+
+
+# Global LLM backend instance (initialized on demand)
+_llm_backend = None
+
+
+def get_llm_backend():
+    """Get or create LLM backend instance."""
+    global _llm_backend
+    if _llm_backend is None:
+        from core.llm_backend import LLMBackendFactory
+        try:
+            _llm_backend = LLMBackendFactory.create_from_env()
+        except Exception:
+            # Fall back to mock if no env vars set
+            from core.llm_backend import LLMConfig, LLMProvider, MockLLMBackend
+            _llm_backend = MockLLMBackend(LLMConfig(
+                provider=LLMProvider.MOCK,
+                model="mock"
+            ))
+    return _llm_backend
+
+
+def set_llm_backend(backend):
+    """Set the global LLM backend instance."""
+    global _llm_backend
+    _llm_backend = backend
+
+
+@app.get("/api/llm/providers")
+async def list_llm_providers() -> list[dict[str, Any]]:
+    """List available LLM providers based on environment configuration."""
+    from core.llm_backend import get_available_providers
+    return get_available_providers()
+
+
+@app.post("/api/llm/config", response_model=LLMConfigResponse)
+async def configure_llm(request: LLMConfigRequest) -> dict[str, Any]:
+    """Configure LLM provider and model."""
+    from core.llm_backend import (
+        LLMBackendFactory,
+        LLMConfig,
+        LLMProvider,
+    )
+    
+    try:
+        provider = LLMProvider(request.provider.lower())
+        config = LLMConfig(
+            provider=provider,
+            model=request.model,
+            api_key=request.api_key,
+            base_url=request.base_url,
+        )
+        
+        # Test the configuration by creating backend
+        backend = LLMBackendFactory.create(config)
+        set_llm_backend(backend)
+        
+        return {
+            "provider": request.provider,
+            "model": request.model,
+            "available": True,
+            "message": f"Successfully configured {request.provider} with model {request.model}",
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid provider: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to configure LLM: {e}")
+
+
+@app.get("/api/llm/config")
+async def get_llm_config() -> dict[str, Any]:
+    """Get current LLM configuration."""
+    backend = get_llm_backend()
+    return {
+        "provider": backend.config.provider.value,
+        "model": backend.config.model,
+        "available": True,
+    }
+
+
+@app.post("/api/llm/test")
+async def test_llm_connection() -> dict[str, Any]:
+    """Test LLM connection with a simple prompt."""
+    from core.llm_backend import LLMMessage, LLMRequest
+    
+    backend = get_llm_backend()
+    
+    try:
+        request = LLMRequest(
+            messages=(
+                LLMMessage(role="system", content="You are a helpful assistant."),
+                LLMMessage(role="user", content="Say 'The Loom is ready' and nothing else."),
+            ),
+            temperature=0.0,
+            max_tokens=20,
+        )
+        
+        response = await backend.generate(request)
+        
+        return {
+            "success": True,
+            "response": response.content,
+            "provider": backend.config.provider.value,
+            "model": backend.config.model,
+            "tokens_used": response.total_tokens,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"LLM test failed: {e}")
+
+
+@app.websocket("/api/llm/stream/{client_id}")
+async def llm_stream_websocket(websocket: WebSocket, client_id: str) -> None:
+    """WebSocket endpoint for streaming LLM generation."""
+    await websocket.accept()
+    
+    try:
+        while True:
+            data = await websocket.receive_json()
+            
+            if data.get("action") == "generate":
+                from core.llm_backend import LLMMessage, LLMRequest
+                
+                messages = [
+                    LLMMessage(role=m["role"], content=m["content"])
+                    for m in data.get("messages", [])
+                ]
+                
+                request = LLMRequest(
+                    messages=tuple(messages),
+                    temperature=data.get("temperature", 0.7),
+                    max_tokens=data.get("max_tokens", 2000),
+                    stream=True,
+                )
+                
+                backend = get_llm_backend()
+                
+                async for chunk in backend.generate_stream(request):
+                    await websocket.send_json({
+                        "type": "chunk",
+                        "content": chunk.content,
+                        "is_finished": chunk.is_finished,
+                        "finish_reason": chunk.finish_reason,
+                    })
+                    
+                    if chunk.is_finished:
+                        break
+                        
+            elif data.get("action") == "ping":
+                await websocket.send_json({"type": "pong"})
+                
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+        except:
+            pass
+
+
 # ============ Sprint 11: WebSocket Real-Time Updates ============
 
 
@@ -1458,6 +1629,274 @@ async def generate_panels_async(request: ArtistGenerateRequest) -> dict[str, str
     asyncio.create_task(simulate_generation_progress(job_id, "panels"))
     
     return {"jobId": job_id, "status": "started"}
+
+
+# ============ Sprint 23: Vector Store & Indexing Endpoints ============
+
+
+class IndexBuildRequest(CamelModel):
+    """Request to build or update vector index."""
+    story_id: str = "default"
+    branch_id: str = "main"
+    clear_existing: bool = False
+
+
+class IndexStatsResponse(CamelModel):
+    """Vector index statistics."""
+    document_count: int
+    dimension: int
+    last_updated: str | None
+    index_size_bytes: int | None
+
+
+class SearchRequest(CamelModel):
+    """Vector search request."""
+    query: str
+    branch_id: str = "main"
+    top_k: int = 5
+    use_hybrid: bool = True
+
+
+class SearchResultItem(CamelModel):
+    """Single search result."""
+    id: str
+    text: str
+    score: float
+    source: str
+    branch_id: str
+
+
+@app.post("/api/index/build")
+async def build_index(request: IndexBuildRequest) -> dict[str, Any]:
+    """Build vector index from current story content."""
+    from core.vector_store import get_vector_store, VectorDocument
+    from core.retrieval_engine import NarrativeChunk, ChunkMetadata, index_chunks_to_vector_store
+    
+    try:
+        vector_store = get_vector_store()
+        
+        # Clear existing if requested
+        if request.clear_existing:
+            await vector_store.clear()
+        
+        # TODO: Load actual chunks from story database
+        # For now, create sample chunks
+        sample_chunks = [
+            NarrativeChunk(
+                chunk_id="chunk-001",
+                text="The protagonist stood at the crossroads, the weight of decision pressing upon their shoulders.",
+                level="sentence",
+                token_count=15,
+                metadata=ChunkMetadata(
+                    story_id=request.story_id,
+                    branch_id=request.branch_id,
+                    version_id="v1",
+                    created_at=datetime.now(UTC).isoformat(),
+                    chapter_index=1,
+                    scene_index=1,
+                    sentence_index=1,
+                    level="sentence",
+                ),
+                content_hash="abc123",
+            ),
+            NarrativeChunk(
+                chunk_id="chunk-002",
+                text="Echoes of the past whispered through the corridor, memories threading through present tension.",
+                level="sentence",
+                token_count=14,
+                metadata=ChunkMetadata(
+                    story_id=request.story_id,
+                    branch_id=request.branch_id,
+                    version_id="v1",
+                    created_at=datetime.now(UTC).isoformat(),
+                    chapter_index=1,
+                    scene_index=1,
+                    sentence_index=2,
+                    level="sentence",
+                ),
+                content_hash="def456",
+            ),
+            NarrativeChunk(
+                chunk_id="chunk-003",
+                text="The antagonist's motivations remained clouded, yet their actions spoke of deeper purpose.",
+                level="sentence",
+                token_count=13,
+                metadata=ChunkMetadata(
+                    story_id=request.story_id,
+                    branch_id=request.branch_id,
+                    version_id="v1",
+                    created_at=datetime.now(UTC).isoformat(),
+                    chapter_index=1,
+                    scene_index=2,
+                    sentence_index=1,
+                    level="sentence",
+                ),
+                content_hash="ghi789",
+            ),
+        ]
+        
+        # Index chunks
+        ids = await index_chunks_to_vector_store(sample_chunks, vector_store)
+        
+        stats = await vector_store.get_stats()
+        
+        return {
+            "success": True,
+            "indexed_count": len(ids),
+            "stats": {
+                "document_count": stats.document_count,
+                "dimension": stats.dimension,
+            },
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Index build failed: {e}")
+
+
+@app.get("/api/index/stats", response_model=IndexStatsResponse)
+async def get_index_stats() -> dict[str, Any]:
+    """Get vector index statistics."""
+    from core.vector_store import get_vector_store
+    
+    try:
+        vector_store = get_vector_store()
+        stats = await vector_store.get_stats()
+        
+        return {
+            "document_count": stats.document_count,
+            "dimension": stats.dimension,
+            "last_updated": stats.last_updated,
+            "index_size_bytes": stats.index_size_bytes,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get stats: {e}")
+
+
+@app.post("/api/index/clear")
+async def clear_index() -> dict[str, Any]:
+    """Clear all documents from vector index."""
+    from core.vector_store import get_vector_store
+    
+    try:
+        vector_store = get_vector_store()
+        await vector_store.clear()
+        
+        return {
+            "success": True,
+            "message": "Index cleared successfully",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to clear index: {e}")
+
+
+@app.post("/api/retrieve/vector-search")
+async def vector_search(request: SearchRequest) -> dict[str, Any]:
+    """Search vector index with semantic similarity."""
+    from core.vector_store import get_vector_store
+    from core.retrieval_engine import RetrievalQuery, hybrid_search_with_vector_store
+    
+    try:
+        if request.use_hybrid:
+            # Use hybrid search
+            query = RetrievalQuery(
+                story_id="default",
+                branch_id=request.branch_id,
+                query_text=request.query,
+                top_k=request.top_k,
+            )
+            
+            response = await hybrid_search_with_vector_store(query)
+            
+            results = [
+                {
+                    "id": hit.chunk_id,
+                    "text": hit.text,
+                    "score": hit.score,
+                    "source": f"Chapter {hit.metadata.chapter_index}, Scene {hit.metadata.scene_index}",
+                    "branch_id": hit.metadata.branch_id,
+                    "bm25_score": hit.bm25_score,
+                    "embedding_score": hit.embedding_score,
+                }
+                for hit in response.results
+            ]
+            
+            return {
+                "success": True,
+                "query": request.query,
+                "results": results,
+                "query_time_ms": response.query_time_ms,
+                "method": "hybrid",
+            }
+        else:
+            # Use pure vector search
+            vector_store = get_vector_store()
+            search_results = await vector_store.search(
+                query=request.query,
+                top_k=request.top_k,
+                filters={"branch_id": request.branch_id} if request.branch_id else None,
+            )
+            
+            results = [
+                {
+                    "id": result.document.id,
+                    "text": result.document.text,
+                    "score": result.score,
+                    "source": result.document.metadata.get("source", "unknown"),
+                    "branch_id": result.document.metadata.get("branch_id", "main"),
+                }
+                for result in search_results
+            ]
+            
+            return {
+                "success": True,
+                "query": request.query,
+                "results": results,
+                "method": "vector",
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Search failed: {e}")
+
+
+@app.get("/api/embedding/providers")
+async def list_embedding_providers() -> list[dict[str, Any]]:
+    """List available embedding providers."""
+    providers = []
+    
+    # Check OpenAI
+    if os.environ.get("OPENAI_API_KEY"):
+        providers.append({
+            "id": "openai",
+            "name": "OpenAI",
+            "models": ["text-embedding-3-small", "text-embedding-3-large", "text-embedding-ada-002"],
+            "available": True,
+            "dimensions": [1536, 3072, 1536],
+        })
+    else:
+        providers.append({
+            "id": "openai",
+            "name": "OpenAI",
+            "models": ["text-embedding-3-small", "text-embedding-3-large"],
+            "available": False,
+            "reason": "OPENAI_API_KEY not set",
+        })
+    
+    # HuggingFace (local)
+    providers.append({
+        "id": "huggingface",
+        "name": "HuggingFace (Local)",
+        "models": ["all-MiniLM-L6-v2", "all-mpnet-base-v2"],
+        "available": True,
+        "note": "Requires sentence-transformers package",
+    })
+    
+    # Mock (always available)
+    providers.append({
+        "id": "mock",
+        "name": "Mock (Testing)",
+        "models": ["mock"],
+        "available": True,
+    })
+    
+    return providers
 
 
 # ============ Sprint 13: Character Identity Management ============

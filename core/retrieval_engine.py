@@ -1044,3 +1044,177 @@ class RetrievalIndex:
             if hit.metadata.branch_id not in expected_branches
         )
         return mismatches / len(response.results)
+
+
+# ============ Vector Store Integration for Sprint 23 ============
+
+
+@dataclass(frozen=True)
+class VectorRetrievalResult:
+    """Result from vector-based retrieval."""
+    chunk_id: str
+    text: str
+    score: float
+    metadata: ChunkMetadata
+
+
+async def hybrid_search_with_vector_store(
+    query: RetrievalQuery,
+    vector_store: Any | None = None,
+    index: RetrievalIndex | None = None,
+    vector_weight: float = 0.7,
+    bm25_weight: float = 0.3,
+) -> RetrievalResponse:
+    """Hybrid search combining vector store and BM25.
+    
+    This function integrates the vector store with the existing RetrievalIndex
+    to provide semantic + keyword hybrid search capabilities.
+    """
+    from .vector_store import get_vector_store, SearchResult, VectorDocument
+    from time import perf_counter
+    
+    start_time = perf_counter()
+    
+    # Get vector store
+    if vector_store is None:
+        vector_store = get_vector_store()
+    
+    # Search vector store
+    filters = None
+    if query.branch_id:
+        filters = {"branch_id": query.branch_id}
+    
+    vector_results = await vector_store.search(
+        query=query.query_text,
+        top_k=query.top_k * 2,  # Get more candidates for reranking
+        filters=filters,
+    )
+    
+    # If we have an index, also get BM25 results
+    bm25_results: list[RetrievalHit] = []
+    if index is not None:
+        # Use existing index query but with BM25 only
+        bm25_query = replace(query, retrieval_mode="bm25")
+        bm25_response = index.query(bm25_query)
+        bm25_results = list(bm25_response.results)
+    
+    # Merge results with weighted scoring
+    all_chunk_ids: set[str] = set()
+    vector_scores: dict[str, float] = {}
+    bm25_scores: dict[str, float] = {}
+    
+    for result in vector_results:
+        doc_id = result.document.id
+        all_chunk_ids.add(doc_id)
+        vector_scores[doc_id] = result.score
+    
+    for hit in bm25_results:
+        all_chunk_ids.add(hit.chunk_id)
+        bm25_scores[hit.chunk_id] = hit.bm25_score
+    
+    # Calculate combined scores
+    combined_results: list[tuple[float, str, str, ChunkMetadata | None]] = []
+    
+    for chunk_id in all_chunk_ids:
+        v_score = vector_scores.get(chunk_id, 0.0)
+        b_score = bm25_scores.get(chunk_id, 0.0)
+        combined_score = vector_weight * v_score + bm25_weight * b_score
+        
+        # Get text and metadata
+        text = ""
+        metadata = None
+        
+        # Try to find in vector results
+        for r in vector_results:
+            if r.document.id == chunk_id:
+                text = r.document.text
+                # Reconstruct metadata from document
+                metadata = ChunkMetadata(
+                    story_id=r.document.metadata.get("story_id", query.story_id),
+                    branch_id=r.document.metadata.get("branch_id", query.branch_id),
+                    version_id=r.document.metadata.get("version_id", "unknown"),
+                    created_at=r.document.metadata.get("created_at", _timestamp()),
+                    chapter_index=r.document.metadata.get("chapter_index", 0),
+                    scene_index=r.document.metadata.get("scene_index", 0),
+                    sentence_index=r.document.metadata.get("sentence_index"),
+                    level=r.document.metadata.get("level", "sentence"),
+                )
+                break
+        
+        # Try to find in BM25 results
+        if metadata is None:
+            for hit in bm25_results:
+                if hit.chunk_id == chunk_id:
+                    text = hit.text
+                    metadata = hit.metadata
+                    break
+        
+        combined_results.append((combined_score, chunk_id, text, metadata))
+    
+    # Sort by combined score
+    combined_results.sort(reverse=True)
+    
+    # Build final hits
+    final_hits = []
+    for score, chunk_id, text, metadata in combined_results[:query.top_k]:
+        if metadata is None:
+            continue
+        
+        final_hits.append(
+            RetrievalHit(
+                chunk_id=chunk_id,
+                text=text,
+                score=score,
+                bm25_score=bm25_scores.get(chunk_id, 0.0),
+                embedding_score=vector_scores.get(chunk_id, 0.0),
+                rerank_score=None,
+                metadata=metadata,
+            )
+        )
+    
+    latency_ms = (perf_counter() - start_time) * 1000
+    
+    return RetrievalResponse(
+        results=tuple(final_hits),
+        query_time_ms=latency_ms,
+        cache_hit=False,
+        tokens_used=0,  # Would track actual tokens
+        cost_usd=0.0,
+    )
+
+
+async def index_chunks_to_vector_store(
+    chunks: list[NarrativeChunk],
+    vector_store: Any | None = None,
+) -> list[str]:
+    """Index narrative chunks to vector store for semantic search.
+    
+    This function converts NarrativeChunks to VectorDocuments and adds them
+    to the vector store.
+    """
+    from .vector_store import VectorDocument, get_vector_store
+    
+    if vector_store is None:
+        vector_store = get_vector_store()
+    
+    # Convert to VectorDocuments
+    documents = []
+    for chunk in chunks:
+        doc = VectorDocument(
+            id=chunk.chunk_id,
+            text=chunk.text,
+            metadata={
+                "story_id": chunk.metadata.story_id,
+                "branch_id": chunk.metadata.branch_id,
+                "version_id": chunk.metadata.version_id,
+                "chapter_index": chunk.metadata.chapter_index,
+                "scene_index": chunk.metadata.scene_index,
+                "sentence_index": chunk.metadata.sentence_index,
+                "level": chunk.metadata.level,
+                "source_id": chunk.metadata.source_id,
+            },
+        )
+        documents.append(doc)
+    
+    # Add to vector store
+    return await vector_store.add_documents(documents)

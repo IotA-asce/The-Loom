@@ -8,8 +8,12 @@ import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from statistics import mean
+from typing import TYPE_CHECKING
 
 from .retrieval_engine import HierarchicalMemoryModel, RetrievalIndex, RetrievalQuery
+
+if TYPE_CHECKING:
+    from .llm_backend import LLMBackend, LLMMessage, LLMRequest, LLMResponse, LLMStreamChunk
 
 _WORD_PATTERN = re.compile(r"[A-Za-z0-9']+")
 _SENTENCE_PATTERN = re.compile(r"(?<=[.!?])\s+")
@@ -757,8 +761,24 @@ def _deterministic_seed(
 class WriterEngine:
     """Writer generation engine with context assembly and governed prompting."""
 
-    def __init__(self, prompt_registry: PromptRegistry | None = None) -> None:
+    def __init__(
+        self,
+        prompt_registry: PromptRegistry | None = None,
+        llm_backend: LLMBackend | None = None,
+    ) -> None:
         self._prompt_registry = prompt_registry or PromptRegistry()
+        self._llm_backend = llm_backend
+        self._use_llm = llm_backend is not None
+
+    def set_llm_backend(self, backend: LLMBackend | None) -> None:
+        """Set or update the LLM backend."""
+        self._llm_backend = backend
+        self._use_llm = backend is not None
+
+    @property
+    def has_llm_backend(self) -> bool:
+        """Check if LLM backend is configured."""
+        return self._use_llm and self._llm_backend is not None
 
     @property
     def prompt_registry(self) -> PromptRegistry:
@@ -917,7 +937,101 @@ class WriterEngine:
         )
         return "\n".join(lines)
 
-    def generate(
+    async def _generate_with_llm(
+        self,
+        *,
+        request: WriterRequest,
+        prompt_package: PromptPackage,
+        mapping: TunerMapping,
+    ) -> str:
+        """Generate text using LLM backend."""
+        from .llm_backend import LLMMessage, LLMRequest
+
+        if self._llm_backend is None:
+            raise RuntimeError("LLM backend not configured")
+
+        messages = (
+            LLMMessage(role="system", content=prompt_package.system_prompt),
+            LLMMessage(role="user", content=prompt_package.layered_prompt),
+        )
+
+        llm_request = LLMRequest(
+            messages=messages,
+            temperature=mapping.temperature,
+            max_tokens=2000,
+            stream=False,
+        )
+
+        response = await self._llm_backend.generate(llm_request)
+        return response.content
+
+    async def generate_stream(
+        self,
+        request: WriterRequest,
+        *,
+        retrieval_index: RetrievalIndex | None = None,
+        memory_model: HierarchicalMemoryModel | None = None,
+    ):
+        """Generate branch text with streaming output."""
+        from .llm_backend import LLMMessage, LLMRequest
+
+        context = self.assemble_branch_context(
+            request,
+            retrieval_index=retrieval_index,
+            memory_model=memory_model,
+        )
+        mapping = map_tuner_settings(request.tuner, intensity=request.intensity)
+
+        exemplar_query = f"{request.user_prompt}\n{context.context_text}"
+        exemplars = retrieve_style_exemplars(
+            exemplar_query, request.source_windows, top_k=3
+        )
+
+        prompt_package = build_prompt_package(
+            registry=self._prompt_registry,
+            user_prompt=request.user_prompt,
+            context=context,
+            exemplars=exemplars,
+            strict_layering=request.strict_prompt_layering,
+        )
+
+        if self._use_llm and self._llm_backend is not None:
+            messages = (
+                LLMMessage(role="system", content=prompt_package.system_prompt),
+                LLMMessage(role="user", content=prompt_package.layered_prompt),
+            )
+
+            llm_request = LLMRequest(
+                messages=messages,
+                temperature=mapping.temperature,
+                max_tokens=2000,
+                stream=True,
+            )
+
+            async for chunk in self._llm_backend.generate_stream(llm_request):
+                yield chunk
+        else:
+            # Mock streaming - generate full text then yield word by word
+            import asyncio
+            
+            generated_text = self._compose_text(
+                request=request,
+                context=context,
+                mapping=mapping,
+                exemplars=exemplars,
+                rng=random.Random(42),
+            )
+            
+            words = generated_text.split()
+            for i, word in enumerate(words):
+                yield type('MockChunk', (), {
+                    'content': word + ' ',
+                    'is_finished': i == len(words) - 1,
+                    'finish_reason': 'stop' if i == len(words) - 1 else None
+                })()
+                await asyncio.sleep(0.01)
+
+    async def generate(
         self,
         request: WriterRequest,
         *,
@@ -925,6 +1039,7 @@ class WriterEngine:
         memory_model: HierarchicalMemoryModel | None = None,
     ) -> WriterResult:
         """Generate branch text with style/voice/coherence safeguards."""
+        from .llm_backend import LLMMessage, LLMRequest
 
         context = self.assemble_branch_context(
             request,
@@ -954,13 +1069,21 @@ class WriterEngine:
         )
         rng = random.Random(seed_value)
 
-        generated_text = self._compose_text(
-            request=request,
-            context=context,
-            mapping=mapping,
-            exemplars=exemplars,
-            rng=rng,
-        )
+        # Use LLM backend if available, otherwise fall back to mock generation
+        if self._use_llm and self._llm_backend is not None:
+            generated_text = await self._generate_with_llm(
+                request=request,
+                prompt_package=prompt_package,
+                mapping=mapping,
+            )
+        else:
+            generated_text = self._compose_text(
+                request=request,
+                context=context,
+                mapping=mapping,
+                exemplars=exemplars,
+                rng=rng,
+            )
         generated_text = _enforce_voice_cards(
             generated_text,
             request.voice_cards,
