@@ -16,7 +16,7 @@ from core.frontend_workflow_engine import (
     evaluate_phase8_done_criteria,
 )
 from core.story_graph_engine import BranchLifecycleManager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -534,7 +534,9 @@ async def run_accessibility_audit(
 
 
 @app.get("/api/phase8/metrics")
-async def get_phase8_metrics(scene_id: str) -> Phase8MetricsResponse:
+async def get_phase8_metrics(
+    scene_id: str = Query(..., alias="sceneId"),
+) -> Phase8MetricsResponse:
     """Get complete Phase 8 done criteria metrics."""
     if (
         _STATE.graph_workspace is None
