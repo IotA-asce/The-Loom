@@ -376,9 +376,9 @@
 | Frontend - Consequence Sim | 10 | E.2, E.3 missing |
 | Frontend - Profile & Analysis | 15 | F.2, F.3 missing |
 | Frontend - Operations | 20 | G.1-G.3 missing |
-| Frontend - Graph Features | 28 | H.1-H.4 missing |
+| Frontend - Graph Features | 12 | H.2, H.4 missing |
 | Frontend - UX Polish | 6 | Mobile/offline |
-| **TOTAL** | **134** | **~13% of total 224 items** |
+| **TOTAL** | **118** | **~11% of total 224 items** |
 
 ### Completion Status
 
@@ -390,7 +390,9 @@
 | Phase 5 (Text Gen) | ~35 | 35 | 0 | 100% ✅ |
 | Phase 6 (Image Gen) | ~40 | 28 | 12 | 70% |
 | Phase 7 (Orchestration) | ~25 | 25 | 0 | 100% ✅ |
-| Phase 8 (Frontend UX) | ~50 | 48 | 2 | 96% |
+| Phase 8 (Frontend UX) | ~50 | 50 | 0 | 100% ✅ |
+| Sprints 11-14 | 40 | 40 | 0 | 100% ✅ |
+| Sprints 15-16 | 20 | 20 | 0 | 100% ✅ |
 | Phase 9 (Operations) | ~20 | 20 | 0 | 100% ✅ |
 | Phase 10 (Release) | ~15 | 15 | 0 | 100% ✅ |
 | **Frontend Sprints 1-10** | **224** | **~190** | **~34** | **~85%** |
@@ -402,22 +404,20 @@
 ### Immediate (High Impact, Low Effort)
 1. **Wire up WebSocket progress** to existing generation panels
 2. **Complete mobile panel toggles** (JS for CSS-ready collapsible panels)
-3. **Add node search and jump** (H.2.2) - simple but high UX value
 
 ### Short Term (1-2 Sprints)
-4. **Character Identity Management** (C.4) - Required for character consistency
-5. **Quality Control Dashboard** (C.5) - Required for image generation workflow
-6. **System Dashboard** (G.1) - For operational visibility
+3. **System Dashboard** (G.1) - For operational visibility
+4. **Budget Controls** (G.2) - Usage tracking and warnings
 
 ### Medium Term (3-4 Sprints)
-7. **Edge Management** (H.1) - Core graph editing feature
-8. **Graph Layout Algorithms** (H.3) - Improves graph usability
-9. **Minimap & Bookmarks** (H.2) - Navigation improvements
+5. **Maturity Rating Display** (F.2) - Content analysis
+6. **Consequence Recommendations** (E.2) - AI-assisted suggestions
+7. **Collaboration Features** (H.4) - Comments on nodes
 
 ### Long Term / Deferred
-10. **Collaboration Features** (H.4) - Multi-user support
-11. **Recommendation Panel** (E.2) - AI-assisted branch suggestions
-12. **Profile Editor** (F.3) - Manual profile corrections
+8. **Profile Editor** (F.3) - Manual profile corrections
+9. **Offline Support** (I.3.3) - Queue and sync
+10. **Multi-user Collaboration** (H.4.1) - Real-time cursors
 
 ---
 
@@ -590,53 +590,80 @@ The following sprints are designed to be completed sequentially, with each sprin
 
 ---
 
-### Sprint 15: Graph Edge Management & Layouts (2 weeks)
+### Sprint 15: Graph Edge Management & Layouts (2 weeks) ✅ COMPLETE
 **Theme:** Enhanced graph editing capabilities
 
 **Goal:** Enable visual edge creation and automatic graph layouts for better story visualization.
 
-| Item | Description | Effort |
-|------|-------------|--------|
-| H.1.1.1 | Drag from node to node | 2d |
-| H.1.1.2 | Connection preview line | 1d |
-| H.1.1.3 | Snap to node highlight | 1d |
-| H.1.2.1 | Edge type selector | 1d |
-| H.1.2.2 | Edge label input | 0.5d |
-| H.1.2.3 | Line style selector | 0.5d |
-| H.3.1.1 | Hierarchical layout algorithm | 2d |
-| H.3.1.2 | Force-directed layout | 2d |
-| H.3.1.3 | Timeline layout | 1d |
-| H.3.2.1 | Branch clustering | 2d |
-| H.3.3.1 | Layout selector dropdown | 0.5d |
-| H.3.3.2 | Animate transitions | 1d |
+| Item | Description | Effort | Status |
+|------|-------------|--------|--------|
+| H.1.1.1 | Drag from node to node | 2d | ✅ |
+| H.1.1.2 | Connection preview line | 1d | ✅ |
+| H.1.1.3 | Snap to node highlight | 1d | ✅ |
+| H.1.2.1 | Edge type selector | 1d | ✅ |
+| H.1.2.2 | Edge label input | 0.5d | ✅ |
+| H.1.2.3 | Line style selector | 0.5d | ✅ |
+| H.3.1.1 | Hierarchical layout algorithm | 2d | ✅ |
+| H.3.1.2 | Force-directed layout | 2d | ✅ |
+| H.3.1.3 | Timeline layout | 1d | ✅ |
+| H.3.2.1 | Branch clustering | 2d | ✅ |
+| H.3.3.1 | Layout selector dropdown | 0.5d | ✅ |
+| H.3.3.2 | Animate transitions | 1d | ✅ |
 
 **Sprint 15 Done Criteria:**
-- [ ] Users can create edges by dragging
-- [ ] Multiple layout algorithms available
-- [ ] Branch clustering works
+- [x] Users can create edges by dragging
+- [x] Multiple layout algorithms available
+- [x] Branch clustering works
+
+**Implemented:**
+- `EdgeRenderer` component with SVG-based edge rendering
+- Visual edge creation: Click "Connect" button, then drag from source to target node
+- Connection preview line with animated dash pattern
+- Snap-to-node highlighting when hovering over valid targets
+- `EdgeConfigPanel` with edge type selector (causal/temporal/parallel)
+- Line style selector (solid/dashed/dotted)
+- Color picker for edge customization
+- `LayoutControls` with 5 layout algorithms: Manual, Hierarchical, Force-Directed, Circular, Timeline
+- Branch clustering option (groups nodes by branch)
+- Animate transitions toggle for smooth layout changes
+- Layout algorithms implemented: Hierarchical (top-down tree), Force-directed (physics-based), Circular (radial), Timeline (left-to-right)
 
 ---
 
-### Sprint 16: Minimap, Bookmarks & Advanced Navigation (1 week)
+### Sprint 16: Minimap, Bookmarks & Advanced Navigation (1 week) ✅ COMPLETE
 **Theme:** Navigation improvements for large graphs
 
 **Goal:** Add minimap for overview navigation and bookmark system for quick access to important nodes.
 
-| Item | Description | Effort |
-|------|-------------|--------|
-| H.2.1.1 | Minimap overview component | 2d |
-| H.2.1.2 | Viewport rectangle on minimap | 1d |
-| H.2.1.3 | Click to jump on minimap | 1d |
-| H.2.3.1 | Bookmark current node | 1d |
-| H.2.3.2 | Bookmarks list dropdown | 1d |
-| H.2.3.3 | Click bookmark to navigate | 0.5d |
-| H.2.4.3 | Clear history button | 0.5d |
-| GC.2.2 | Document graph navigation patterns | 0.5d |
+| Item | Description | Effort | Status |
+|------|-------------|--------|--------|
+| H.2.1.1 | Minimap overview component | 2d | ✅ |
+| H.2.1.2 | Viewport rectangle on minimap | 1d | ✅ |
+| H.2.1.3 | Click to jump on minimap | 1d | ✅ |
+| H.2.3.1 | Bookmark current node | 1d | ✅ |
+| H.2.3.2 | Bookmarks list dropdown | 1d | ✅ |
+| H.2.3.3 | Click bookmark to navigate | 0.5d | ✅ |
+| H.2.4.3 | Clear history button | 0.5d | ✅ |
+| GC.2.2 | Document graph navigation patterns | 0.5d | ✅ |
 
 **Sprint 16 Done Criteria:**
-- [ ] Minimap shows full graph with viewport
-- [ ] Users can bookmark and navigate to nodes
-- [ ] History can be cleared
+- [x] Minimap shows full graph with viewport
+- [x] Users can bookmark and navigate to nodes
+- [x] History can be cleared
+
+**Implemented:**
+- `Minimap` component with canvas-based rendering
+- Shows all nodes as colored dots
+- Viewport rectangle overlay showing current view position
+- Click or drag on minimap to jump to location
+- `BookmarkDropdown` component integrated in header
+- Add bookmarks for any selected node
+- Color-coded bookmarks (8 colors available)
+- Persisted to localStorage
+- Bookmark list with quick navigation
+- Clear all bookmarks option
+- Node bookmark indicator (colored dot on nodes)
+- Clear history button in Recent Nodes section (already implemented in Sprint 12)
 
 ---
 
@@ -772,15 +799,14 @@ The following sprints are designed to be completed sequentially, with each sprin
 | 12 | Mobile Polish & Navigation | 1 week | Week 3 | ✅ Complete |
 | 13 | Character Identity | 2 weeks | Week 5 | ✅ Complete |
 | 14 | Quality Control | 2 weeks | Week 7 | ✅ Complete |
-| 14 | Quality Control | 2 weeks | Week 7 |
-| 15 | Graph Edge Management | 2 weeks | Week 9 |
-| 16 | Minimap & Bookmarks | 1 week | Week 10 |
-| 17 | Operations Dashboard | 2 weeks | Week 12 |
-| 18 | Maturity Rating | 1 week | Week 13 |
-| 19 | Consequence Recommendations | 1 week | Week 14 |
-| 20 | Profile Editor & Comments | 2 weeks | Week 16 |
-| 21 | Offline Support & Polish | 1 week | Week 17 |
-| **TOTAL** | | **17 weeks** | **~4 months** |
+| 15 | Graph Edge Management | 2 weeks | Week 9 | ✅ Complete |
+| 16 | Minimap & Bookmarks | 1 week | Week 10 | ✅ Complete |
+| 17 | Operations Dashboard | 2 weeks | Week 12 | Pending |
+| 18 | Maturity Rating | 1 week | Week 13 | Pending |
+| 19 | Consequence Recommendations | 1 week | Week 14 | Pending |
+| 20 | Profile Editor & Comments | 2 weeks | Week 16 | Pending |
+| 21 | Offline Support & Polish | 1 week | Week 17 | Pending |
+| **TOTAL** | | **17 weeks** | **~4 months** | **65% Complete** |
 
 ---
 

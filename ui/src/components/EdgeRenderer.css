@@ -1,0 +1,255 @@
+/* Edge Layer */
+.edge-layer {
+  overflow: visible;
+}
+
+/* Edge creation button */
+.edge-creation-button {
+  position: absolute;
+  bottom: 80px;
+  right: 20px;
+  z-index: 100;
+  padding: 8px 16px;
+  background: var(--accent-primary, #4a9eff);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.edge-creation-button:hover {
+  background: var(--accent-primary-hover, #3a8eef);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.edge-creation-button.cancel {
+  background: #ef4444;
+}
+
+.edge-creation-button.cancel:hover {
+  background: #dc2626;
+}
+
+/* Graph edges */
+.graph-edge {
+  cursor: pointer;
+}
+
+.edge-line {
+  transition: stroke-width 0.2s ease, stroke 0.2s ease;
+}
+
+.graph-edge:hover .edge-line {
+  stroke-width: 3;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+.edge-label {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+.edge-hit-area {
+  cursor: pointer;
+}
+
+/* Edge preview */
+.edge-preview path {
+  animation: dash 1s linear infinite;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+.snap-indicator {
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+/* Edge Configuration Panel */
+.edge-config-panel {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: var(--bg-secondary, #2a2a2a);
+  border: 1px solid var(--border-color, #444);
+  border-radius: 8px;
+  padding: 16px;
+  width: 240px;
+  z-index: 100;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.edge-config-panel h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+}
+
+.edge-config-section {
+  margin-bottom: 16px;
+}
+
+.edge-config-section:last-child {
+  margin-bottom: 0;
+}
+
+.edge-config-section label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary, #aaa);
+  margin-bottom: 6px;
+}
+
+.edge-type-selector {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.edge-type-btn {
+  padding: 6px 10px;
+  font-size: 12px;
+  border: 1px solid var(--border-color, #444);
+  background: var(--bg-tertiary, #333);
+  color: var(--text-primary, #fff);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.edge-type-btn:hover {
+  background: var(--bg-hover, #3a3a3a);
+}
+
+.edge-type-btn.active {
+  border-color: currentColor;
+  background: color-mix(in srgb, currentColor 20%, transparent);
+}
+
+.edge-type-btn[data-type="causal"] {
+  color: #4a9eff;
+}
+
+.edge-type-btn[data-type="temporal"] {
+  color: #4caf50;
+}
+
+.edge-type-btn[data-type="parallel"] {
+  color: #ff9800;
+}
+
+.edge-label-input {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid var(--border-color, #444);
+  background: var(--bg-tertiary, #333);
+  color: var(--text-primary, #fff);
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.edge-label-input:focus {
+  outline: none;
+  border-color: var(--accent-primary, #4a9eff);
+}
+
+.edge-style-selector {
+  display: flex;
+  gap: 8px;
+}
+
+.edge-style-btn {
+  flex: 1;
+  padding: 8px;
+  font-size: 11px;
+  border: 1px solid var(--border-color, #444);
+  background: var(--bg-tertiary, #333);
+  color: var(--text-primary, #fff);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.edge-style-btn:hover {
+  background: var(--bg-hover, #3a3a3a);
+}
+
+.edge-style-btn.active {
+  border-color: var(--accent-primary, #4a9eff);
+  background: color-mix(in srgb, var(--accent-primary, #4a9eff) 20%, transparent);
+}
+
+.edge-style-preview {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: currentColor;
+  margin-bottom: 4px;
+}
+
+.edge-style-preview.dashed {
+  background: repeating-linear-gradient(
+    to right,
+    currentColor,
+    currentColor 6px,
+    transparent 6px,
+    transparent 10px
+  );
+}
+
+.edge-style-preview.dotted {
+  background: repeating-linear-gradient(
+    to right,
+    currentColor,
+    currentColor 2px,
+    transparent 2px,
+    transparent 5px
+  );
+}
+
+.edge-color-picker {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.edge-color-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.edge-color-btn:hover {
+  transform: scale(1.1);
+}
+
+.edge-color-btn.active {
+  border-color: var(--text-primary, #fff);
+  box-shadow: 0 0 0 2px var(--bg-secondary, #2a2a2a), 0 0 0 4px currentColor;
+}

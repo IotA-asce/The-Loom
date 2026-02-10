@@ -1,6 +1,12 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { useAppStore, type NodeType, type GraphNode } from '../store'
+import { useEdgeStore } from '../stores/edgeStore'
+import { useBookmarkStore } from '../stores/bookmarkStore'
 import { RichTextEditor } from './RichTextEditor'
+import { EdgeRenderer } from './EdgeRenderer'
+import { EdgeConfigPanel } from './EdgeConfigPanel'
+import { LayoutControls } from './LayoutControls'
+import { Minimap } from './Minimap'
 
 import './GraphCanvas.css'
 
@@ -25,6 +31,7 @@ export function GraphCanvas() {
     editingNodeId,
     showNodePreview,
     zoom,
+    viewport,
     setZoom,
     setViewport,
     selectNode,
@@ -271,11 +278,15 @@ export function GraphCanvas() {
     return () => window.removeEventListener('click', handleClick)
   }, [])
 
+  // Get bookmark info
+  const { getBookmarkForNode } = useBookmarkStore()
+
   // Render node based on type
   const renderNode = (node: GraphNode) => {
     const style = NODE_TYPE_STYLES[node.type] || NODE_TYPE_STYLES.scene
     const isSelected = selectedNodeId === node.id
     const isEditing = editingNodeId === node.id
+    const bookmark = getBookmarkForNode(node.id)
     
     const nodeStyle: React.CSSProperties = {
       left: node.x,
@@ -287,7 +298,7 @@ export function GraphCanvas() {
     return (
       <div
         key={node.id}
-        className={`graph-node ${node.type} ${isSelected ? 'selected' : ''} ${isEditing ? 'editing' : ''} ${isTouchDragging && touchNodeId === node.id ? 'touch-dragging' : ''}`}
+        className={`graph-node ${node.type} ${isSelected ? 'selected' : ''} ${isEditing ? 'editing' : ''} ${isTouchDragging && touchNodeId === node.id ? 'touch-dragging' : ''} ${bookmark ? 'bookmarked' : ''}`}
         style={nodeStyle}
         onClick={(e) => { e.stopPropagation(); selectNode(node.id) }}
         onDoubleClick={(e) => handleDoubleClick(e, node.id)}
@@ -307,6 +318,15 @@ export function GraphCanvas() {
           }
         }}
       >
+        {/* Bookmark indicator */}
+        {bookmark && (
+          <span 
+            className="node-bookmark-indicator"
+            style={{ backgroundColor: bookmark.color }}
+            title={bookmark.label}
+          />
+        )}
+        
         <span className="node-icon">{style.icon}</span>
         <span className="node-label">{node.label}</span>
         {node.content.wordCount > 0 && (
@@ -334,6 +354,9 @@ export function GraphCanvas() {
       </div>
     )
   }
+
+  // Get edge store state for edge rendering
+  const { edgeCreation } = useEdgeStore()
 
   return (
     <>
@@ -379,6 +402,22 @@ export function GraphCanvas() {
             nodes.map(renderNode)
           )}
         </div>
+        
+        {/* Edge Renderer */}
+        <EdgeRenderer 
+          width={viewport.width} 
+          height={viewport.height} 
+          zoom={zoom} 
+        />
+        
+        {/* Layout Controls */}
+        <LayoutControls />
+        
+        {/* Edge Config Panel */}
+        <EdgeConfigPanel />
+        
+        {/* Minimap */}
+        <Minimap />
         
         {/* Zoom controls */}
         <div className="graph-controls" role="group" aria-label="Zoom controls">
@@ -433,6 +472,13 @@ export function GraphCanvas() {
           <span>Ctrl+N New</span>
           <span>Ctrl+? Help</span>
         </div>
+        
+        {/* Edge creation hint */}
+        {edgeCreation.isCreating && (
+          <div className="edge-creation-hint">
+            Drag to connect nodes • Esc to cancel
+          </div>
+        )}
       </div>
 
       {/* Node content preview popup */}

@@ -24,6 +24,7 @@ import type { Template } from './components/TemplateGallery'
 import { NodeSearch } from './components/NodeSearch'
 import { CharacterGallery } from './components/CharacterGallery'
 import { QCDashboard } from './components/QCDashboard'
+import { BookmarkDropdown } from './components/BookmarkDropdown'
 import './App.css'
 
 // Tutorial steps configuration
@@ -493,6 +494,7 @@ function App() {
           >
             → Fwd
           </button>
+          <BookmarkDropdown />
           <button 
             className="nav-button" 
             onClick={() => setShowTemplates(true)}
