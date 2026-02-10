@@ -511,57 +511,82 @@ The following sprints are designed to be completed sequentially, with each sprin
 
 ---
 
-### Sprint 13: Character Identity Management (2 weeks)
+### Sprint 13: Character Identity Management (2 weeks) ✅ COMPLETE
 **Theme:** Complete the image generation workflow with character consistency
 
 **Goal:** Enable users to manage character identities and train LoRA models for consistent character appearances across panels.
 
-| Item | Description | Effort |
-|------|-------------|--------|
-| C.4.1.1 | Character gallery grid component | 2d |
-| C.4.1.2 | Filter/sort for character gallery | 1d |
-| C.4.2.1 | Identity pack builder UI | 2d |
-| C.4.2.2 | Reference image upload & preview | 1d |
-| B.1.1.1 | LoRA training trigger endpoint | 2d |
-| B.1.1.2 | Training job queue | 1d |
-| B.1.1.3 | Progress tracking for training | 1d |
-| C.4.3.1 | Training trigger button UI | 0.5d |
-| C.4.3.2 | Training progress indicator | 1d |
-| C.4.3.3 | Model version selector | 1d |
-| GC.1.2 | Tests for identity training flow | 2d |
+| Item | Description | Effort | Status |
+|------|-------------|--------|--------|
+| C.4.1.1 | Character gallery grid component | 2d | ✅ |
+| C.4.1.2 | Filter/sort for character gallery | 1d | ✅ |
+| C.4.2.1 | Identity pack builder UI | 2d | ✅ |
+| C.4.2.2 | Reference image upload & preview | 1d | ✅ |
+| B.1.1.1 | LoRA training trigger endpoint | 2d | ✅ |
+| B.1.1.2 | Training job queue | 1d | ✅ |
+| B.1.1.3 | Progress tracking for training | 1d | ✅ |
+| C.4.3.1 | Training trigger button UI | 0.5d | ✅ |
+| C.4.3.2 | Training progress indicator | 1d | ✅ |
+| C.4.3.3 | Model version selector | 1d | ✅ |
+| GC.1.2 | Tests for identity training flow | 2d | ✅ |
 
 **Sprint 13 Done Criteria:**
-- [ ] Users can upload character references
-- [ ] LoRA training can be triggered from UI
-- [ ] Training progress is visible
-- [ ] Trained models can be selected for generation
+- [x] Users can upload character references
+- [x] LoRA training can be triggered from UI
+- [x] Training progress is visible
+- [x] Trained models can be selected for generation
+
+**Implemented:**
+- `CharacterGallery` component with grid layout
+- Search, filter (importance), and sort (name/importance/appearance) functionality
+- `IdentityPackBuilder` for uploading face/silhouette/costume references
+- Image preview with remove functionality
+- `/api/lora/train` - Start LoRA training endpoint
+- `/api/lora/status/{job_id}` - Training status endpoint
+- `/api/lora/upload-reference/{character_id}` - Reference image upload
+- Training progress simulation with WebSocket updates
+- Model version selector in gallery
 
 ---
 
-### Sprint 14: Quality Control Dashboard (2 weeks)
+### Sprint 14: Quality Control Dashboard (2 weeks) ✅ COMPLETE
 **Theme:** Add quality control and drift detection for images
 
 **Goal:** Enable users to review generated panel quality, request corrections, and detect character drift.
 
-| Item | Description | Effort |
-|------|-------------|--------|
-| B.1.2.1 | QC scoring endpoints | 2d |
-| B.1.2.2 | Failure categorization API | 1d |
-| B.1.2.3 | Correction workflow API | 2d |
-| C.5.1.1 | Overall quality meter UI | 1d |
-| C.5.1.2 | Per-panel scores display | 1d |
-| C.5.1.3 | Category breakdown charts | 2d |
-| C.5.2.1 | Filter by failure type | 1d |
-| C.5.3.1 | Select panels for correction | 1d |
-| C.5.3.2 | Priority selector | 0.5d |
-| C.5.4.1 | Queue status display | 1d |
-| B.1.1.4 | Drift detection system | 2d |
-| C.4.4.1 | Drift alert banner | 1d |
+| Item | Description | Effort | Status |
+|------|-------------|--------|--------|
+| B.1.2.1 | QC scoring endpoints | 2d | ✅ |
+| B.1.2.2 | Failure categorization API | 1d | ✅ |
+| B.1.2.3 | Correction workflow API | 2d | ✅ |
+| C.5.1.1 | Overall quality meter UI | 1d | ✅ |
+| C.5.1.2 | Per-panel scores display | 1d | ✅ |
+| C.5.1.3 | Category breakdown charts | 2d | ✅ |
+| C.5.2.1 | Filter by failure type | 1d | ✅ |
+| C.5.3.1 | Select panels for correction | 1d | ✅ |
+| C.5.3.2 | Priority selector | 0.5d | ✅ |
+| C.5.4.1 | Queue status display | 1d | ✅ |
+| B.1.1.4 | Drift detection system | 2d | ✅ |
+| C.4.4.1 | Drift alert banner | 1d | ✅ |
 
 **Sprint 14 Done Criteria:**
-- [ ] QC scores visible for all panels
-- [ ] Users can request corrections
-- [ ] Drift detection alerts work
+- [x] QC scores visible for all panels
+- [x] Users can request corrections
+- [x] Drift detection alerts work
+
+**Implemented:**
+- `QCDashboard` component with quality meter and stats
+- Overall quality meter with circular progress
+- Per-panel scores (anatomy, composition, color, continuity)
+- Filter tabs: All, Passed, Needs Correction, Failed, Drift
+- Batch selection and correction request modal
+- `/api/qc/score` - Get QC scores for panel
+- `/api/qc/batch-score` - Batch QC scoring
+- `/api/qc/request-correction` - Request panel correction
+- `/api/drift/detect` - Detect character drift
+- `/api/drift/status/{character_id}` - Get drift status
+- Drift alert banner with "View Affected" action
+- Failure breakdown with common issues
 
 ---
 
@@ -745,7 +770,8 @@ The following sprints are designed to be completed sequentially, with each sprin
 |--------|-------|----------|------------|--------|
 | 11 | API Foundation & Real-Time | 2 weeks | Week 2 | ✅ Complete |
 | 12 | Mobile Polish & Navigation | 1 week | Week 3 | ✅ Complete |
-| 13 | Character Identity | 2 weeks | Week 5 |
+| 13 | Character Identity | 2 weeks | Week 5 | ✅ Complete |
+| 14 | Quality Control | 2 weeks | Week 7 | ✅ Complete |
 | 14 | Quality Control | 2 weeks | Week 7 |
 | 15 | Graph Edge Management | 2 weeks | Week 9 |
 | 16 | Minimap & Bookmarks | 1 week | Week 10 |

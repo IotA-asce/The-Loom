@@ -1460,6 +1460,319 @@ async def generate_panels_async(request: ArtistGenerateRequest) -> dict[str, str
     return {"jobId": job_id, "status": "started"}
 
 
+# ============ Sprint 13: Character Identity Management ============
+
+
+class LoRATrainRequest(CamelModel):
+    character_id: str
+    character_name: str
+    base_model_id: str = "mock-sd-controlnet-v1"
+    trained_steps: int = 120
+
+
+class LoRATrainResponse(CamelModel):
+    job_id: str
+    adapter_id: str
+    status: str
+    estimated_time: int
+
+
+class LoRAStatusResponse(CamelModel):
+    job_id: str
+    adapter_id: str
+    status: str  # pending, training, completed, failed
+    progress: float
+    current_step: str
+    version: int
+
+
+@app.post("/api/lora/train", response_model=LoRATrainResponse)
+async def start_lora_training(request: LoRATrainRequest) -> dict[str, Any]:
+    """Start LoRA training for a character identity."""
+    from core.image_generation_engine import (
+        CharacterIdentityPack,
+        LoRAAdapterManager,
+        build_character_identity_pack,
+    )
+    
+    import hashlib
+    import time
+    
+    job_id = f"lora-{hashlib.sha256(f'{request.character_id}-{time.time()}'.encode()).hexdigest()[:12]}"
+    adapter_id = f"lora:{request.character_id}:v001"
+    
+    # Simulate training start
+    asyncio.create_task(simulate_lora_training(job_id, request.character_id))
+    
+    return {
+        "jobId": job_id,
+        "adapterId": adapter_id,
+        "status": "started",
+        "estimatedTime": 300,  # 5 minutes estimated
+    }
+
+
+async def simulate_lora_training(job_id: str, character_id: str) -> None:
+    """Simulate LoRA training progress."""
+    steps = [
+        ("preprocessing", "Preprocessing reference images...", 10),
+        ("face_extraction", "Extracting facial features...", 25),
+        ("feature_learning", "Learning character features...", 50),
+        ("optimization", "Optimizing model weights...", 80),
+        ("finalizing", "Finalizing adapter...", 95),
+    ]
+    
+    for step_name, step_label, progress in steps:
+        await asyncio.sleep(1)  # Training takes longer
+        await _connection_manager.send_progress(job_id, {
+            "step": step_name,
+            "label": step_label,
+            "progress": progress,
+            "type": "lora_training",
+        })
+    
+    # Send completion
+    await _connection_manager.send_job_complete(job_id, {
+        "status": "completed",
+        "adapterId": f"lora:{character_id}:v001",
+        "message": "LoRA training complete",
+    })
+
+
+@app.get("/api/lora/status/{job_id}", response_model=LoRAStatusResponse)
+async def get_lora_training_status(job_id: str) -> dict[str, Any]:
+    """Get the status of a LoRA training job."""
+    # Mock status - in production would check actual training job
+    return {
+        "jobId": job_id,
+        "adapterId": f"lora:char:{job_id[-6:]}",
+        "status": "training",
+        "progress": 0.65,
+        "currentStep": "feature_learning",
+        "version": 1,
+    }
+
+
+@app.get("/api/lora/adapters/{character_id}")
+async def list_character_adapters(character_id: str) -> dict[str, Any]:
+    """List all LoRA adapters for a character."""
+    return {
+        "characterId": character_id,
+        "adapters": [
+            {
+                "adapterId": f"lora:{character_id}:v001",
+                "version": 1,
+                "status": "ready",
+                "createdAt": "2026-02-10T10:00:00Z",
+                "trainedSteps": 120,
+            },
+        ],
+    }
+
+
+@app.post("/api/lora/upload-reference/{character_id}")
+async def upload_reference_image(
+    character_id: str,
+    image: UploadFile,
+    reference_type: str = Query(..., description="Type: face, silhouette, or costume"),
+) -> dict[str, Any]:
+    """Upload a reference image for character identity training."""
+    # In production, would save and process the image
+    return {
+        "success": True,
+        "characterId": character_id,
+        "referenceType": reference_type,
+        "filename": image.filename,
+        "message": f"{reference_type} reference uploaded successfully",
+    }
+
+
+# ============ Sprint 14: Quality Control & Drift Detection ============
+
+
+class QCScoreRequest(CamelModel):
+    panel_id: str
+    image_data: str | None = None  # base64 encoded or URL
+
+
+class QCScoreResponse(CamelModel):
+    panel_id: str
+    overall_score: float
+    anatomy_score: float
+    composition_score: float
+    color_score: float
+    continuity_score: float
+    issues: list[str]
+    recommendations: list[str]
+
+
+@app.post("/api/qc/score", response_model=QCScoreResponse)
+async def get_panel_qc_score(request: QCScoreRequest) -> dict[str, Any]:
+    """Get quality control scores for a panel."""
+    # Mock QC scoring - in production would run actual QC analysis
+    import random
+    
+    scores = {
+        "anatomy": random.uniform(0.7, 0.98),
+        "composition": random.uniform(0.75, 0.95),
+        "color": random.uniform(0.8, 0.97),
+        "continuity": random.uniform(0.7, 0.96),
+    }
+    
+    overall = sum(scores.values()) / len(scores)
+    
+    issues = []
+    if scores["anatomy"] < 0.8:
+        issues.append("anatomy_issue")
+    if scores["color"] < 0.8:
+        issues.append("color_inconsistency")
+    if scores["composition"] < 0.75:
+        issues.append("composition_problem")
+    
+    recommendations = []
+    if "anatomy_issue" in issues:
+        recommendations.append("Review character proportions and pose")
+    if "color_inconsistency" in issues:
+        recommendations.append("Check color palette alignment with scene")
+    
+    return {
+        "panelId": request.panel_id,
+        "overallScore": overall,
+        "anatomyScore": scores["anatomy"],
+        "compositionScore": scores["composition"],
+        "colorScore": scores["color"],
+        "continuityScore": scores["continuity"],
+        "issues": issues,
+        "recommendations": recommendations,
+    }
+
+
+@app.get("/api/qc/batch-score")
+async def get_batch_qc_scores(panel_ids: list[str] = Query(...)) -> dict[str, Any]:
+    """Get QC scores for multiple panels."""
+    results = []
+    for panel_id in panel_ids:
+        # Generate mock scores
+        import random
+        results.append({
+            "panelId": panel_id,
+            "overallScore": random.uniform(0.7, 0.95),
+            "status": "passed" if random.random() > 0.3 else "needs_review",
+        })
+    
+    return {
+        "results": results,
+        "total": len(results),
+        "passed": sum(1 for r in results if r["status"] == "passed"),
+    }
+
+
+class DriftDetectionRequest(CamelModel):
+    character_id: str
+    panel_ids: list[str]
+
+
+class DriftDetectionResponse(CamelModel):
+    character_id: str
+    drift_detected: bool
+    drift_score: float
+    affected_panels: list[dict[str, Any]]
+    trigger_retraining: bool
+    reasons: list[str]
+
+
+@app.post("/api/drift/detect", response_model=DriftDetectionResponse)
+async def detect_character_drift(request: DriftDetectionRequest) -> dict[str, Any]:
+    """Detect identity drift for a character across panels."""
+    from core.image_generation_engine import (
+        CharacterIdentityPack,
+        LoRAAdapterManager,
+    )
+    
+    import random
+    
+    # Mock drift detection
+    drift_score = random.uniform(0, 0.4)
+    drift_detected = drift_score > 0.25
+    
+    affected_panels = []
+    if drift_detected:
+        # Mark some panels as affected
+        for panel_id in request.panel_ids[:3]:
+            affected_panels.append({
+                "panelId": panel_id,
+                "identityScore": random.uniform(0.5, 0.7),
+                "driftType": "facial_features",
+            })
+    
+    reasons = []
+    if drift_detected:
+        reasons.append("Facial features inconsistent with reference")
+        if drift_score > 0.35:
+            reasons.append("Costume details deviating from character design")
+    
+    return {
+        "characterId": request.character_id,
+        "driftDetected": drift_detected,
+        "driftScore": drift_score,
+        "affectedPanels": affected_panels,
+        "triggerRetraining": drift_detected and drift_score > 0.3,
+        "reasons": reasons,
+    }
+
+
+@app.get("/api/drift/status/{character_id}")
+async def get_drift_status(character_id: str) -> dict[str, Any]:
+    """Get current drift status for a character."""
+    import random
+    
+    drift_score = random.uniform(0, 0.3)
+    
+    return {
+        "characterId": character_id,
+        "driftScore": drift_score,
+        "status": "critical" if drift_score > 0.3 else "warning" if drift_score > 0.2 else "good",
+        "lastChecked": "2026-02-10T10:00:00Z",
+        "panelsChecked": 24,
+    }
+
+
+class CorrectionRequest(CamelModel):
+    panel_ids: list[str]
+    priority: str  # low, medium, high
+    reason: str
+
+
+@app.post("/api/qc/request-correction")
+async def request_panel_correction(request: CorrectionRequest) -> dict[str, Any]:
+    """Request correction for panels that failed QC."""
+    import hashlib
+    import time
+    
+    batch_id = f"corr-{hashlib.sha256(str(time.time()).encode()).hexdigest()[:8]}"
+    
+    return {
+        "batchId": batch_id,
+        "panelIds": request.panel_ids,
+        "priority": request.priority,
+        "status": "queued",
+        "estimatedCompletion": "2026-02-10T12:00:00Z",
+        "queuePosition": 3,
+    }
+
+
+@app.get("/api/qc/correction-queue")
+async def get_correction_queue() -> dict[str, Any]:
+    """Get the current correction queue status."""
+    return {
+        "queueLength": 5,
+        "pending": 3,
+        "processing": 1,
+        "completed": 12,
+        "estimatedWaitMinutes": 15,
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
 

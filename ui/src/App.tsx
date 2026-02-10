@@ -22,6 +22,8 @@ import { useAppStore } from './store'
 import { useIsMobile } from './hooks/useMediaQuery'
 import type { Template } from './components/TemplateGallery'
 import { NodeSearch } from './components/NodeSearch'
+import { CharacterGallery } from './components/CharacterGallery'
+import { QCDashboard } from './components/QCDashboard'
 import './App.css'
 
 // Tutorial steps configuration
@@ -80,6 +82,8 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
   const [showNodeSearch, setShowNodeSearch] = useState(false)
+  const [showCharacterGallery, setShowCharacterGallery] = useState(false)
+  const [showQCDashboard, setShowQCDashboard] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false)
   const isMobile = useIsMobile()
@@ -234,6 +238,18 @@ function App() {
       <NodeSearch
         isOpen={showNodeSearch}
         onClose={() => setShowNodeSearch(false)}
+      />
+      
+      {/* Character Gallery */}
+      <CharacterGallery
+        isOpen={showCharacterGallery}
+        onClose={() => setShowCharacterGallery(false)}
+      />
+      
+      {/* QC Dashboard */}
+      <QCDashboard
+        isOpen={showQCDashboard}
+        onClose={() => setShowQCDashboard(false)}
       />
       
       {/* Shortcuts Help Modal */}
@@ -442,6 +458,22 @@ function App() {
             title="Find Node (Ctrl+F)"
           >
             🔍 Find
+          </button>
+          <button 
+            className="nav-button" 
+            onClick={() => setShowCharacterGallery(true)}
+            aria-label="Character gallery"
+            title="Characters"
+          >
+            🎭 Characters
+          </button>
+          <button 
+            className="nav-button" 
+            onClick={() => setShowQCDashboard(true)}
+            aria-label="Quality Control"
+            title="QC Dashboard"
+          >
+            🔍 QC
           </button>
           <button 
             className="nav-button" 
