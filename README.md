@@ -19,12 +19,13 @@ The Loom is a Python-first storytelling framework that analyzes source narrative
 | **🎨 Manga Generation** | Panel sequences with atmosphere control and identity consistency |
 | **🔄 State Integrity** | Event-sourced edit logs, idempotent jobs, and cross-modal synchronization |
 | **🎨 Interactive UI** | Graph-based branch visualization, dual-view editor, tuner controls |
+| **🔒 Operations & Governance** | Observability, incident readiness, privacy controls, content governance |
 
 ---
 
 ## 🚀 Current Status
 
-**Phase 0–8 Complete** — The Loom has foundational scaffolding through full frontend implementation with interactive graph UX, dual-view UI, and accessibility features.
+**Phase 0–9 Complete** — The Loom has foundational scaffolding through full operations, security, and governance implementation.
 
 | Phase | Status | Key Deliverables |
 |-------|--------|------------------|
@@ -37,7 +38,7 @@ The Loom is a Python-first storytelling framework that analyzes source narrative
 | Phase 6 | ✅ Complete | Artist agent with panel continuity and cross-modal alignment |
 | Phase 7 | ✅ Complete | Orchestration engine with edit provenance and sync semantics |
 | Phase 8 | ✅ Complete | Interactive frontend and dual-view UI |
-| Phase 9 | 📝 Planned | Operations, security, and governance |
+| Phase 9 | ✅ Complete | Operations, security, and governance |
 | Phase 10 | 📝 Planned | Evaluation, hardening, and release |
 
 ---
@@ -89,7 +90,9 @@ the-loom/
 │   ├── story_graph_engine.py    # Event and temporal logic
 │   ├── text_generation_engine.py # Writer implementation
 │   ├── image_generation_engine.py # Artist implementation
-│   └── orchestration_engine.py  # Phase 7: State integrity
+│   ├── orchestration_engine.py  # Phase 7: State integrity
+│   ├── frontend_workflow_engine.py # Phase 8: Frontend workflows
+│   └── operations_engine.py     # Phase 9: Operations & governance
 ├── tests/              # Test suite
 │   ├── fixtures/       # Golden test fixtures
 │   └── test_*.py       # Unit and integration tests

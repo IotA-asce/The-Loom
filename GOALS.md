@@ -312,39 +312,39 @@ phase.
 ## Phase 9 - Operations, Security, and Governance
 
 ### G9.1 Observability and SLOs
-- [ ] Add structured logs with request/job/branch correlation IDs
-- [ ] Add traces across ingestion, retrieval, generation, and orchestration
-- [ ] Define SLOs for latency, failure rate, and sync success
+- [x] Add structured logs with request/job/branch correlation IDs
+- [x] Add traces across ingestion, retrieval, generation, and orchestration
+- [x] Define SLOs for latency, failure rate, and sync success
 
 ### G9.2 Incident readiness
-- [ ] Create runbooks for parser, model, and orchestration failures
-- [ ] Add failure replay tooling for representative incidents
-- [ ] Add postmortem template and recurring incident review
+- [x] Create runbooks for parser, model, and orchestration failures
+- [x] Add failure replay tooling for representative incidents
+- [x] Add postmortem template and recurring incident review
 
 ### G9.3 Capacity and cost management
-- [ ] Add queue priority classes (interactive vs background)
-- [ ] Add per-job and per-branch token/image budgets
-- [ ] Add kill switches for runaway workloads
+- [x] Add queue priority classes (interactive vs background)
+- [x] Add per-job and per-branch token/image budgets
+- [x] Add kill switches for runaway workloads
 
 ### G9.4 Privacy and retention controls
-- [ ] Enforce local-first execution defaults
-- [ ] Add explicit external provider opt-in controls
-- [ ] Implement log redaction and data retention policies
+- [x] Enforce local-first execution defaults
+- [x] Add explicit external provider opt-in controls
+- [x] Implement log redaction and data retention policies
 
 ### G9.5 Legal and license compliance
-- [ ] Implement source rights attestation at ingestion
-- [ ] Maintain model/checkpoint/adapter license registry
-- [ ] Add policy gate before export/share workflows
+- [x] Implement source rights attestation at ingestion
+- [x] Maintain model/checkpoint/adapter license registry
+- [x] Add policy gate before export/share workflows
 
 ### G9.6 Mature-content governance
-- [ ] Implement policy profiles by deployment context
-- [ ] Add explicit confirmation and override logging for high-intensity settings
-- [ ] Add review routing for borderline content cases
+- [x] Implement policy profiles by deployment context
+- [x] Add explicit confirmation and override logging for high-intensity settings
+- [x] Add review routing for borderline content cases
 
 ### Phase 9 done criteria
-- [ ] Security, privacy, and compliance checks pass
-- [ ] SLO dashboards and alerts are active
-- [ ] Budget controls prevent runaway cost
+- [x] Security, privacy, and compliance checks pass
+- [x] SLO dashboards and alerts are active
+- [x] Budget controls prevent runaway cost
 
 ## Phase 10 - Evaluation, Hardening, and Release
 
