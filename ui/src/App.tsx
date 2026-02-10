@@ -30,6 +30,7 @@ import { MaturityRating, RatingBadge } from './components/MaturityRating'
 import { RecommendationsPanel } from './components/RecommendationsPanel'
 import { ProfileEditor } from './components/ProfileEditor'
 import { CommentsPanel } from './components/CommentsPanel'
+import { OfflineStatus, OfflineBanner } from './components/OfflineStatus'
 import { useOperationsStore } from './stores/operationsStore'
 import { useMaturityStore } from './stores/maturityStore'
 import { useRecommendationsStore } from './stores/recommendationsStore'
@@ -231,6 +232,9 @@ function App() {
     <div className="app" role="application" aria-label="The Loom Story Editor">
       {/* Toast Notifications */}
       <ToastContainer />
+      
+      {/* Offline Banner */}
+      <OfflineBanner />
       
       {/* Reading View Overlay */}
       <ReadingView />
@@ -802,6 +806,7 @@ function App() {
       </main>
 
       <StatusBar />
+      <OfflineStatus />
     </div>
     </ErrorBoundary>
   )

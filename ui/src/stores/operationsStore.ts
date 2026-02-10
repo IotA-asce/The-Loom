@@ -103,7 +103,7 @@ export interface OperationsState {
   
   // Dashboard visibility
   operationsPanelOpen: boolean
-  activeTab: 'metrics' | 'jobs' | 'usage' | 'privacy'
+  activeTab: 'metrics' | 'jobs' | 'usage' | 'sync' | 'privacy'
   
   // Actions
   toggleOperationsPanel: () => void

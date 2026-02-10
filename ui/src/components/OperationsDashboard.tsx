@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useOperationsStore, type Job, type JobStatus } from '../stores/operationsStore'
+import { useOfflineStore } from '../stores/offlineStore'
 import { useAppStore } from '../store'
 import './OperationsDashboard.css'
 
@@ -56,6 +57,59 @@ export function OperationsDashboard({ isOpen, onClose }: OperationsDashboardProp
     }
   }, [budgetSettings.currentSpent, getBudgetStatus])
   
+  // Export all data
+  const handleExportData = () => {
+    // Collect all data from localStorage
+    const data: Record<string, unknown> = {}
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith('loom-')) {
+        try {
+          data[key] = JSON.parse(localStorage.getItem(key) || '{}')
+        } catch {
+          data[key] = localStorage.getItem(key)
+        }
+      }
+    }
+    
+    // Create and download file
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `loom-export-${new Date().toISOString().split('T')[0]}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    
+    addToast({ message: 'Data exported successfully', type: 'success' })
+  }
+  
+  // Delete all data
+  const handleDeleteAllData = () => {
+    if (!confirm('⚠️ WARNING: This will permanently delete ALL your data including:\n\n• Stories and nodes\n• Character profiles\n• Bookmarks\n• Comments\n• Profile settings\n\nThis action cannot be undone.\n\nAre you absolutely sure?')) {
+      return
+    }
+    
+    if (!confirm('Final confirmation: Type "DELETE" to confirm complete data removal.')) {
+      return
+    }
+    
+    // Clear all loom-related localStorage
+    const keysToRemove: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith('loom-')) {
+        keysToRemove.push(key)
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key))
+    
+    addToast({ message: 'All data has been deleted. Refresh to start fresh.', type: 'warning', duration: 10000 })
+    onClose()
+  }
+  
   if (!isOpen) return null
   
   const budgetPercentage = getBudgetPercentage()
@@ -65,6 +119,7 @@ export function OperationsDashboard({ isOpen, onClose }: OperationsDashboardProp
     { id: 'metrics' as const, label: '📊 Metrics', icon: '📈' },
     { id: 'jobs' as const, label: '⚙️ Jobs', icon: '⚙️' },
     { id: 'usage' as const, label: '💰 Usage', icon: '💳' },
+    { id: 'sync' as const, label: '🔄 Sync', icon: '🔄' },
     { id: 'privacy' as const, label: '🔒 Privacy', icon: '🛡️' },
   ]
   
@@ -435,6 +490,11 @@ export function OperationsDashboard({ isOpen, onClose }: OperationsDashboardProp
             </div>
           )}
           
+          {/* Sync Tab */}
+          {activeTab === 'sync' && (
+            <SyncTab />
+          )}
+          
           {/* Privacy Tab */}
           {activeTab === 'privacy' && (
             <div className="privacy-tab">
@@ -553,17 +613,13 @@ export function OperationsDashboard({ isOpen, onClose }: OperationsDashboardProp
                 <div className="danger-actions">
                   <button
                     className="danger-btn secondary"
-                    onClick={() => addToast({ message: 'Export started...', type: 'info' })}
+                    onClick={() => handleExportData()}
                   >
                     📥 Export All Data
                   </button>
                   <button
                     className="danger-btn"
-                    onClick={() => {
-                      if (confirm('Are you sure? This will permanently delete all your data.')) {
-                        addToast({ message: 'All data deleted', type: 'warning' })
-                      }
-                    }}
+                    onClick={() => handleDeleteAllData()}
                   >
                     🗑️ Delete All Data
                   </button>
@@ -573,6 +629,212 @@ export function OperationsDashboard({ isOpen, onClose }: OperationsDashboardProp
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+// Sync Tab Component
+function SyncTab() {
+  const {
+    isOnline,
+    pendingActions,
+    isSyncing,
+    lastSyncAt,
+    syncError,
+    syncPendingActions,
+    removePendingAction,
+    retryAction,
+    getPendingCount,
+    getFailedCount,
+  } = useOfflineStore()
+  
+  const pendingCount = getPendingCount()
+  const failedCount = getFailedCount()
+  
+  const handleManualSync = () => {
+    if (isOnline) {
+      syncPendingActions()
+    }
+  }
+  
+  return (
+    <div className="sync-tab">
+      {/* Connection Status */}
+      <div className="sync-section">
+        <h3>🌐 Connection Status</h3>
+        <div className={`connection-status ${isOnline ? 'online' : 'offline'}`}>
+          <span className="status-indicator" />
+          <span className="status-text">
+            {isOnline ? 'Connected' : 'Offline'}
+          </span>
+          {lastSyncAt && (
+            <span className="last-sync">
+              Last synced: {new Date(lastSyncAt).toLocaleString()}
+            </span>
+          )}
+        </div>
+        
+        {!isOnline && (
+          <div className="offline-notice">
+            <p>You're currently offline. Changes are being saved locally and will sync automatically when you reconnect.</p>
+          </div>
+        )}
+      </div>
+      
+      {/* Pending Actions */}
+      <div className="sync-section">
+        <h3>⏳ Pending Actions</h3>
+        
+        {pendingCount > 0 || failedCount > 0 ? (
+          <>
+            <div className="sync-stats">
+              <div className="sync-stat">
+                <span className="stat-value pending">{pendingCount}</span>
+                <span className="stat-label">Pending</span>
+              </div>
+              <div className="sync-stat">
+                <span className="stat-value failed">{failedCount}</span>
+                <span className="stat-label">Failed</span>
+              </div>
+            </div>
+            
+            <button
+              className="sync-now-btn"
+              onClick={handleManualSync}
+              disabled={!isOnline || isSyncing || pendingCount === 0}
+            >
+              {isSyncing ? (
+                <>
+                  <span className="spinner-small" />
+                  Syncing...
+                </>
+              ) : (
+                <>🔄 Sync Now</>
+              )}
+            </button>
+            
+            {syncError && (
+              <div className="sync-error">
+                <span>⚠️</span> {syncError}
+              </div>
+            )}
+            
+            <div className="pending-actions-list">
+              {pendingActions.map(action => (
+                <div key={action.id} className={`pending-action ${action.status}`}>
+                  <div className="action-info">
+                    <span className="action-type">{action.type.replace('_', ' ')}</span>
+                    <span className="action-time">
+                      {new Date(action.timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <div className="action-status">
+                    {action.status === 'pending' && <span>⏳ Pending</span>}
+                    {action.status === 'processing' && <span>⚙️ Processing</span>}
+                    {action.status === 'failed' && (
+                      <>
+                        <span className="failed">❌ Failed</span>
+                        <button
+                          className="retry-btn"
+                          onClick={() => retryAction(action.id)}
+                        >
+                          Retry
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  {action.error && (
+                    <p className="action-error">{action.error}</p>
+                  )}
+                  <button
+                    className="remove-action-btn"
+                    onClick={() => removePendingAction(action.id)}
+                    title="Remove from queue"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+            
+            {failedCount > 0 && (
+              <button
+                className="clear-failed-btn"
+                onClick={() => {
+                  pendingActions
+                    .filter(a => a.status === 'failed')
+                    .forEach(a => removePendingAction(a.id))
+                }}
+              >
+                Clear Failed Actions
+              </button>
+            )}
+          </>
+        ) : (
+          <div className="empty-sync">
+            <span className="empty-icon">✅</span>
+            <p>All changes are synced!</p>
+          </div>
+        )}
+      </div>
+      
+      {/* Storage Info */}
+      <div className="sync-section">
+        <h3>💾 Storage Usage</h3>
+        <StorageInfo />
+      </div>
+    </div>
+  )
+}
+
+// Storage Info Component
+function StorageInfo() {
+  const [usage, setUsage] = useState({ used: 0, total: 0, percentage: 0 })
+  
+  useEffect(() => {
+    const calculateUsage = () => {
+      let total = 0
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key) {
+          total += localStorage.getItem(key)?.length || 0
+        }
+      }
+      // Approximate bytes (2 bytes per char in UTF-16)
+      const bytes = total * 2
+      const mb = bytes / (1024 * 1024)
+      // Assume 5MB limit (common localStorage limit)
+      const limit = 5
+      setUsage({
+        used: mb,
+        total: limit,
+        percentage: (mb / limit) * 100,
+      })
+    }
+    
+    calculateUsage()
+  }, [])
+  
+  return (
+    <div className="storage-info">
+      <div className="storage-bar">
+        <div
+          className="storage-fill"
+          style={{
+            width: `${Math.min(100, usage.percentage)}%`,
+            backgroundColor: usage.percentage > 80 ? '#ef4444' : usage.percentage > 50 ? '#ff9800' : '#4caf50',
+          }}
+        />
+      </div>
+      <div className="storage-text">
+        <span>{usage.used.toFixed(2)} MB used</span>
+        <span>of {usage.total} MB</span>
+      </div>
+      {usage.percentage > 80 && (
+        <p className="storage-warning">
+          ⚠️ Storage is almost full. Consider exporting and clearing old data.
+        </p>
+      )}
     </div>
   )
 }
