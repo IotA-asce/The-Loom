@@ -1,6 +1,31 @@
 import { create } from 'zustand'
 
-// Types
+// ==================== TYPES ====================
+
+export type NodeType = 'chapter' | 'scene' | 'beat' | 'dialogue'
+
+export interface SceneMetadata {
+  title: string
+  location: string
+  timeOfDay: string
+  estimatedReadingTime: number
+  moodTags: string[]
+}
+
+export interface NodeContent {
+  text: string
+  version: number
+  lastModified: string
+  wordCount: number
+}
+
+export interface NodeVersion {
+  id: string
+  content: string
+  timestamp: string
+  wordCount: number
+}
+
 export interface GraphNode {
   id: string
   label: string
@@ -9,12 +34,19 @@ export interface GraphNode {
   x: number
   y: number
   importance: number
+  // Phase A: Content management
+  type: NodeType
+  content: NodeContent
+  metadata: SceneMetadata
+  versions: NodeVersion[]
+  characters: string[] // IDs of characters present
 }
 
 export interface GraphEdge {
   source: string
   target: string
-  type: string
+  type: 'causal' | 'temporal' | 'parallel'
+  label?: string
 }
 
 export interface Branch {
@@ -25,6 +57,19 @@ export interface Branch {
   status: 'active' | 'archived' | 'merged'
   lineage: string[]
   createdAt: string
+}
+
+export interface Character {
+  id: string
+  name: string
+  aliases: string[]
+  traits: string[]
+  description: string
+  voiceProfile?: {
+    speechPatterns: string[]
+    vocabulary: string[]
+    sampleQuotes: string[]
+  }
 }
 
 export interface TunerSettings {
@@ -67,6 +112,14 @@ export interface Phase8Metrics {
   mismatchRate: number
 }
 
+export interface ReadingPreferences {
+  fontSize: 'small' | 'medium' | 'large'
+  theme: 'light' | 'dark' | 'sepia'
+  lineSpacing: 'compact' | 'normal' | 'relaxed'
+}
+
+// ==================== APP STATE ====================
+
 interface AppState {
   // Graph state
   nodes: GraphNode[]
@@ -74,6 +127,19 @@ interface AppState {
   selectedNodeId: string | null
   zoom: number
   viewport: { x: number; y: number; width: number; height: number }
+  
+  // Phase A: Content editing state
+  editingNodeId: string | null
+  showNodePreview: boolean
+  
+  // Phase A: Reading view
+  readingMode: boolean
+  readingBranchId: string | null
+  readingNodeId: string | null
+  readingPreferences: ReadingPreferences
+  
+  // Phase A: Characters
+  characters: Character[]
   
   // Branch state
   branches: Branch[]
@@ -97,15 +163,65 @@ interface AppState {
   // Keyboard shortcuts
   keyboardShortcuts: Record<string, () => void>
   
-  // Actions
+  // Loading states
+  loading: {
+    nodes: boolean
+    content: boolean
+    generation: boolean
+  }
+  
+  // Error states
+  error: {
+    nodes: string | null
+    content: string | null
+  }
+  
+  // ==================== ACTIONS ====================
+  
+  // Initialization
   initialize: () => void
-  addNode: (node: Omit<GraphNode, 'id'>) => Promise<void>
+  
+  // Graph actions
+  addNode: (node: Partial<GraphNode>) => Promise<void>
   selectNode: (nodeId: string | null) => void
+  deleteNode: (nodeId: string) => Promise<void>
+  updateNodePosition: (nodeId: string, x: number, y: number) => void
   setZoom: (zoom: number) => void
   setViewport: (viewport: { x: number; y: number; width: number; height: number }) => void
   undo: () => Promise<void>
   redo: () => Promise<void>
   createAutosave: (reason: string) => Promise<void>
+  
+  // Phase A: Content editing actions
+  startEditingNode: (nodeId: string) => void
+  stopEditingNode: () => void
+  updateNodeContent: (nodeId: string, text: string) => Promise<void>
+  updateNodeMetadata: (nodeId: string, metadata: Partial<SceneMetadata>) => Promise<void>
+  updateNodeType: (nodeId: string, type: NodeType) => Promise<void>
+  saveNodeVersion: (nodeId: string) => Promise<void>
+  restoreNodeVersion: (nodeId: string, versionId: string) => Promise<void>
+  toggleNodePreview: () => void
+  
+  // Phase A: Character management
+  addCharacter: (character: Omit<Character, 'id'>) => Promise<void>
+  updateCharacter: (characterId: string, updates: Partial<Character>) => Promise<void>
+  deleteCharacter: (characterId: string) => Promise<void>
+  toggleCharacterInNode: (nodeId: string, characterId: string) => Promise<void>
+  
+  // Phase A: Reading view actions
+  toggleReadingMode: () => void
+  enterReadingMode: (branchId: string, nodeId?: string) => void
+  exitReadingMode: () => void
+  navigateReading: (direction: 'prev' | 'next') => void
+  jumpToNodeInReading: (nodeId: string) => void
+  updateReadingPreferences: (prefs: Partial<ReadingPreferences>) => void
+  
+  // Phase A: Keyboard navigation
+  navigateGraph: (direction: 'up' | 'down' | 'left' | 'right') => void
+  selectNextNode: () => void
+  selectPreviousNode: () => void
+  editSelectedNode: () => void
+  deleteSelectedNode: () => void
   
   // Branch actions
   createBranch: (sourceNodeId: string, label: string, parentBranchId?: string) => Promise<void>
@@ -129,17 +245,40 @@ interface AppState {
   
   // Import actions
   ingestFile: (file: File) => Promise<{ success: boolean; [key: string]: any }>
+  
+  // Error handling
+  clearError: (key: 'nodes' | 'content') => void
 }
 
 const API_BASE = '/api'
 
+// ==================== STORE IMPLEMENTATION ====================
+
 export const useAppStore = create<AppState>((set, get) => ({
-  // Initial state
+  // ==================== INITIAL STATE ====================
   nodes: [],
   edges: [],
   selectedNodeId: null,
   zoom: 1,
   viewport: { x: 0, y: 0, width: 1200, height: 800 },
+  
+  // Phase A: Content editing
+  editingNodeId: null,
+  showNodePreview: true,
+  
+  // Phase A: Reading view
+  readingMode: false,
+  readingBranchId: null,
+  readingNodeId: null,
+  readingPreferences: {
+    fontSize: 'medium',
+    theme: 'dark',
+    lineSpacing: 'normal',
+  },
+  
+  // Phase A: Characters
+  characters: [],
+  
   branches: [],
   tunerSettings: { violence: 0.5, humor: 0.5, romance: 0.5 },
   tunerResolution: null,
@@ -150,8 +289,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   phase8Metrics: null,
   supportedFormats: { text: ['.txt', '.pdf', '.epub'], manga: ['.cbz', '.zip'], images: ['.png', '.jpg', '.jpeg', '.webp'] },
   keyboardShortcuts: {},
+  loading: { nodes: false, content: false, generation: false },
+  error: { nodes: null, content: null },
   
-  // Initialize
+  // ==================== INITIALIZATION ====================
   initialize: () => {
     // Set up keyboard shortcuts
     set({
@@ -161,6 +302,38 @@ export const useAppStore = create<AppState>((set, get) => ({
         'ctrl+t': () => get().toggleTuner(),
         'ctrl+d': () => get().toggleDualView(),
         'ctrl+s': () => get().createAutosave('manual'),
+        'ctrl+?': () => alert('Shortcuts: Ctrl+Z=Undo, Ctrl+Y=Redo, Ctrl+T=Tuner, Ctrl+D=Dual View, Ctrl+S=Save, Ctrl+N=New Node, Enter=Edit, Delete=Delete, Arrows=Navigate'),
+        'ctrl+n': () => {
+          const state = get()
+          if (state.selectedNodeId) {
+            const node = state.nodes.find(n => n.id === state.selectedNodeId)
+            if (node) {
+              get().addNode({
+                label: 'New Node',
+                branchId: node.branchId,
+                sceneId: node.sceneId,
+                x: node.x + 50,
+                y: node.y + 50,
+                importance: 0.5,
+              })
+            }
+          }
+        },
+        'enter': () => get().editSelectedNode(),
+        'delete': () => get().deleteSelectedNode(),
+        'arrowup': () => get().navigateGraph('up'),
+        'arrowdown': () => get().navigateGraph('down'),
+        'arrowleft': () => get().navigateGraph('left'),
+        'arrowright': () => get().navigateGraph('right'),
+        'escape': () => {
+          if (get().editingNodeId) {
+            get().stopEditingNode()
+          } else if (get().readingMode) {
+            get().exitReadingMode()
+          } else if (get().selectedNodeId) {
+            get().selectNode(null)
+          }
+        },
       }
     })
     
@@ -172,33 +345,104 @@ export const useAppStore = create<AppState>((set, get) => ({
       .then(r => r.json())
       .then(branches => set({ branches }))
       .catch(console.error)
+    
+    // Load sample characters for demo
+    set({
+      characters: [
+        {
+          id: 'char-1',
+          name: 'Protagonist',
+          aliases: ['Hero', 'MC'],
+          traits: ['brave', 'determined'],
+          description: 'The main character of the story',
+        },
+        {
+          id: 'char-2',
+          name: 'Antagonist',
+          aliases: ['Villain'],
+          traits: ['cunning', 'ruthless'],
+          description: 'The opposing force',
+        },
+      ]
+    })
   },
   
-  // Graph actions
-  addNode: async (node) => {
+  // ==================== GRAPH ACTIONS ====================
+  addNode: async (nodeData) => {
+    set(state => ({ loading: { ...state.loading, nodes: true } }))
     try {
+      const newNode: GraphNode = {
+        id: `node-${Date.now()}`,
+        label: nodeData.label || 'New Node',
+        branchId: nodeData.branchId || 'main',
+        sceneId: nodeData.sceneId || 'default',
+        x: nodeData.x ?? Math.random() * 400,
+        y: nodeData.y ?? Math.random() * 300,
+        importance: nodeData.importance ?? 0.5,
+        type: nodeData.type || 'scene',
+        content: {
+          text: nodeData.content?.text || '',
+          version: 1,
+          lastModified: new Date().toISOString(),
+          wordCount: 0,
+        },
+        metadata: {
+          title: nodeData.metadata?.title || '',
+          location: nodeData.metadata?.location || '',
+          timeOfDay: nodeData.metadata?.timeOfDay || '',
+          estimatedReadingTime: 0,
+          moodTags: nodeData.metadata?.moodTags || [],
+        },
+        versions: [],
+        characters: nodeData.characters || [],
+      }
+      
       const response = await fetch(`${API_BASE}/graph/nodes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(node),
+        body: JSON.stringify(newNode),
       })
+      
       if (response.ok) {
-        const result = await response.json()
         set(state => ({
-          nodes: [...state.nodes, { ...node, id: result.node_id }]
+          nodes: [...state.nodes, newNode],
+          selectedNodeId: newNode.id,
         }))
         await get().refreshMetrics()
       }
     } catch (error) {
       console.error('Failed to add node:', error)
+      set(state => ({ error: { ...state.error, nodes: 'Failed to add node' } }))
+    } finally {
+      set(state => ({ loading: { ...state.loading, nodes: false } }))
     }
   },
   
   selectNode: (nodeId) => set({ selectedNodeId: nodeId }),
   
+  deleteNode: async (nodeId) => {
+    try {
+      // In a real implementation, this would call the API
+      set(state => ({
+        nodes: state.nodes.filter(n => n.id !== nodeId),
+        selectedNodeId: state.selectedNodeId === nodeId ? null : state.selectedNodeId,
+      }))
+      await get().refreshMetrics()
+    } catch (error) {
+      console.error('Failed to delete node:', error)
+    }
+  },
+  
+  updateNodePosition: (nodeId, x, y) => {
+    set(state => ({
+      nodes: state.nodes.map(n =>
+        n.id === nodeId ? { ...n, x, y } : n
+      ),
+    }))
+  },
+  
   setZoom: (zoom) => {
     set({ zoom })
-    // Update viewport on backend
     const { viewport } = get()
     fetch(`${API_BASE}/graph/viewport`, {
       method: 'POST',
@@ -242,7 +486,288 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   
-  // Branch actions
+  // ==================== PHASE A: CONTENT EDITING ====================
+  startEditingNode: (nodeId) => set({ editingNodeId: nodeId }),
+  stopEditingNode: () => set({ editingNodeId: null }),
+  
+  updateNodeContent: async (nodeId, text) => {
+    set(state => ({ loading: { ...state.loading, content: true } }))
+    try {
+      const wordCount = text.trim().split(/\s+/).filter(w => w.length > 0).length
+      
+      set(state => ({
+        nodes: state.nodes.map(n =>
+          n.id === nodeId
+            ? {
+                ...n,
+                content: {
+                  text,
+                  version: n.content.version + 1,
+                  lastModified: new Date().toISOString(),
+                  wordCount,
+                },
+              }
+            : n
+        ),
+      }))
+    } catch (error) {
+      console.error('Failed to update content:', error)
+      set(state => ({ error: { ...state.error, content: 'Failed to save content' } }))
+    } finally {
+      set(state => ({ loading: { ...state.loading, content: false } }))
+    }
+  },
+  
+  updateNodeMetadata: async (nodeId, metadata) => {
+    set(state => ({
+      nodes: state.nodes.map(n =>
+        n.id === nodeId
+          ? { ...n, metadata: { ...n.metadata, ...metadata } }
+          : n
+      ),
+    }))
+  },
+  
+  updateNodeType: async (nodeId, type) => {
+    set(state => ({
+      nodes: state.nodes.map(n =>
+        n.id === nodeId ? { ...n, type } : n
+      ),
+    }))
+  },
+  
+  saveNodeVersion: async (nodeId) => {
+    const node = get().nodes.find(n => n.id === nodeId)
+    if (!node) return
+    
+    const newVersion: NodeVersion = {
+      id: `v-${Date.now()}`,
+      content: node.content.text,
+      timestamp: new Date().toISOString(),
+      wordCount: node.content.wordCount,
+    }
+    
+    set(state => ({
+      nodes: state.nodes.map(n =>
+        n.id === nodeId
+          ? { ...n, versions: [...n.versions.slice(-9), newVersion] }
+          : n
+      ),
+    }))
+  },
+  
+  restoreNodeVersion: async (nodeId, versionId) => {
+    const node = get().nodes.find(n => n.id === nodeId)
+    if (!node) return
+    
+    const version = node.versions.find(v => v.id === versionId)
+    if (!version) return
+    
+    set(state => ({
+      nodes: state.nodes.map(n =>
+        n.id === nodeId
+          ? {
+              ...n,
+              content: {
+                text: version.content,
+                version: n.content.version + 1,
+                lastModified: new Date().toISOString(),
+                wordCount: version.wordCount,
+              },
+            }
+          : n
+      ),
+    }))
+  },
+  
+  toggleNodePreview: () => set(state => ({ showNodePreview: !state.showNodePreview })),
+  
+  // ==================== PHASE A: CHARACTER MANAGEMENT ====================
+  addCharacter: async (character) => {
+    const newChar: Character = {
+      ...character,
+      id: `char-${Date.now()}`,
+    }
+    set(state => ({ characters: [...state.characters, newChar] }))
+  },
+  
+  updateCharacter: async (characterId, updates) => {
+    set(state => ({
+      characters: state.characters.map(c =>
+        c.id === characterId ? { ...c, ...updates } : c
+      ),
+    }))
+  },
+  
+  deleteCharacter: async (characterId) => {
+    set(state => ({
+      characters: state.characters.filter(c => c.id !== characterId),
+      nodes: state.nodes.map(n => ({
+        ...n,
+        characters: n.characters.filter(id => id !== characterId),
+      })),
+    }))
+  },
+  
+  toggleCharacterInNode: async (nodeId, characterId) => {
+    set(state => ({
+      nodes: state.nodes.map(n => {
+        if (n.id !== nodeId) return n
+        const hasChar = n.characters.includes(characterId)
+        return {
+          ...n,
+          characters: hasChar
+            ? n.characters.filter(id => id !== characterId)
+            : [...n.characters, characterId],
+        }
+      }),
+    }))
+  },
+  
+  // ==================== PHASE A: READING VIEW ====================
+  toggleReadingMode: () => {
+    const state = get()
+    if (!state.readingMode) {
+      // Enter reading mode on current branch/node
+      const branchId = state.branches.find(b => b.status === 'active')?.branchId || 'main'
+      const nodeId = state.selectedNodeId || state.nodes[0]?.id || null
+      get().enterReadingMode(branchId, nodeId || undefined)
+    } else {
+      get().exitReadingMode()
+    }
+  },
+  
+  enterReadingMode: (branchId, nodeId) => {
+    set({
+      readingMode: true,
+      readingBranchId: branchId,
+      readingNodeId: nodeId || get().nodes.find(n => n.branchId === branchId)?.id || null,
+    })
+  },
+  
+  exitReadingMode: () => {
+    set({
+      readingMode: false,
+      readingBranchId: null,
+      readingNodeId: null,
+    })
+  },
+  
+  navigateReading: (direction) => {
+    const state = get()
+    if (!state.readingNodeId) return
+    
+    const currentIndex = state.nodes.findIndex(n => n.id === state.readingNodeId)
+    if (currentIndex === -1) return
+    
+    const newIndex = direction === 'next'
+      ? Math.min(currentIndex + 1, state.nodes.length - 1)
+      : Math.max(currentIndex - 1, 0)
+    
+    set({ readingNodeId: state.nodes[newIndex].id })
+  },
+  
+  jumpToNodeInReading: (nodeId) => {
+    set({ readingNodeId: nodeId })
+  },
+  
+  updateReadingPreferences: (prefs) => {
+    set(state => ({
+      readingPreferences: { ...state.readingPreferences, ...prefs },
+    }))
+  },
+  
+  // ==================== PHASE A: KEYBOARD NAVIGATION ====================
+  navigateGraph: (direction) => {
+    const state = get()
+    if (state.nodes.length === 0) return
+    
+    const currentId = state.selectedNodeId
+    if (!currentId) {
+      // Select first node if none selected
+      set({ selectedNodeId: state.nodes[0].id })
+      return
+    }
+    
+    const currentNode = state.nodes.find(n => n.id === currentId)
+    if (!currentNode) return
+    
+    // Find nearest node in the direction
+    const threshold = 50 // minimum distance
+    let bestNode: GraphNode | null = null
+    let bestScore = Infinity
+    
+    for (const node of state.nodes) {
+      if (node.id === currentId) continue
+      
+      const dx = node.x - currentNode.x
+      const dy = node.y - currentNode.y
+      const distance = Math.sqrt(dx * dx + dy * dy)
+      
+      let score = distance
+      let inDirection = false
+      
+      switch (direction) {
+        case 'up':
+          inDirection = dy < -threshold && Math.abs(dx) < Math.abs(dy)
+          score = -dy + Math.abs(dx) * 0.5
+          break
+        case 'down':
+          inDirection = dy > threshold && Math.abs(dx) < Math.abs(dy)
+          score = dy + Math.abs(dx) * 0.5
+          break
+        case 'left':
+          inDirection = dx < -threshold && Math.abs(dy) < Math.abs(dx)
+          score = -dx + Math.abs(dy) * 0.5
+          break
+        case 'right':
+          inDirection = dx > threshold && Math.abs(dy) < Math.abs(dx)
+          score = dx + Math.abs(dy) * 0.5
+          break
+      }
+      
+      if (inDirection && score < bestScore) {
+        bestScore = score
+        bestNode = node
+      }
+    }
+    
+    if (bestNode) {
+      set({ selectedNodeId: bestNode.id })
+    }
+  },
+  
+  selectNextNode: () => {
+    const state = get()
+    const currentIndex = state.nodes.findIndex(n => n.id === state.selectedNodeId)
+    if (currentIndex < state.nodes.length - 1) {
+      set({ selectedNodeId: state.nodes[currentIndex + 1].id })
+    }
+  },
+  
+  selectPreviousNode: () => {
+    const state = get()
+    const currentIndex = state.nodes.findIndex(n => n.id === state.selectedNodeId)
+    if (currentIndex > 0) {
+      set({ selectedNodeId: state.nodes[currentIndex - 1].id })
+    }
+  },
+  
+  editSelectedNode: () => {
+    const state = get()
+    if (state.selectedNodeId) {
+      get().startEditingNode(state.selectedNodeId)
+    }
+  },
+  
+  deleteSelectedNode: () => {
+    const state = get()
+    if (state.selectedNodeId && confirm('Delete this node?')) {
+      get().deleteNode(state.selectedNodeId)
+    }
+  },
+  
+  // ==================== BRANCH ACTIONS ====================
   createBranch: async (sourceNodeId, label, parentBranchId = 'main') => {
     try {
       const response = await fetch(`${API_BASE}/branches`, {
@@ -315,7 +840,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     return null
   },
   
-  // Tuner actions
+  // ==================== TUNER ACTIONS ====================
   toggleTuner: () => set(state => ({ tunerOpen: !state.tunerOpen })),
   
   updateTuner: async (settings) => {
@@ -343,7 +868,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   
-  // Dual view actions
+  // ==================== DUAL VIEW ACTIONS ====================
   toggleDualView: () => set(state => ({ dualViewOpen: !state.dualViewOpen })),
   
   initializeDualView: async (sceneId) => {
@@ -408,7 +933,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   
-  // Metrics
+  // ==================== METRICS ====================
   refreshMetrics: async () => {
     try {
       const [graphResponse, phase8Response] = await Promise.all([
@@ -427,12 +952,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   
-  // Import actions
+  // ==================== IMPORT ACTIONS ====================
   ingestFile: async (file: File) => {
     const formData = new FormData()
     formData.append('file', file)
     
-    // Determine endpoint based on file type
     const extension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
     const isText = ['.txt', '.pdf', '.epub'].includes(extension)
     const isManga = ['.cbz', '.zip'].includes(extension)
@@ -447,7 +971,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       
       if (response.ok) {
         const result = await response.json()
-        // Refresh metrics after successful import
         get().refreshMetrics()
         return result
       } else {
@@ -458,5 +981,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       console.error('Failed to ingest file:', error)
       return { success: false, message: String(error) }
     }
+  },
+  
+  // ==================== ERROR HANDLING ====================
+  clearError: (key) => {
+    set(state => ({ error: { ...state.error, [key]: null } }))
   },
 }))

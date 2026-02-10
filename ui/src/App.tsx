@@ -4,13 +4,24 @@ import { TunerPanel } from './components/TunerPanel'
 import { DualView } from './components/DualView'
 import { BranchPanel } from './components/BranchPanel'
 import { ImportPanel } from './components/ImportPanel'
+import { SceneMetadata } from './components/SceneMetadata'
+import { ReadingView } from './components/ReadingView'
 import { StatusBar } from './components/StatusBar'
 import { useAppStore } from './store'
 import './App.css'
 
 function App() {
-  const { initialize, keyboardShortcuts } = useAppStore()
-  const [sidebarTab, setSidebarTab] = useState<'branches' | 'import'>('branches')
+  const { 
+    initialize, 
+    keyboardShortcuts,
+    selectedNodeId,
+    toggleReadingMode,
+    showNodePreview,
+    toggleNodePreview,
+  } = useAppStore()
+  
+  const [sidebarTab, setSidebarTab] = useState<'branches' | 'import' | 'metadata'>('branches')
+  const [showShortcuts, setShowShortcuts] = useState(false)
 
   useEffect(() => {
     initialize()
@@ -31,17 +42,109 @@ function App() {
         e.preventDefault()
         action()
       }
+      
+      // Toggle shortcuts help
+      if (e.ctrlKey && e.key === '?') {
+        e.preventDefault()
+        setShowShortcuts(true)
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [keyboardShortcuts])
+  
+  // Auto-switch to metadata tab when node selected
+  useEffect(() => {
+    if (selectedNodeId && sidebarTab !== 'import') {
+      setSidebarTab('metadata')
+    }
+  }, [selectedNodeId])
 
   return (
     <div className="app" role="application" aria-label="The Loom Story Editor">
+      {/* Reading View Overlay */}
+      <ReadingView />
+      
+      {/* Shortcuts Help Modal */}
+      {showShortcuts && (
+        <div 
+          className="shortcuts-modal"
+          onClick={() => setShowShortcuts(false)}
+        >
+          <div className="shortcuts-content" onClick={e => e.stopPropagation()}>
+            <h2>Keyboard Shortcuts</h2>
+            <div className="shortcuts-grid">
+              <div className="shortcut-item">
+                <kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd>
+                <span>Navigate between nodes</span>
+              </div>
+              <div className="shortcut-item">
+                <kbd>Enter</kbd>
+                <span>Edit selected node</span>
+              </div>
+              <div className="shortcut-item">
+                <kbd>Delete</kbd>
+                <span>Delete selected node</span>
+              </div>
+              <div className="shortcut-item">
+                <kbd>Ctrl</kbd>+<kbd>N</kbd>
+                <span>Create new node</span>
+              </div>
+              <div className="shortcut-item">
+                <kbd>Ctrl</kbd>+<kbd>Z</kbd>
+                <span>Undo</span>
+              </div>
+              <div className="shortcut-item">
+                <kbd>Ctrl</kbd>+<kbd>Y</kbd>
+                <span>Redo</span>
+              </div>
+              <div className="shortcut-item">
+                <kbd>Ctrl</kbd>+<kbd>S</kbd>
+                <span>Save checkpoint</span>
+              </div>
+              <div className="shortcut-item">
+                <kbd>Ctrl</kbd>+<kbd>T</kbd>
+                <span>Toggle tuner panel</span>
+              </div>
+              <div className="shortcut-item">
+                <kbd>Ctrl</kbd>+<kbd>D</kbd>
+                <span>Toggle dual view</span>
+              </div>
+              <div className="shortcut-item">
+                <kbd>Ctrl</kbd>+<kbd>R</kbd>
+                <span>Toggle reading mode</span>
+              </div>
+              <div className="shortcut-item">
+                <kbd>Ctrl</kbd>+<kbd>?</kbd>
+                <span>Show this help</span>
+              </div>
+              <div className="shortcut-item">
+                <kbd>Escape</kbd>
+                <span>Cancel / Close</span>
+              </div>
+            </div>
+            <button 
+              className="close-button"
+              onClick={() => setShowShortcuts(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className="app-header">
         <h1>🧵 The Loom</h1>
         <nav className="app-nav" aria-label="Main navigation">
+          <button 
+            className="nav-button" 
+            onClick={() => toggleReadingMode()}
+            aria-label="Toggle reading mode (Ctrl+R)"
+            title="Reading Mode (Ctrl+R)"
+          >
+            📖 Read
+          </button>
           <button 
             className="nav-button" 
             onClick={() => useAppStore.getState().toggleTuner()}
@@ -66,6 +169,14 @@ function App() {
           >
             💾 Save
           </button>
+          <button 
+            className="nav-button" 
+            onClick={() => setShowShortcuts(true)}
+            aria-label="Keyboard shortcuts (Ctrl+?)"
+            title="Shortcuts (Ctrl+?)"
+          >
+            ⌨️ ?
+          </button>
         </nav>
       </header>
 
@@ -84,6 +195,16 @@ function App() {
             </button>
             <button
               role="tab"
+              aria-selected={sidebarTab === 'metadata'}
+              aria-controls="metadata-panel"
+              id="metadata-tab"
+              className={`sidebar-tab ${sidebarTab === 'metadata' ? 'active' : ''}`}
+              onClick={() => setSidebarTab('metadata')}
+            >
+              📝 Metadata
+            </button>
+            <button
+              role="tab"
               aria-selected={sidebarTab === 'import'}
               aria-controls="import-panel"
               id="import-tab"
@@ -99,6 +220,18 @@ function App() {
                 <BranchPanel />
               </div>
             )}
+            {sidebarTab === 'metadata' && (
+              <div id="metadata-panel" role="tabpanel" aria-labelledby="metadata-tab">
+                {selectedNodeId ? (
+                  <SceneMetadata nodeId={selectedNodeId} />
+                ) : (
+                  <div className="empty-panel">
+                    <p>Select a node to view and edit its metadata</p>
+                    <p className="hint">Use arrow keys to navigate the graph</p>
+                  </div>
+                )}
+              </div>
+            )}
             {sidebarTab === 'import' && (
               <div id="import-panel" role="tabpanel" aria-labelledby="import-tab">
                 <ImportPanel />
@@ -109,6 +242,18 @@ function App() {
         
         <section className="app-content" aria-label="Graph workspace">
           <GraphCanvas />
+          
+          {/* Floating toggle for node preview */}
+          <div className="floating-toggles">
+            <label className="toggle-label">
+              <input
+                type="checkbox"
+                checked={showNodePreview}
+                onChange={toggleNodePreview}
+              />
+              <span>👁 Node Preview</span>
+            </label>
+          </div>
         </section>
         
         <aside className="app-panel" aria-label="Control panel">

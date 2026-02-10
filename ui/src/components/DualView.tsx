@@ -141,17 +141,8 @@ export function DualView() {
       </div>
 
       {/* Reconcile actions */}
-      {syncState && syncState.reconcileActions.length > 0 && (
+      {syncState && (
         <div className="reconcile-actions">
-          <h3 className="reconcile-title">Reconcile Actions</h3>
-          <ul className="action-list">
-            {syncState.reconcileActions.map((action, index) => (
-              <li key={index} className="action-item">
-                <span className="action-icon">↻</span>
-                {action}
-              </li>
-            ))}
-          </ul>
           <button
             onClick={() => reconcile(syncState.sceneId, 'v2', 'v2')}
             className="reconcile-button"

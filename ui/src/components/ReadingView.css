@@ -1,0 +1,340 @@
+.reading-view {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background: var(--reading-bg, #0f0f0f);
+  color: var(--reading-text, #e0e0e0);
+}
+
+/* Theme variants */
+.reading-view.theme-light {
+  --reading-bg: #f5f5f5;
+  --reading-text: #1a1a1a;
+  --reading-surface: #ffffff;
+  --reading-border: #ddd;
+  --reading-secondary: #666;
+}
+
+.reading-view.theme-sepia {
+  --reading-bg: #f4ecd8;
+  --reading-text: #5b4636;
+  --reading-surface: #e8dec5;
+  --reading-border: #d4c5a9;
+  --reading-secondary: #8b7355;
+}
+
+.reading-view.theme-dark {
+  --reading-bg: #0f0f0f;
+  --reading-text: #e0e0e0;
+  --reading-surface: #1a1a1a;
+  --reading-border: #333;
+  --reading-secondary: #888;
+}
+
+/* Header */
+.reading-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  background: var(--reading-surface, #1a1a1a);
+  border-bottom: 1px solid var(--reading-border, #333);
+  gap: 1rem;
+}
+
+.reading-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.exit-button {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid var(--reading-border, #333);
+  border-radius: 4px;
+  color: var(--reading-text, #e0e0e0);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.exit-button:hover {
+  background: var(--reading-bg, #0f0f0f);
+}
+
+.reading-branch {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.branch-label {
+  color: var(--reading-secondary, #888);
+}
+
+.branch-name {
+  font-weight: 600;
+  color: var(--color-primary, #4a9eff);
+}
+
+.reading-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  max-width: 300px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--reading-border, #333);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--color-primary, #4a9eff);
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 0.875rem;
+  color: var(--reading-secondary, #888);
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+}
+
+.reading-preferences {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.pref-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.pref-group label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--reading-secondary, #888);
+  font-weight: 600;
+}
+
+.pref-group select {
+  padding: 0.375rem 0.5rem;
+  background: var(--reading-bg, #0f0f0f);
+  border: 1px solid var(--reading-border, #333);
+  border-radius: 4px;
+  color: var(--reading-text, #e0e0e0);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+/* Content */
+.reading-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+.reading-article {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.scene-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--reading-border, #333);
+}
+
+.scene-title {
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  color: var(--reading-text, #e0e0e0);
+  line-height: 1.3;
+}
+
+.scene-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.meta-item {
+  font-size: 0.875rem;
+  color: var(--reading-secondary, #888);
+}
+
+.scene-moods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.mood-badge {
+  padding: 0.25rem 0.625rem;
+  background: var(--color-primary, #4a9eff);
+  color: white;
+  font-size: 0.75rem;
+  border-radius: 12px;
+  text-transform: capitalize;
+}
+
+.scene-content {
+  margin-bottom: 2rem;
+}
+
+.scene-paragraph {
+  margin: 0 0 1.25rem 0;
+  text-align: justify;
+  hyphens: auto;
+}
+
+.scene-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.empty-content {
+  text-align: center;
+  color: var(--reading-secondary, #888);
+  font-style: italic;
+  padding: 3rem 1rem;
+}
+
+.inline-link {
+  background: none;
+  border: none;
+  color: var(--color-primary, #4a9eff);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+  font-style: inherit;
+}
+
+.inline-link:hover {
+  color: var(--color-primary-hover, #3a8eef);
+}
+
+.scene-footer {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--reading-border, #333);
+  font-size: 0.875rem;
+  color: var(--reading-secondary, #888);
+}
+
+.word-count,
+.reading-time {
+  font-family: var(--font-mono, monospace);
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--reading-secondary, #888);
+  font-size: 1.125rem;
+}
+
+/* Navigation */
+.reading-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: var(--reading-surface, #1a1a1a);
+  border-top: 1px solid var(--reading-border, #333);
+  gap: 1rem;
+}
+
+.nav-button {
+  padding: 0.625rem 1.25rem;
+  background: var(--color-primary, #4a9eff);
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.nav-button:hover:not(:disabled) {
+  background: var(--color-primary-hover, #3a8eef);
+}
+
+.nav-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.scene-jump {
+  flex: 1;
+  max-width: 400px;
+  padding: 0.625rem 1rem;
+  background: var(--reading-bg, #0f0f0f);
+  border: 1px solid var(--reading-border, #333);
+  border-radius: 4px;
+  color: var(--reading-text, #e0e0e0);
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+
+.scene-jump option {
+  background: var(--reading-surface, #1a1a1a);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .reading-header {
+    flex-wrap: wrap;
+    padding: 0.75rem;
+  }
+  
+  .reading-progress {
+    order: 3;
+    width: 100%;
+    max-width: none;
+  }
+  
+  .reading-preferences {
+    gap: 0.5rem;
+  }
+  
+  .pref-group label {
+    display: none;
+  }
+  
+  .reading-content {
+    padding: 1rem;
+  }
+  
+  .scene-title {
+    font-size: 1.5rem;
+  }
+  
+  .reading-nav {
+    padding: 0.75rem;
+  }
+  
+  .scene-jump {
+    max-width: none;
+  }
+}
