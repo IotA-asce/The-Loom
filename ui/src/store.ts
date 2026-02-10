@@ -514,6 +514,14 @@ interface AppState {
   // Phase F: Tone Analysis
   toneHeatmapOpen: boolean
   toggleToneHeatmap: () => void
+  
+  // Sprint 11: WebSocket & Real-time
+  wsConnection: WebSocket | null
+  wsConnected: boolean
+  generationProgress: { jobId: string; step: string; label: string; progress: number } | null
+  subscribeToJob: (jobId: string) => void
+  initializeWebSocket: () => void
+  closeWebSocket: () => void
 }
 
 const API_BASE = '/api'
@@ -595,6 +603,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Phase F: Tone Analysis state
   toneHeatmapOpen: false,
   
+  // Sprint 11: WebSocket state
+  wsConnection: null,
+  wsConnected: false,
+  generationProgress: null,
+  
   branches: [],
   tunerSettings: { violence: 0.5, humor: 0.5, romance: 0.5 },
   tunerResolution: null,
@@ -611,6 +624,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   // ==================== INITIALIZATION ====================
   initialize: () => {
+    // Initialize WebSocket connection
+    get().initializeWebSocket()
+    
     // Set up keyboard shortcuts
     set({
       keyboardShortcuts: {
@@ -1762,4 +1778,72 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   // ==================== PHASE F: TONE ANALYSIS ====================
   toggleToneHeatmap: () => set(state => ({ toneHeatmapOpen: !state.toneHeatmapOpen })),
+  
+  // ==================== SPRINT 11: WEBSOCKET & REAL-TIME ====================
+  initializeWebSocket: () => {
+    const clientId = `client-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const ws = new WebSocket(`ws://localhost:8000/api/ws/${clientId}`)
+    
+    ws.onopen = () => {
+      console.log('WebSocket connected')
+      set({ wsConnection: ws, wsConnected: true })
+      
+      // Send ping to keep alive
+      setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ action: 'ping' }))
+        }
+      }, 30000)
+    }
+    
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data)
+      
+      switch (message.type) {
+        case 'generation_progress':
+          set({ generationProgress: message.data })
+          break
+        case 'job_complete':
+          set({ generationProgress: null })
+          // Add toast notification
+          get().addToast({
+            message: message.data.message || 'Generation complete',
+            type: 'success',
+          })
+          break
+        case 'subscribed':
+          console.log('Subscribed to job:', message.jobId)
+          break
+        case 'pong':
+          // Keep-alive response
+          break
+      }
+    }
+    
+    ws.onclose = () => {
+      console.log('WebSocket disconnected')
+      set({ wsConnection: null, wsConnected: false })
+      // Attempt reconnect after 3 seconds
+      setTimeout(() => get().initializeWebSocket(), 3000)
+    }
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error)
+    }
+  },
+  
+  closeWebSocket: () => {
+    const ws = get().wsConnection
+    if (ws) {
+      ws.close()
+      set({ wsConnection: null, wsConnected: false })
+    }
+  },
+  
+  subscribeToJob: (jobId) => {
+    const ws = get().wsConnection
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ action: 'subscribe', jobId }))
+    }
+  },
 }))

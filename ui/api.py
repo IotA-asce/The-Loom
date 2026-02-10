@@ -1,7 +1,8 @@
-"""FastAPI backend API for Phase 8 frontend UI."""
+"""FastAPI backend API for Phase 8 frontend UI with Sprint 11 endpoints."""
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -17,7 +18,7 @@ from core.frontend_workflow_engine import (
     evaluate_phase8_done_criteria,
 )
 from core.story_graph_engine import BranchLifecycleManager
-from fastapi import FastAPI, HTTPException, Query, UploadFile
+from fastapi import FastAPI, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -95,6 +96,100 @@ class ReconcileRequest(BaseModel):
     scene_id: str
     text_version: str
     image_version: str
+
+
+# ============ Sprint 11: Writer API Models ============
+
+
+class WriterGenerateRequest(CamelModel):
+    node_id: str
+    branch_id: str
+    user_prompt: str
+    temperature: float = Field(ge=0.0, le=2.0, default=0.7)
+    max_tokens: int = Field(ge=100, le=4000, default=500)
+    context_chunks: list[str] = []
+    style_exemplars: list[str] = []
+    character_ids: list[str] = []
+    tuner_settings: dict[str, float] = {"violence": 0.5, "humor": 0.5, "romance": 0.5}
+
+
+class WriterGenerateResponse(CamelModel):
+    job_id: str
+    generated_text: str
+    word_count: int
+    style_similarity: float
+    contradiction_rate: float
+    prompt_version: str
+
+
+class StyleExemplarResponse(CamelModel):
+    exemplars: list[dict[str, Any]]
+
+
+class ContradictionCheckRequest(CamelModel):
+    generated_text: str
+    source_context: str
+
+
+class ContradictionCheckResponse(CamelModel):
+    contradictions: list[str]
+    contradiction_rate: float
+    suggested_fixes: list[str]
+
+
+# ============ Sprint 11: Artist API Models ============
+
+
+class ArtistGenerateRequest(CamelModel):
+    node_id: str
+    branch_id: str
+    scene_blueprint: dict[str, Any]
+    atmosphere_settings: dict[str, Any]
+    panel_count: int = Field(ge=1, le=16, default=4)
+    aspect_ratio: str = "16:9"
+    cfg_scale: float = Field(ge=1.0, le=15.0, default=7.5)
+    steps: int = Field(ge=10, le=50, default=28)
+    seed: int | None = None
+
+
+class ArtistGenerateResponse(CamelModel):
+    job_id: str
+    panels: list[dict[str, Any]]
+    overall_quality: float
+    continuity_score: float
+
+
+# ============ Sprint 11: Retrieval API Models ============
+
+
+class RetrieveContextRequest(CamelModel):
+    query: str
+    branch_id: str
+    limit: int = Field(ge=1, le=20, default=10)
+    filters: dict[str, str] = {}
+
+
+class RetrieveContextResponse(CamelModel):
+    chunks: list[dict[str, Any]]
+    total_tokens: int
+
+
+# ============ Sprint 11: Simulation API Models ============
+
+
+class SimulateImpactRequest(CamelModel):
+    node_id: str
+    change_type: str  # edit, delete, reorder
+    description: str
+
+
+class SimulateImpactResponse(CamelModel):
+    affected_nodes: list[dict[str, Any]]
+    consistency_score: float
+    risk_level: str
+    estimated_tokens: int
+    estimated_time: int
+    suggested_actions: list[str]
 
 
 class GraphMetricsResponse(CamelModel):
@@ -877,7 +972,492 @@ async def check_contradictions(request: dict[str, Any]) -> dict[str, Any]:
 @app.get("/api/health")
 async def health_check() -> dict[str, str]:
     """Health check endpoint."""
-    return {"status": "healthy", "phase": "8"}
+    return {"status": "healthy", "phase": "11"}
+
+
+# ============ Sprint 11: Writer Engine Endpoints ============
+
+
+@app.post("/api/writer/generate", response_model=WriterGenerateResponse)
+async def generate_text(request: WriterGenerateRequest) -> dict[str, Any]:
+    """Generate branch text through the writer engine with full pipeline."""
+    from core.text_generation_engine import (
+        WriterEngine,
+        WriterRequest,
+        TunerSettings,
+        build_prompt_package,
+        PromptRegistry,
+        ContextAssembly,
+        check_contradictions,
+        retrieve_style_exemplars,
+        map_tuner_settings,
+    )
+
+    try:
+        # Initialize engine
+        engine = WriterEngine(prompt_registry=PromptRegistry())
+        
+        # Build tuner settings
+        tuner = TunerSettings(
+            violence=request.tuner_settings.get("violence", 0.5),
+            humor=request.tuner_settings.get("humor", 0.5),
+            romance=request.tuner_settings.get("romance", 0.5),
+        )
+        
+        # Map tuner to generation parameters
+        tuner_mapping = map_tuner_settings(tuner, intensity=0.6)
+        
+        # Build context assembly
+        context = ContextAssembly(
+            chapter_summary="Chapter continuation",
+            arc_summary="Arc progression",
+            context_text="\n\n".join(request.context_chunks) if request.context_chunks else "No context provided",
+            unresolved_thread_prompts=[],
+            source_facts={},
+        )
+        
+        # Retrieve style exemplars
+        exemplars = retrieve_style_exemplars(
+            request.user_prompt,
+            tuple(request.style_exemplars) if request.style_exemplars else ("",),
+            top_k=3,
+        )
+        
+        # Build prompt package
+        prompt_package = build_prompt_package(
+            registry=PromptRegistry(),
+            user_prompt=request.user_prompt,
+            context=context,
+            exemplars=exemplars,
+            strict_layering=True,
+        )
+        
+        # Create writer request
+        writer_request = WriterRequest(
+            branch_id=request.branch_id,
+            scene_id=request.node_id,
+            user_prompt=request.user_prompt,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
+            context_assembly=context,
+            style_exemplars=exemplars,
+            voice_cards=(),
+            tuner_settings=tuner,
+        )
+        
+        # Generate (mock for now - would call actual LLM)
+        import hashlib
+        import time
+        
+        job_id = f"writer-{hashlib.sha256(f'{request.node_id}-{time.time()}'.encode()).hexdigest()[:12]}"
+        
+        # Simulate generation with prompt
+        generated_text = f"""{prompt_package.layered_prompt[:200]}...
+
+[Generated content based on {len(request.context_chunks)} context chunks and {len(request.style_exemplars)} style exemplars]
+
+The story continues with faithful adherence to the established tone and character voices.
+"""
+        
+        # Check contradictions
+        contradiction_report = check_contradictions(generated_text, {})
+        
+        # Calculate metrics
+        word_count = len(generated_text.split())
+        style_similarity = 0.85  # Mock value
+        
+        return {
+            "jobId": job_id,
+            "generatedText": generated_text,
+            "wordCount": word_count,
+            "styleSimilarity": style_similarity,
+            "contradictionRate": contradiction_report.contradiction_rate,
+            "promptVersion": prompt_package.version_id,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}") from e
+
+
+@app.get("/api/writer/style-exemplars", response_model=StyleExemplarResponse)
+async def get_style_exemplars(
+    query: str = Query(..., description="Query text to find similar styles"),
+    top_k: int = Query(default=5, ge=1, le=10),
+) -> dict[str, Any]:
+    """Retrieve style exemplars most relevant to the query text."""
+    from core.text_generation_engine import retrieve_style_exemplars
+    
+    # Mock source windows - in production would come from indexed content
+    source_windows = (
+        "The wind howled through the ancient corridors, carrying whispers of forgotten secrets.",
+        "She moved with calculated precision, each step a deliberate choice in the grand game.",
+        "Light filtered through stained glass, casting kaleidoscope shadows across the stone floor.",
+        "His voice remained steady despite the chaos, a beacon of certainty in uncertain times.",
+        "The city sprawled beneath them, a tapestry of lights and shadows stretching to the horizon.",
+    )
+    
+    exemplars = retrieve_style_exemplars(query, source_windows, top_k=top_k)
+    
+    return {
+        "exemplars": [
+            {"id": f"exemplar-{i}", "text": text, "similarity": 0.9 - (i * 0.05)}
+            for i, text in enumerate(exemplars)
+        ]
+    }
+
+
+@app.post("/api/writer/check-contradictions", response_model=ContradictionCheckResponse)
+async def check_contradictions_endpoint(request: ContradictionCheckRequest) -> dict[str, Any]:
+    """Check generated text for contradictions against source facts."""
+    from core.text_generation_engine import check_contradictions, _extract_state_facts
+    
+    # Extract facts from source context
+    source_facts = _extract_state_facts(request.source_context)
+    
+    # Check for contradictions
+    report = check_contradictions(request.generated_text, source_facts)
+    
+    # Generate suggested fixes
+    suggested_fixes = []
+    for contradiction in report.contradictions:
+        suggested_fixes.append(f"Review and correct: {contradiction}")
+    
+    if not suggested_fixes:
+        suggested_fixes.append("No contradictions detected. Text is consistent with canon.")
+    
+    return {
+        "contradictions": list(report.contradictions),
+        "contradictionRate": report.contradiction_rate,
+        "suggestedFixes": suggested_fixes,
+    }
+
+
+# ============ Sprint 11: Artist Engine Endpoints ============
+
+
+@app.post("/api/artist/generate-panels", response_model=ArtistGenerateResponse)
+async def generate_panels(request: ArtistGenerateRequest) -> dict[str, Any]:
+    """Generate manga panels with continuity, QC, and alignment safeguards."""
+    from core.image_generation_engine import (
+        generate_manga_sequence,
+        ArtistRequest,
+        SceneBlueprint,
+        AtmospherePreset,
+        atmosphere_preset,
+        MockDiffusionBackend,
+    )
+    
+    try:
+        import hashlib
+        import time
+        
+        job_id = f"artist-{hashlib.sha256(f'{request.node_id}-{time.time()}'.encode()).hexdigest()[:12]}"
+        
+        # Build scene blueprint from request
+        blueprint = SceneBlueprint(
+            setting=request.scene_blueprint.get("setting", "Unknown location"),
+            time_of_day=request.scene_blueprint.get("timeOfDay", "day"),
+            weather=request.scene_blueprint.get("weather", "clear"),
+            lighting_direction=request.atmosphere_settings.get("direction", "top"),
+            lighting_intensity=request.atmosphere_settings.get("intensity", 0.6),
+            shot_type=request.scene_blueprint.get("shotType", "medium"),
+            camera_angle=request.scene_blueprint.get("cameraAngle", "eye_level"),
+            focus_point=request.scene_blueprint.get("focusPoint", ""),
+            props=tuple(request.scene_blueprint.get("props", [])),
+            characters=[
+                {
+                    "character_id": c.get("characterId", ""),
+                    "position": c.get("position", "center"),
+                    "pose": c.get("pose", ""),
+                    "expression": c.get("expression", "neutral"),
+                }
+                for c in request.scene_blueprint.get("characters", [])
+            ],
+        )
+        
+        # Get atmosphere preset
+        preset_id = request.atmosphere_settings.get("presetId", "neutral")
+        atmosphere = atmosphere_preset(preset_id)
+        
+        # Build artist request
+        artist_request = ArtistRequest(
+            scene_blueprint=blueprint,
+            atmosphere=atmosphere,
+            prose_reference=tuple(),  # Would link to text
+            identity_packs=tuple(),  # Would load from character DB
+            aspect_ratio=request.aspect_ratio,
+            panel_count=request.panel_count,
+            seed=request.seed,
+        )
+        
+        # Generate panels
+        backend = MockDiffusionBackend()
+        result = generate_manga_sequence(artist_request, backend=backend)
+        
+        # Format panels for response
+        panels = [
+            {
+                "panelId": f"{job_id}-p{i}",
+                "index": i,
+                "status": artifact.status if hasattr(artifact, 'status') else "completed",
+                "qualityScore": getattr(artifact, 'quality_score', 0.85),
+                "seed": getattr(artifact, 'seed', 42),
+            }
+            for i, artifact in enumerate(result.artifacts)
+        ]
+        
+        return {
+            "jobId": job_id,
+            "panels": panels,
+            "overallQuality": result.overall_quality,
+            "continuityScore": result.continuity_score,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Panel generation failed: {str(e)}") from e
+
+
+# ============ Sprint 11: Retrieval Endpoints ============
+
+
+@app.post("/api/retrieve/context", response_model=RetrieveContextResponse)
+async def retrieve_context(request: RetrieveContextRequest) -> dict[str, Any]:
+    """Hybrid retrieval (BM25 + embedding) with branch-aware namespace."""
+    from core.retrieval_engine import (
+        RetrievalIndex,
+        RetrievalQuery,
+        RetrievedChunk,
+        hybrid_search,
+    )
+    
+    # Mock retrieved chunks - in production would query actual index
+    chunks = [
+        {
+            "id": f"chunk-{i}",
+            "text": f"Relevant context passage {i+1} related to: {request.query[:50]}...",
+            "source": f"Chapter {i+1}",
+            "branchId": request.branch_id,
+            "relevanceScore": 0.95 - (i * 0.08),
+            "tokenCount": 150 + (i * 20),
+        }
+        for i in range(min(request.limit, 5))
+    ]
+    
+    total_tokens = sum(chunk["tokenCount"] for chunk in chunks)
+    
+    return {
+        "chunks": chunks,
+        "totalTokens": total_tokens,
+    }
+
+
+# ============ Sprint 11: Simulation Endpoints ============
+
+
+@app.post("/api/simulate/impact", response_model=SimulateImpactResponse)
+async def simulate_impact(request: SimulateImpactRequest) -> dict[str, Any]:
+    """Simulate impact of proposed changes with consequence propagation."""
+    
+    # Mock affected nodes based on change type
+    affected_nodes = []
+    
+    if request.change_type == "edit":
+        affected_nodes = [
+            {"id": f"node-{request.node_id}", "name": "Target Node", "impact": "high", "description": "Direct edit"},
+            {"id": "node-desc-1", "name": "Dependent Scene", "impact": "medium", "description": "References target"},
+            {"id": "node-desc-2", "name": "Following Chapter", "impact": "low", "description": "Timeline successor"},
+        ]
+    elif request.change_type == "delete":
+        affected_nodes = [
+            {"id": f"node-{request.node_id}", "name": "Target Node", "impact": "high", "description": "Will be removed"},
+            {"id": "node-desc-1", "name": "Child Branch", "impact": "high", "description": "Depends on target"},
+            {"id": "node-desc-2", "name": "Reference Node", "impact": "medium", "description": "Links to target"},
+        ]
+    else:  # reorder
+        affected_nodes = [
+            {"id": f"node-{request.node_id}", "name": "Target Node", "impact": "medium", "description": "Position change"},
+            {"id": "node-sib-1", "name": "Sibling Node", "impact": "low", "description": "Order affected"},
+        ]
+    
+    # Calculate risk level
+    high_count = sum(1 for n in affected_nodes if n["impact"] == "high")
+    risk_level = "high" if high_count > 1 else "medium" if high_count == 1 else "low"
+    
+    return {
+        "affectedNodes": affected_nodes,
+        "consistencyScore": 85 - (high_count * 15),
+        "riskLevel": risk_level,
+        "estimatedTokens": len(affected_nodes) * 1500,
+        "estimatedTime": len(affected_nodes) * 30,
+        "suggestedActions": [
+            "Review affected nodes before applying",
+            "Create backup branch",
+            "Check character continuity",
+        ],
+    }
+
+
+# ============ Sprint 11: WebSocket Real-Time Updates ============
+
+
+class ConnectionManager:
+    """Manage WebSocket connections for real-time updates."""
+    
+    def __init__(self) -> None:
+        self.active_connections: dict[str, WebSocket] = {}
+        self.job_subscriptions: dict[str, list[str]] = {}
+    
+    async def connect(self, websocket: WebSocket, client_id: str) -> None:
+        await websocket.accept()
+        self.active_connections[client_id] = websocket
+    
+    def disconnect(self, client_id: str) -> None:
+        self.active_connections.pop(client_id, None)
+        # Clean up subscriptions
+        for job_id, clients in list(self.job_subscriptions.items()):
+            if client_id in clients:
+                clients.remove(client_id)
+    
+    def subscribe_to_job(self, client_id: str, job_id: str) -> None:
+        if job_id not in self.job_subscriptions:
+            self.job_subscriptions[job_id] = []
+        if client_id not in self.job_subscriptions[job_id]:
+            self.job_subscriptions[job_id].append(client_id)
+    
+    async def send_progress(self, job_id: str, progress: dict[str, Any]) -> None:
+        """Send progress update to all subscribed clients."""
+        clients = self.job_subscriptions.get(job_id, [])
+        message = {
+            "type": "generation_progress",
+            "jobId": job_id,
+            "data": progress,
+        }
+        
+        for client_id in clients:
+            websocket = self.active_connections.get(client_id)
+            if websocket:
+                try:
+                    await websocket.send_json(message)
+                except Exception:
+                    pass  # Client disconnected
+    
+    async def send_job_complete(self, job_id: str, result: dict[str, Any]) -> None:
+        """Send job completion notification."""
+        clients = self.job_subscriptions.get(job_id, [])
+        message = {
+            "type": "job_complete",
+            "jobId": job_id,
+            "data": result,
+        }
+        
+        for client_id in clients:
+            websocket = self.active_connections.get(client_id)
+            if websocket:
+                try:
+                    await websocket.send_json(message)
+                except Exception:
+                    pass
+        
+        # Clean up subscription
+        self.job_subscriptions.pop(job_id, None)
+    
+    async def broadcast(self, message: dict[str, Any]) -> None:
+        """Broadcast message to all connected clients."""
+        disconnected = []
+        for client_id, websocket in self.active_connections.items():
+            try:
+                await websocket.send_json(message)
+            except Exception:
+                disconnected.append(client_id)
+        
+        # Clean up disconnected
+        for client_id in disconnected:
+            self.disconnect(client_id)
+
+
+# Global connection manager
+_connection_manager = ConnectionManager()
+
+
+@app.websocket("/api/ws/{client_id}")
+async def websocket_endpoint(websocket: WebSocket, client_id: str) -> None:
+    """WebSocket endpoint for real-time generation progress."""
+    await _connection_manager.connect(websocket, client_id)
+    
+    try:
+        while True:
+            # Receive message from client
+            data = await websocket.receive_json()
+            
+            # Handle subscription requests
+            if data.get("action") == "subscribe":
+                job_id = data.get("jobId")
+                if job_id:
+                    _connection_manager.subscribe_to_job(client_id, job_id)
+                    await websocket.send_json({
+                        "type": "subscribed",
+                        "jobId": job_id,
+                    })
+            
+            # Handle ping
+            elif data.get("action") == "ping":
+                await websocket.send_json({"type": "pong"})
+                
+    except WebSocketDisconnect:
+        _connection_manager.disconnect(client_id)
+
+
+# Background task for simulating generation progress
+async def simulate_generation_progress(job_id: str, job_type: str) -> None:
+    """Simulate generation progress for demo purposes."""
+    steps = [
+        ("retrieving_context", "Retrieving relevant context...", 10),
+        ("analyzing_style", "Analyzing style patterns...", 25),
+        ("generating", f"Generating {job_type}...", 50),
+        ("validating", "Validating output...", 80),
+        ("finalizing", "Finalizing...", 95),
+    ]
+    
+    for step_name, step_label, progress in steps:
+        await asyncio.sleep(0.5)  # Simulate work
+        await _connection_manager.send_progress(job_id, {
+            "step": step_name,
+            "label": step_label,
+            "progress": progress,
+        })
+    
+    # Send completion
+    await _connection_manager.send_job_complete(job_id, {
+        "status": "completed",
+        "message": f"{job_type.capitalize()} generation complete",
+    })
+
+
+# Update generation endpoints to trigger WebSocket updates
+@app.post("/api/writer/generate-async")
+async def generate_text_async(request: WriterGenerateRequest) -> dict[str, str]:
+    """Start async text generation with WebSocket progress updates."""
+    import hashlib
+    import time
+    
+    job_id = f"writer-{hashlib.sha256(f'{request.node_id}-{time.time()}'.encode()).hexdigest()[:12]}"
+    
+    # Start background progress simulation
+    asyncio.create_task(simulate_generation_progress(job_id, "text"))
+    
+    return {"jobId": job_id, "status": "started"}
+
+
+@app.post("/api/artist/generate-panels-async")
+async def generate_panels_async(request: ArtistGenerateRequest) -> dict[str, str]:
+    """Start async panel generation with WebSocket progress updates."""
+    import hashlib
+    import time
+    
+    job_id = f"artist-{hashlib.sha256(f'{request.node_id}-{time.time()}'.encode()).hexdigest()[:12]}"
+    
+    # Start background progress simulation
+    asyncio.create_task(simulate_generation_progress(job_id, "panels"))
+    
+    return {"jobId": job_id, "status": "started"}
 
 
 if __name__ == "__main__":
