@@ -374,11 +374,11 @@
 | Backend - Continuous Goals | 9 | Ongoing discipline |
 | Frontend - Image Generation | 20 | C.4, C.5 missing |
 | Frontend - Consequence Sim | 10 | E.2, E.3 missing |
-| Frontend - Profile & Analysis | 15 | F.2, F.3 missing |
-| Frontend - Operations | 20 | G.1-G.3 missing |
+| Frontend - Profile & Analysis | 7 | F.3 missing |
+| Frontend - Operations | 0 | Complete ✅ |
 | Frontend - Graph Features | 12 | H.2, H.4 missing |
 | Frontend - UX Polish | 6 | Mobile/offline |
-| **TOTAL** | **118** | **~11% of total 224 items** |
+| **TOTAL** | **100** | **~9% of total 224 items** |
 
 ### Completion Status
 
@@ -393,6 +393,7 @@
 | Phase 8 (Frontend UX) | ~50 | 50 | 0 | 100% ✅ |
 | Sprints 11-14 | 40 | 40 | 0 | 100% ✅ |
 | Sprints 15-16 | 20 | 20 | 0 | 100% ✅ |
+| Sprints 17-18 | 21 | 21 | 0 | 100% ✅ |
 | Phase 9 (Operations) | ~20 | 20 | 0 | 100% ✅ |
 | Phase 10 (Release) | ~15 | 15 | 0 | 100% ✅ |
 | **Frontend Sprints 1-10** | **224** | **~190** | **~34** | **~85%** |
@@ -667,54 +668,74 @@ The following sprints are designed to be completed sequentially, with each sprin
 
 ---
 
-### Sprint 17: Operations Dashboard (2 weeks)
+### Sprint 17: Operations Dashboard (2 weeks) ✅ COMPLETE
 **Theme:** System monitoring and operational controls
 
 **Goal:** Provide visibility into system health, job queues, and budget controls.
 
-| Item | Description | Effort |
-|------|-------------|--------|
-| G.1.1.1 | Latency charts component | 2d |
-| G.1.1.2 | Success rate gauges | 1d |
-| G.1.1.3 | Error rate trends | 1d |
-| G.1.2.1 | Pending jobs count | 0.5d |
-| G.1.2.2 | In-progress jobs list | 1d |
-| G.1.2.3 | Completed jobs history | 1d |
-| G.2.1.1 | Current period usage display | 1d |
-| G.2.1.2 | Usage by branch chart | 1d |
-| G.2.2.1 | Pre-generation cost estimate | 1d |
-| G.2.3.1 | Budget limit warnings (50%, 80%, 100%) | 1d |
-| G.3.1.1 | Local-only mode toggle | 1d |
-| G.3.2.1 | Data retention settings | 1d |
+| Item | Description | Effort | Status |
+|------|-------------|--------|--------|
+| G.1.1.1 | Latency charts component | 2d | ✅ |
+| G.1.1.2 | Success rate gauges | 1d | ✅ |
+| G.1.1.3 | Error rate trends | 1d | ✅ |
+| G.1.2.1 | Pending jobs count | 0.5d | ✅ |
+| G.1.2.2 | In-progress jobs list | 1d | ✅ |
+| G.1.2.3 | Completed jobs history | 1d | ✅ |
+| G.2.1.1 | Current period usage display | 1d | ✅ |
+| G.2.1.2 | Usage by branch chart | 1d | ✅ |
+| G.2.2.1 | Pre-generation cost estimate | 1d | ✅ |
+| G.2.3.1 | Budget limit warnings (50%, 80%, 100%) | 1d | ✅ |
+| G.3.1.1 | Local-only mode toggle | 1d | ✅ |
+| G.3.2.1 | Data retention settings | 1d | ✅ |
 
 **Sprint 17 Done Criteria:**
-- [ ] System metrics visible in dashboard
-- [ ] Job queue status is real-time
-- [ ] Budget warnings appear at thresholds
+- [x] System metrics visible in dashboard
+- [x] Job queue status is real-time
+- [x] Budget warnings appear at thresholds
+
+**Implemented:**
+- `operationsStore` with Zustand + persist middleware
+- `OperationsDashboard` component with 4 tabs:
+  - **Metrics Tab**: Latency stats (P50, P95, P99), mini bar charts, success rate gauge, error rate breakdown
+  - **Jobs Tab**: Job stats counters, job list with progress bars, cancel/retry actions, clear completed
+  - **Usage Tab**: Current period summary, budget progress with threshold markers, usage by branch chart, usage by operation
+  - **Privacy Tab**: Local-only mode toggle, external provider selection, data retention settings, export/delete data
+- Budget warning banner (50%, 80%, 100% thresholds)
+- Cost estimation helper function
 
 ---
 
-### Sprint 18: Maturity Rating & Profile Display (1 week)
+### Sprint 18: Maturity Rating & Profile Display (1 week) ✅ COMPLETE
 **Theme:** Content analysis visualization
 
 **Goal:** Display maturity ratings and content analysis to users.
 
-| Item | Description | Effort |
-|------|-------------|--------|
-| F.2.1.1 | Rating badge component (G/PG/PG-13/R) | 1d |
-| F.2.1.2 | Rating justification summary | 1d |
-| F.2.2.1 | Violence score bar | 0.5d |
-| F.2.2.2 | Language score bar | 0.5d |
-| F.2.2.3 | Sexual content score bar | 0.5d |
-| F.2.2.4 | Mature themes score bar | 0.5d |
-| F.2.3.1 | Target audience selector | 1d |
-| F.2.3.2 | Content warnings list | 1d |
-| GC.2.3 | Document maturity rating system | 0.5d |
+| Item | Description | Effort | Status |
+|------|-------------|--------|--------|
+| F.2.1.1 | Rating badge component (G/PG/PG-13/R) | 1d | ✅ |
+| F.2.1.2 | Rating justification summary | 1d | ✅ |
+| F.2.2.1 | Violence score bar | 0.5d | ✅ |
+| F.2.2.2 | Language score bar | 0.5d | ✅ |
+| F.2.2.3 | Sexual content score bar | 0.5d | ✅ |
+| F.2.2.4 | Mature themes score bar | 0.5d | ✅ |
+| F.2.3.1 | Target audience selector | 1d | ✅ |
+| F.2.3.2 | Content warnings list | 1d | ✅ |
+| GC.2.3 | Document maturity rating system | 0.5d | ✅ |
 
 **Sprint 18 Done Criteria:**
-- [ ] Maturity ratings display correctly
-- [ ] Category breakdowns visible
-- [ ] Content warnings shown appropriately
+- [x] Maturity ratings display correctly
+- [x] Category breakdowns visible
+- [x] Content warnings shown appropriately
+
+**Implemented:**
+- `maturityStore` with rating calculations and content warnings
+- `MaturityRating` component with 3 tabs:
+  - **Overview Tab**: Large rating badge, justification text, target audience selector with suitability check, quick content breakdown
+  - **Categories Tab**: Detailed score bars for violence, language, sexual content, mature themes with intensity labels
+  - **Warnings Tab**: Selectable content warnings (12 types), severity indicators, active warnings summary
+- `RatingBadge` compact component (used in header nav)
+- 5 rating levels: G, PG, PG-13, R, NC-17 with color coding
+- Auto-calculated ratings based on content scores
 
 ---
 
@@ -801,12 +822,12 @@ The following sprints are designed to be completed sequentially, with each sprin
 | 14 | Quality Control | 2 weeks | Week 7 | ✅ Complete |
 | 15 | Graph Edge Management | 2 weeks | Week 9 | ✅ Complete |
 | 16 | Minimap & Bookmarks | 1 week | Week 10 | ✅ Complete |
-| 17 | Operations Dashboard | 2 weeks | Week 12 | Pending |
-| 18 | Maturity Rating | 1 week | Week 13 | Pending |
+| 17 | Operations Dashboard | 2 weeks | Week 12 | ✅ Complete |
+| 18 | Maturity Rating | 1 week | Week 13 | ✅ Complete |
 | 19 | Consequence Recommendations | 1 week | Week 14 | Pending |
 | 20 | Profile Editor & Comments | 2 weeks | Week 16 | Pending |
 | 21 | Offline Support & Polish | 1 week | Week 17 | Pending |
-| **TOTAL** | | **17 weeks** | **~4 months** | **65% Complete** |
+| **TOTAL** | | **17 weeks** | **~4 months** | **77% Complete** |
 
 ---
 

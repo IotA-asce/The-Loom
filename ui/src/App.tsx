@@ -25,6 +25,10 @@ import { NodeSearch } from './components/NodeSearch'
 import { CharacterGallery } from './components/CharacterGallery'
 import { QCDashboard } from './components/QCDashboard'
 import { BookmarkDropdown } from './components/BookmarkDropdown'
+import { OperationsDashboard } from './components/OperationsDashboard'
+import { MaturityRating, RatingBadge } from './components/MaturityRating'
+import { useOperationsStore } from './stores/operationsStore'
+import { useMaturityStore } from './stores/maturityStore'
 import './App.css'
 
 // Tutorial steps configuration
@@ -85,9 +89,15 @@ function App() {
   const [showNodeSearch, setShowNodeSearch] = useState(false)
   const [showCharacterGallery, setShowCharacterGallery] = useState(false)
   const [showQCDashboard, setShowQCDashboard] = useState(false)
+  const [showOperations, setShowOperations] = useState(false)
+  const [showMaturity, setShowMaturity] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false)
   const isMobile = useIsMobile()
+  
+  // Get stores
+  const { operationsPanelOpen, toggleOperationsPanel } = useOperationsStore()
+  const { maturityPanelOpen, toggleMaturityPanel, currentRating } = useMaturityStore()
   
   // Get navigation history from store
   const { 
@@ -251,6 +261,24 @@ function App() {
       <QCDashboard
         isOpen={showQCDashboard}
         onClose={() => setShowQCDashboard(false)}
+      />
+      
+      {/* Operations Dashboard */}
+      <OperationsDashboard
+        isOpen={showOperations || operationsPanelOpen}
+        onClose={() => {
+          setShowOperations(false)
+          if (operationsPanelOpen) toggleOperationsPanel()
+        }}
+      />
+      
+      {/* Maturity Rating */}
+      <MaturityRating
+        isOpen={showMaturity || maturityPanelOpen}
+        onClose={() => {
+          setShowMaturity(false)
+          if (maturityPanelOpen) toggleMaturityPanel()
+        }}
       />
       
       {/* Shortcuts Help Modal */}
@@ -475,6 +503,22 @@ function App() {
             title="QC Dashboard"
           >
             🔍 QC
+          </button>
+          <button 
+            className="nav-button" 
+            onClick={() => setShowOperations(true)}
+            aria-label="Operations Dashboard"
+            title="Operations"
+          >
+            🔧 Ops
+          </button>
+          <button 
+            className="nav-button" 
+            onClick={() => setShowMaturity(true)}
+            aria-label="Content Rating"
+            title="Rating"
+          >
+            <RatingBadge rating={currentRating} showLabel={false} size="small" />
           </button>
           <button 
             className="nav-button" 
