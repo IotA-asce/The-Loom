@@ -18,12 +18,13 @@ The Loom is a Python-first storytelling framework that analyzes source narrative
 | **✍️ Prose Generation** | Style-faithful text generation with character voice integrity |
 | **🎨 Manga Generation** | Panel sequences with atmosphere control and identity consistency |
 | **🔄 State Integrity** | Event-sourced edit logs, idempotent jobs, and cross-modal synchronization |
+| **🎨 Interactive UI** | Graph-based branch visualization, dual-view editor, tuner controls |
 
 ---
 
 ## 🚀 Current Status
 
-**Phase 0–7 Complete** — The Loom has foundational scaffolding through full orchestration and state integrity.
+**Phase 0–8 Complete** — The Loom has foundational scaffolding through full frontend implementation with interactive graph UX, dual-view UI, and accessibility features.
 
 | Phase | Status | Key Deliverables |
 |-------|--------|------------------|
@@ -35,7 +36,7 @@ The Loom is a Python-first storytelling framework that analyzes source narrative
 | Phase 5 | ✅ Complete | Writer agent with style fidelity controls |
 | Phase 6 | ✅ Complete | Artist agent with panel continuity and cross-modal alignment |
 | Phase 7 | ✅ Complete | Orchestration engine with edit provenance and sync semantics |
-| Phase 8 | 📝 Planned | Interactive frontend and dual-view UI |
+| Phase 8 | ✅ Complete | Interactive frontend and dual-view UI |
 | Phase 9 | 📝 Planned | Operations, security, and governance |
 | Phase 10 | 📝 Planned | Evaluation, hardening, and release |
 
@@ -92,7 +93,11 @@ the-loom/
 ├── tests/              # Test suite
 │   ├── fixtures/       # Golden test fixtures
 │   └── test_*.py       # Unit and integration tests
-├── ui/                 # Frontend (planned)
+├── ui/                 # Frontend (Phase 8 complete)
+│   ├── api.py         # FastAPI backend API
+│   ├── src/           # React frontend components
+│   │   ├── components/# GraphCanvas, TunerPanel, DualView
+│   │   └── store.ts   # State management
 ├── models/             # Model storage (local LLM weights)
 └── docs/               # Documentation
 ```
@@ -259,9 +264,9 @@ MIT License — see [`LICENSE`](./LICENSE) for details.
 
 | Phase | Focus | Key Deliverables |
 |-------|-------|------------------|
-| Phase 8 | Frontend | Interactive graph UX, dual-view, tuner controls |
-| Phase 9 | Operations | Observability, incident readiness, privacy controls |
-| Phase 10 | Release | Benchmark suites, beta program, public release |
+| Phase 8 | ✅ Complete | Interactive graph UX, dual-view, tuner controls |
+| Phase 9 | 📝 Planned | Operations, incident readiness, privacy controls |
+| Phase 10 | 📝 Planned | Benchmark suites, beta program, public release |
 
 ---
 

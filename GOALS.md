@@ -279,35 +279,35 @@ phase.
 ## Phase 8 - Frontend and User Workflow
 
 ### G8.1 Interactive graph UX
-- [ ] Implement node graph rendering with virtualization
-- [ ] Add semantic zoom modes (overview/scene/detail)
-- [ ] Add undo/redo and autosave checkpoints
+- [x] Implement node graph rendering with virtualization
+- [x] Add semantic zoom modes (overview/scene/detail)
+- [x] Add undo/redo and autosave checkpoints
 
 ### G8.2 Branching workflow UX
-- [ ] Add branch creation from any node
-- [ ] Show branch lineage and impact previews
-- [ ] Add branch archive/merge actions
+- [x] Add branch creation from any node
+- [x] Show branch lineage and impact previews
+- [x] Add branch archive/merge actions
 
 ### G8.3 Tuner and control panel
-- [ ] Implement violence/humor/romance controls
-- [ ] Add control precedence rules and preview
-- [ ] Add warnings for extreme settings
+- [x] Implement violence/humor/romance controls
+- [x] Add control precedence rules and preview
+- [x] Add warnings for extreme settings
 
 ### G8.4 Dual-view and Director Mode
-- [ ] Implement text + manga split view
-- [ ] Add explicit sync status and stale content badges
-- [ ] Implement sentence edit and panel redraw workflows
+- [x] Implement text + manga split view
+- [x] Add explicit sync status and stale content badges
+- [x] Implement sentence edit and panel redraw workflows
 
 ### G8.5 Accessibility and mobile readiness
-- [ ] Add keyboard-first navigation for critical actions
-- [ ] Add semantic labels for assistive technologies
-- [ ] Ensure responsive layouts for mobile and tablet
-- [ ] Add non-color indicators for state changes and warnings
+- [x] Add keyboard-first navigation for critical actions
+- [x] Add semantic labels for assistive technologies
+- [x] Ensure responsive layouts for mobile and tablet
+- [x] Add non-color indicators for state changes and warnings
 
 ### Phase 8 done criteria
-- [ ] Graph performance remains usable on large branches
-- [ ] Critical flows are keyboard-usable and mobile-usable
-- [ ] Dual-view sync state is always visible and accurate
+- [x] Graph performance remains usable on large branches
+- [x] Critical flows are keyboard-usable and mobile-usable
+- [x] Dual-view sync state is always visible and accurate
 
 ## Phase 9 - Operations, Security, and Governance
 

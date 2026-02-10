@@ -1,0 +1,89 @@
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  background-color: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  font-size: 0.8rem;
+  position: sticky;
+  bottom: 0;
+}
+
+.status-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.status-label {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.status-indicators {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.status-pill {
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.status-pill.good {
+  color: var(--color-success);
+}
+
+.status-pill.bad {
+  color: var(--color-error);
+}
+
+.status-loading {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.metrics {
+  display: flex;
+  gap: 1rem;
+}
+
+.metric-item {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.shortcuts {
+  color: var(--color-text-muted);
+}
+
+.shortcut-hint {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .status-bar {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .shortcuts {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .metrics {
+    display: none;
+  }
+  
+  .status-bar {
+    justify-content: center;
+  }
+}

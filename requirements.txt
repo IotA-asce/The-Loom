@@ -6,3 +6,6 @@ pypdf>=5.1.0
 Pillow>=11.0.0
 pytest>=8.3.0
 ruff>=0.8.0
+fastapi>=0.109.0
+uvicorn>=0.27.0
+pydantic>=2.5.0
