@@ -129,6 +129,10 @@
   flex-direction: column;
 }
 
+.app-content.mobile {
+  touch-action: pan-x pan-y pinch-zoom;
+}
+
 .floating-toggles {
   position: absolute;
   top: 1rem;
@@ -240,16 +244,39 @@
   color: var(--color-text-secondary);
 }
 
+.shortcuts-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.shortcuts-content .secondary-button,
 .shortcuts-content .close-button {
-  width: 100%;
-  padding: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.shortcuts-content .secondary-button {
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.shortcuts-content .secondary-button:hover {
+  background: var(--color-border);
+  border-color: var(--color-primary);
+}
+
+.shortcuts-content .close-button {
+  flex: 1;
+  min-width: 100px;
   background: var(--color-primary);
   border: none;
-  border-radius: 4px;
   color: white;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background 0.15s ease;
 }
 
 .shortcuts-content .close-button:hover {
