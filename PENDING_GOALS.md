@@ -191,7 +191,68 @@ pip install diffusers transformers accelerate
 
 ---
 
-## 🔄 PENDING: Backend Implementation (Sprints 28-30)
+## ✅ COMPLETE: Backend Sprints 28-29
+
+### Sprint 28: Real-time Collaboration ✅
+
+**Status:** Complete with WebSocket rooms, presence tracking, and edit locks
+
+**Deliverables:**
+- ✅ `core/collaboration.py` - Collaboration engine:
+  - `CollaborationRoom` - Room-based collaboration sessions
+  - `UserPresence` - User presence with cursor positions
+  - `EditLock` - Node-level edit locking
+  - `CollaborationEvent` - Event broadcasting
+- ✅ User features:
+  - Join/leave collaboration rooms
+  - Cursor position broadcasting
+  - Node selection indicators
+  - Edit locks with timeouts
+  - Presence sync
+- ✅ API Endpoints:
+  - `POST /api/collaboration/join` - Join collaboration room
+  - `POST /api/collaboration/leave` - Leave room
+  - `POST /api/collaboration/cursor` - Update cursor position
+  - `POST /api/collaboration/select` - Select node
+  - `POST /api/collaboration/lock` - Acquire edit lock
+  - `POST /api/collaboration/unlock` - Release edit lock
+  - `GET /api/collaboration/presence/{room_id}` - Get presence state
+
+**Colors:**
+- 10 distinct user colors for cursors/selections
+- Automatic color assignment on join
+
+### Sprint 29: Observability/Monitoring ✅
+
+**Status:** Complete with metrics, logging, and health checks
+
+**Deliverables:**
+- ✅ `core/observability.py` - Observability layer:
+  - `MetricsCollector` - Counter, gauge, histogram metrics
+  - `SLOTracker` - Service Level Objective tracking
+  - `HealthChecker` - Component health checks
+  - `StructuredLogger` - Structured logging with correlation IDs
+  - `Observability` - Main facade
+- ✅ Prometheus-compatible metrics export
+- ✅ Default SLOs:
+  - Availability: 99.9% target
+  - Latency p95: 500ms target
+  - Error rate: 0.1% target
+- ✅ API Endpoints:
+  - `GET /api/ops/metrics` - System metrics (JSON)
+  - `GET /api/ops/metrics/prometheus` - Prometheus format
+  - `GET /api/ops/slos` - SLO status
+  - `GET /api/ops/health` - Health check
+  - `GET /api/ops/logs` - Recent log entries
+
+**Metrics Tracked:**
+- HTTP request counts, latency histograms
+- Generation success/failure rates
+- Token usage and costs
+
+---
+
+## 🔄 PENDING: Backend Implementation (Sprint 30)
 
 ## Backend Sprint 28: Real-time Collaboration
 

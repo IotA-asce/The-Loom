@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-import json
 import sys
 from pathlib import Path
 
@@ -13,7 +11,6 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ui.api import app
-
 
 # Mark all tests as asyncio
 pytestmark = pytest.mark.asyncio
@@ -38,7 +35,7 @@ class TestWriterEndpoints:
                 "tunerSettings": {"violence": 0.5, "humor": 0.3, "romance": 0.4},
             },
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "jobId" in data
@@ -59,7 +56,7 @@ class TestWriterEndpoints:
                 # Missing nodeId and branchId
             },
         )
-        
+
         # Should either succeed with defaults or fail validation
         assert response.status_code in [200, 422]
 
@@ -69,12 +66,12 @@ class TestWriterEndpoints:
             "/api/writer/style-exemplars",
             params={"query": "dramatic scene with tension", "topK": 3},
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "exemplars" in data
         assert isinstance(data["exemplars"], list)
-        
+
         if data["exemplars"]:
             exemplar = data["exemplars"][0]
             assert "id" in exemplar
@@ -90,7 +87,7 @@ class TestWriterEndpoints:
                 "sourceContext": "The character died in the previous chapter.",
             },
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "contradictions" in data
@@ -143,7 +140,7 @@ class TestArtistEndpoints:
                 "steps": 28,
             },
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "jobId" in data
@@ -151,7 +148,7 @@ class TestArtistEndpoints:
         assert "overallQuality" in data
         assert "continuityScore" in data
         assert isinstance(data["panels"], list)
-        
+
         if data["panels"]:
             panel = data["panels"][0]
             assert "panelId" in panel
@@ -173,13 +170,13 @@ class TestRetrievalEndpoints:
                 "filters": {"type": "character", "importance": "high"},
             },
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "chunks" in data
         assert "totalTokens" in data
         assert isinstance(data["chunks"], list)
-        
+
         if data["chunks"]:
             chunk = data["chunks"][0]
             assert "id" in chunk
@@ -203,7 +200,7 @@ class TestSimulationEndpoints:
                 "description": "Change the character's decision to spare the villain",
             },
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "affectedNodes" in data
@@ -212,11 +209,11 @@ class TestSimulationEndpoints:
         assert "estimatedTokens" in data
         assert "estimatedTime" in data
         assert "suggestedActions" in data
-        
+
         assert isinstance(data["affectedNodes"], list)
         assert data["riskLevel"] in ["low", "medium", "high", "critical"]
         assert 0 <= data["consistencyScore"] <= 100
-        
+
         if data["affectedNodes"]:
             node = data["affectedNodes"][0]
             assert "id" in node
@@ -234,7 +231,7 @@ class TestSimulationEndpoints:
                 "description": "Remove this scene entirely",
             },
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert len(data["affectedNodes"]) >= 2  # Delete affects more nodes
@@ -250,7 +247,7 @@ class TestSimulationEndpoints:
                 "description": "Move this scene earlier in the timeline",
             },
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["riskLevel"] in ["low", "medium"]
@@ -284,7 +281,7 @@ class TestAsyncGenerationEndpoints:
                 "userPrompt": "Generate async test",
             },
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "jobId" in data
@@ -302,7 +299,7 @@ class TestAsyncGenerationEndpoints:
                 "atmosphereSettings": {"presetId": "neutral"},
             },
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "jobId" in data
@@ -322,14 +319,14 @@ class TestEndpointIntegration:
         )
         assert context_response.status_code == 200
         context_data = context_response.json()
-        
+
         # 2. Get style exemplars
         exemplars_response = client.get(
             "/api/writer/style-exemplars",
             params={"query": "dramatic prose", "topK": 3},
         )
         assert exemplars_response.status_code == 200
-        
+
         # 3. Generate text
         generate_response = client.post(
             "/api/writer/generate",
@@ -343,13 +340,15 @@ class TestEndpointIntegration:
         )
         assert generate_response.status_code == 200
         gen_data = generate_response.json()
-        
+
         # 4. Check contradictions
         check_response = client.post(
             "/api/writer/check-contradictions",
             json={
                 "generatedText": gen_data["generatedText"],
-                "sourceContext": " ".join([c["text"] for c in context_data.get("chunks", [])]),
+                "sourceContext": " ".join(
+                    [c["text"] for c in context_data.get("chunks", [])]
+                ),
             },
         )
         assert check_response.status_code == 200
@@ -362,7 +361,7 @@ class TestEndpointIntegration:
             json={"query": "battle scene description", "branchId": "main", "limit": 3},
         )
         assert context_response.status_code == 200
-        
+
         # 2. Generate panels
         panels_response = client.post(
             "/api/artist/generate-panels",
@@ -399,10 +398,12 @@ class TestEndpointIntegration:
 
 # Fixtures
 
+
 @pytest.fixture
 def client():
     """Create a test client for the FastAPI app."""
     from fastapi.testclient import TestClient
+
     return TestClient(app)
 
 

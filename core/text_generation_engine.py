@@ -13,7 +13,9 @@ from typing import TYPE_CHECKING
 from .retrieval_engine import HierarchicalMemoryModel, RetrievalIndex, RetrievalQuery
 
 if TYPE_CHECKING:
-    from .llm_backend import LLMBackend, LLMMessage, LLMRequest, LLMResponse, LLMStreamChunk
+    from .llm_backend import (
+        LLMBackend,
+    )
 
 _WORD_PATTERN = re.compile(r"[A-Za-z0-9']+")
 _SENTENCE_PATTERN = re.compile(r"(?<=[.!?])\s+")
@@ -1013,7 +1015,7 @@ class WriterEngine:
         else:
             # Mock streaming - generate full text then yield word by word
             import asyncio
-            
+
             generated_text = self._compose_text(
                 request=request,
                 context=context,
@@ -1021,14 +1023,18 @@ class WriterEngine:
                 exemplars=exemplars,
                 rng=random.Random(42),
             )
-            
+
             words = generated_text.split()
             for i, word in enumerate(words):
-                yield type('MockChunk', (), {
-                    'content': word + ' ',
-                    'is_finished': i == len(words) - 1,
-                    'finish_reason': 'stop' if i == len(words) - 1 else None
-                })()
+                yield type(
+                    "MockChunk",
+                    (),
+                    {
+                        "content": word + " ",
+                        "is_finished": i == len(words) - 1,
+                        "finish_reason": "stop" if i == len(words) - 1 else None,
+                    },
+                )()
                 await asyncio.sleep(0.01)
 
     async def generate(
@@ -1039,7 +1045,6 @@ class WriterEngine:
         memory_model: HierarchicalMemoryModel | None = None,
     ) -> WriterResult:
         """Generate branch text with style/voice/coherence safeguards."""
-        from .llm_backend import LLMMessage, LLMRequest
 
         context = self.assemble_branch_context(
             request,

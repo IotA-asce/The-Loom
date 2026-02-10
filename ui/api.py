@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -18,7 +20,14 @@ from core.frontend_workflow_engine import (
     evaluate_phase8_done_criteria,
 )
 from core.story_graph_engine import BranchLifecycleManager
-from fastapi import FastAPI, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Query,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -787,189 +796,6 @@ async def get_supported_formats() -> dict[str, list[str]]:
     }
 
 
-@app.post("/api/generate/text")
-async def generate_text(request: dict[str, Any]) -> dict[str, Any]:
-    """Generate text continuation for a scene."""
-    from core.text_generation_engine import WriterEngine, WriterRequest, TunerSettings
-
-    try:
-        # Create mock generation for now (replace with actual engine call)
-        user_prompt = request.get("userPrompt", "")
-        context = request.get("context", [])
-        tuner = request.get("tuner", {"violence": 0.5, "humor": 0.5, "romance": 0.5})
-        
-        # Simulate generation delay
-        await __import__('asyncio').sleep(0.5)
-        
-        # Generate mock content based on prompt
-        generated_text = f"""{user_prompt}
-
-[Generated content based on {len(context)} context chunks]
-
-The scene unfolded with a tension that gripped the air. Characters moved through the space with purpose, their actions guided by the underlying currents of the narrative. As the moment stretched, decisions were made that would ripple through the story's unfolding path.
-
-"We cannot turn back now," the voice rang out, carrying weight beyond mere words. The response came not in speech, but in the set of shoulders, the firmness of steps forward into uncertainty.
-
-The world responded in kind—shadows lengthening, sounds sharpening, the very atmosphere bending to the gravity of choice."""
-
-        return {
-            "success": True,
-            "generatedText": generated_text,
-            "wordCount": len(generated_text.split()),
-            "requestId": f"req-{__import__('time').time()}",
-            "tunerApplied": tuner,
-            "contextUsed": len(context),
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/api/retrieve/context")
-async def retrieve_context(request: dict[str, Any]) -> dict[str, Any]:
-    """Retrieve relevant context chunks for a query."""
-    query = request.get("query", "")
-    branch_id = request.get("branchId", "main")
-    top_k = request.get("topK", 6)
-    
-    # Mock retrieved chunks
-    mock_chunks = [
-        {
-            "id": "chunk-1",
-            "text": "The protagonist stood at the crossroads, the weight of decision pressing upon their shoulders.",
-            "relevanceScore": 0.95,
-            "source": "Chapter 1, Scene 3",
-            "branchId": branch_id,
-        },
-        {
-            "id": "chunk-2",
-            "text": "Echoes of the past whispered through the corridor, memories threading through present tension.",
-            "relevanceScore": 0.87,
-            "source": "Chapter 2, Scene 1",
-            "branchId": branch_id,
-        },
-        {
-            "id": "chunk-3",
-            "text": "The antagonist's motivations remained clouded, yet their actions spoke of deeper purpose.",
-            "relevanceScore": 0.82,
-            "source": "Chapter 1, Scene 5",
-            "branchId": branch_id,
-        },
-        {
-            "id": "chunk-4",
-            "text": "Setting details: the room was dimly lit, shadows pooling in corners like gathered secrets.",
-            "relevanceScore": 0.76,
-            "source": "Chapter 3, Scene 2",
-            "branchId": branch_id,
-        },
-    ]
-    
-    return {
-        "success": True,
-        "query": query,
-        "chunks": mock_chunks[:top_k],
-        "totalAvailable": len(mock_chunks),
-    }
-
-
-@app.post("/api/retrieve/style-exemplars")
-async def retrieve_style_exemplars(request: dict[str, Any]) -> dict[str, Any]:
-    """Retrieve style exemplars matching the query."""
-    query_text = request.get("queryText", "")
-    source_windows = request.get("sourceWindows", [])
-    top_k = request.get("topK", 3)
-    
-    mock_exemplars = [
-        {
-            "id": "ex-1",
-            "text": "The rain fell in sheets, each drop a percussion against the rooftop symphony.",
-            "similarityScore": 0.91,
-            "features": ["atmospheric", "sensory", "metaphorical"],
-        },
-        {
-            "id": "ex-2",
-            "text": "She moved with purpose, each step calculated, each breath measured against the pressing silence.",
-            "similarityScore": 0.85,
-            "features": ["character-focused", "tense", "deliberate pacing"],
-        },
-        {
-            "id": "ex-3",
-            "text": "Words hung between them, heavy with unspoken meaning, the space filling with what remained unsaid.",
-            "similarityScore": 0.79,
-            "features": ["dialogue-adjacent", "emotional", "subtext-heavy"],
-        },
-    ]
-    
-    return {
-        "success": True,
-        "exemplars": mock_exemplars[:top_k],
-        "queryAnalyzed": True,
-    }
-
-
-@app.get("/api/characters")
-async def list_characters() -> list[dict[str, Any]]:
-    """List all characters with voice profiles."""
-    return [
-        {
-            "id": "char-1",
-            "name": "Protagonist",
-            "aliases": ["Hero", "MC"],
-            "traits": ["brave", "determined", "conflicted"],
-            "description": "The main character driven by a need for justice",
-            "voiceProfile": {
-                "speechPatterns": ["direct", "introspective", "hesitant in emotional moments"],
-                "vocabulary": ["precise", "occasionally poetic", "avoids contractions when serious"],
-                "sampleQuotes": [
-                    "I won't stand by while this happens.",
-                    "There's more to this than meets the eye.",
-                ],
-            },
-            "consistencyScore": 0.94,
-        },
-        {
-            "id": "char-2",
-            "name": "Antagonist",
-            "aliases": ["Villain"],
-            "traits": ["cunning", "ruthless", "charming"],
-            "description": "Opposing force with hidden vulnerabilities",
-            "voiceProfile": {
-                "speechPatterns": ["measured", "uses questions to control conversation", "metaphorical"],
-                "vocabulary": ["sophisticated", "technical terms", "euphemisms for violence"],
-                "sampleQuotes": [
-                    "Don't you see? This is the only way.",
-                    "Sacrifices must be made for progress.",
-                ],
-            },
-            "consistencyScore": 0.89,
-        },
-    ]
-
-
-@app.post("/api/check/contradictions")
-async def check_contradictions(request: dict[str, Any]) -> dict[str, Any]:
-    """Check generated text for contradictions against canon."""
-    generated_text = request.get("generatedText", "")
-    canon_facts = request.get("canonFacts", [])
-    
-    # Mock contradiction check
-    contradictions = []
-    
-    if "dead" in generated_text.lower() and "alive" in generated_text.lower():
-        contradictions.append({
-            "severity": "high",
-            "type": "state_contradiction",
-            "description": "Character mentioned as both dead and alive",
-            "suggestedFix": "Verify character status in timeline",
-        })
-    
-    return {
-        "success": True,
-        "contradictions": contradictions,
-        "checkPassed": len(contradictions) == 0,
-        "warnings": [],
-    }
-
-
 @app.get("/api/health")
 async def health_check() -> dict[str, str]:
     """Health check endpoint."""
@@ -983,15 +809,14 @@ async def health_check() -> dict[str, str]:
 async def generate_text(request: WriterGenerateRequest) -> dict[str, Any]:
     """Generate branch text through the writer engine with full pipeline."""
     from core.text_generation_engine import (
+        ContextAssembly,
+        PromptRegistry,
+        TunerSettings,
         WriterEngine,
         WriterRequest,
-        TunerSettings,
         build_prompt_package,
-        PromptRegistry,
-        ContextAssembly,
-        check_contradictions,
-        retrieve_style_exemplars,
         map_tuner_settings,
+        retrieve_style_exemplars,
     )
 
     try:
@@ -1001,42 +826,43 @@ async def generate_text(request: WriterGenerateRequest) -> dict[str, Any]:
             prompt_registry=PromptRegistry(),
             llm_backend=llm_backend,
         )
-        
+
         # Build tuner settings
         tuner = TunerSettings(
             violence=request.tuner_settings.get("violence", 0.5),
             humor=request.tuner_settings.get("humor", 0.5),
             romance=request.tuner_settings.get("romance", 0.5),
         )
-        
-        # Map tuner to generation parameters
-        tuner_mapping = map_tuner_settings(tuner, intensity=0.6)
-        
+
+        # Map tuner to generation parameters (used in future expansion)
+        _ = map_tuner_settings(tuner, intensity=0.6)
+
         # Build context assembly
+        ctx_text = "\n\n".join(request.context_chunks)
         context = ContextAssembly(
             chapter_summary="Chapter continuation",
             arc_summary="Arc progression",
-            context_text="\n\n".join(request.context_chunks) if request.context_chunks else "No context provided",
+            context_text=ctx_text if request.context_chunks else "No context provided",
             unresolved_thread_prompts=[],
             source_facts={},
         )
-        
+
         # Retrieve style exemplars
         exemplars = retrieve_style_exemplars(
             request.user_prompt,
             tuple(request.style_exemplars) if request.style_exemplars else ("",),
             top_k=3,
         )
-        
-        # Build prompt package
-        prompt_package = build_prompt_package(
+
+        # Build prompt package (used in future expansion)
+        _ = build_prompt_package(
             registry=PromptRegistry(),
             user_prompt=request.user_prompt,
             context=context,
             exemplars=exemplars,
             strict_layering=True,
         )
-        
+
         # Create writer request
         writer_request = WriterRequest(
             story_id="default",
@@ -1046,20 +872,21 @@ async def generate_text(request: WriterGenerateRequest) -> dict[str, Any]:
             tuner=tuner,
             source_windows=exemplars,
         )
-        
+
         # Generate using LLM backend
         import hashlib
         import time
-        
-        job_id = f"writer-{hashlib.sha256(f'{request.node_id}-{time.time()}'.encode()).hexdigest()[:12]}"
-        
+
+        _hash_input = f"{request.node_id}-{time.time()}"
+        job_id = f"writer-{hashlib.sha256(_hash_input.encode()).hexdigest()[:12]}"
+
         # Use the async generate method with LLM backend
         result = await engine.generate(
             request=writer_request,
             retrieval_index=None,
             memory_model=None,
         )
-        
+
         return {
             "jobId": job_id,
             "generatedText": result.text,
@@ -1069,7 +896,7 @@ async def generate_text(request: WriterGenerateRequest) -> dict[str, Any]:
             "promptVersion": result.prompt_version,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Generation failed: {e}") from e
 
 
 @app.get("/api/writer/style-exemplars", response_model=StyleExemplarResponse)
@@ -1079,18 +906,23 @@ async def get_style_exemplars(
 ) -> dict[str, Any]:
     """Retrieve style exemplars most relevant to the query text."""
     from core.text_generation_engine import retrieve_style_exemplars
-    
+
     # Mock source windows - in production would come from indexed content
     source_windows = (
-        "The wind howled through the ancient corridors, carrying whispers of forgotten secrets.",
-        "She moved with calculated precision, each step a deliberate choice in the grand game.",
-        "Light filtered through stained glass, casting kaleidoscope shadows across the stone floor.",
-        "His voice remained steady despite the chaos, a beacon of certainty in uncertain times.",
-        "The city sprawled beneath them, a tapestry of lights and shadows stretching to the horizon.",
+        "The wind howled through the ancient corridors, carrying whispers of "
+        "forgotten secrets.",
+        "She moved with calculated precision, each step a deliberate choice in "
+        "the grand game.",
+        "Light filtered through stained glass, casting kaleidoscope shadows "
+        "across the stone floor.",
+        "His voice remained steady despite the chaos, a beacon of certainty in "
+        "uncertain times.",
+        "The city sprawled beneath them, a tapestry of lights and shadows "
+        "stretching to the horizon.",
     )
-    
+
     exemplars = retrieve_style_exemplars(query, source_windows, top_k=top_k)
-    
+
     return {
         "exemplars": [
             {"id": f"exemplar-{i}", "text": text, "similarity": 0.9 - (i * 0.05)}
@@ -1100,24 +932,28 @@ async def get_style_exemplars(
 
 
 @app.post("/api/writer/check-contradictions", response_model=ContradictionCheckResponse)
-async def check_contradictions_endpoint(request: ContradictionCheckRequest) -> dict[str, Any]:
+async def check_contradictions_endpoint(
+    request: ContradictionCheckRequest,
+) -> dict[str, Any]:
     """Check generated text for contradictions against source facts."""
-    from core.text_generation_engine import check_contradictions, _extract_state_facts
-    
+    from core.text_generation_engine import _extract_state_facts, check_contradictions
+
     # Extract facts from source context
     source_facts = _extract_state_facts(request.source_context)
-    
+
     # Check for contradictions
     report = check_contradictions(request.generated_text, source_facts)
-    
+
     # Generate suggested fixes
     suggested_fixes = []
     for contradiction in report.contradictions:
         suggested_fixes.append(f"Review and correct: {contradiction}")
-    
+
     if not suggested_fixes:
-        suggested_fixes.append("No contradictions detected. Text is consistent with canon.")
-    
+        suggested_fixes.append(
+            "No contradictions detected. Text is consistent with canon."
+        )
+
     return {
         "contradictions": list(report.contradictions),
         "contradictionRate": report.contradiction_rate,
@@ -1132,20 +968,20 @@ async def check_contradictions_endpoint(request: ContradictionCheckRequest) -> d
 async def generate_panels(request: ArtistGenerateRequest) -> dict[str, Any]:
     """Generate manga panels with continuity, QC, and alignment safeguards."""
     from core.image_generation_engine import (
-        generate_manga_sequence,
         ArtistRequest,
-        SceneBlueprint,
-        AtmospherePreset,
-        atmosphere_preset,
         MockDiffusionBackend,
+        SceneBlueprint,
+        atmosphere_preset,
+        generate_manga_sequence,
     )
-    
+
     try:
         import hashlib
         import time
-        
-        job_id = f"artist-{hashlib.sha256(f'{request.node_id}-{time.time()}'.encode()).hexdigest()[:12]}"
-        
+
+        _hash_input = f"{request.node_id}-{time.time()}"
+        job_id = f"artist-{hashlib.sha256(_hash_input.encode()).hexdigest()[:12]}"
+
         # Build scene blueprint from request
         blueprint = SceneBlueprint(
             setting=request.scene_blueprint.get("setting", "Unknown location"),
@@ -1167,11 +1003,11 @@ async def generate_panels(request: ArtistGenerateRequest) -> dict[str, Any]:
                 for c in request.scene_blueprint.get("characters", [])
             ],
         )
-        
+
         # Get atmosphere preset
         preset_id = request.atmosphere_settings.get("presetId", "neutral")
         atmosphere = atmosphere_preset(preset_id)
-        
+
         # Build artist request
         artist_request = ArtistRequest(
             scene_blueprint=blueprint,
@@ -1182,23 +1018,25 @@ async def generate_panels(request: ArtistGenerateRequest) -> dict[str, Any]:
             panel_count=request.panel_count,
             seed=request.seed,
         )
-        
+
         # Generate panels
         backend = MockDiffusionBackend()
         result = generate_manga_sequence(artist_request, backend=backend)
-        
+
         # Format panels for response
         panels = [
             {
                 "panelId": f"{job_id}-p{i}",
                 "index": i,
-                "status": artifact.status if hasattr(artifact, 'status') else "completed",
-                "qualityScore": getattr(artifact, 'quality_score', 0.85),
-                "seed": getattr(artifact, 'seed', 42),
+                "status": (
+                    artifact.status if hasattr(artifact, "status") else "completed"
+                ),
+                "qualityScore": getattr(artifact, "quality_score", 0.85),
+                "seed": getattr(artifact, "seed", 42),
             }
             for i, artifact in enumerate(result.artifacts)
         ]
-        
+
         return {
             "jobId": job_id,
             "panels": panels,
@@ -1206,7 +1044,9 @@ async def generate_panels(request: ArtistGenerateRequest) -> dict[str, Any]:
             "continuityScore": result.continuity_score,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Panel generation failed: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Panel generation failed: {e}"
+        ) from e
 
 
 # ============ Sprint 11: Retrieval Endpoints ============
@@ -1215,18 +1055,15 @@ async def generate_panels(request: ArtistGenerateRequest) -> dict[str, Any]:
 @app.post("/api/retrieve/context", response_model=RetrieveContextResponse)
 async def retrieve_context(request: RetrieveContextRequest) -> dict[str, Any]:
     """Hybrid retrieval (BM25 + embedding) with branch-aware namespace."""
-    from core.retrieval_engine import (
-        RetrievalIndex,
-        RetrievalQuery,
-        RetrievedChunk,
-        hybrid_search,
-    )
-    
+
     # Mock retrieved chunks - in production would query actual index
     chunks = [
         {
             "id": f"chunk-{i}",
-            "text": f"Relevant context passage {i+1} related to: {request.query[:50]}...",
+            "text": (
+                f"Relevant context passage {i+1} related to: "
+                f"{request.query[:50]}..."
+            ),
             "source": f"Chapter {i+1}",
             "branchId": request.branch_id,
             "relevanceScore": 0.95 - (i * 0.08),
@@ -1234,9 +1071,9 @@ async def retrieve_context(request: RetrieveContextRequest) -> dict[str, Any]:
         }
         for i in range(min(request.limit, 5))
     ]
-    
+
     total_tokens = sum(chunk["tokenCount"] for chunk in chunks)
-    
+
     return {
         "chunks": chunks,
         "totalTokens": total_tokens,
@@ -1249,32 +1086,72 @@ async def retrieve_context(request: RetrieveContextRequest) -> dict[str, Any]:
 @app.post("/api/simulate/impact", response_model=SimulateImpactResponse)
 async def simulate_impact(request: SimulateImpactRequest) -> dict[str, Any]:
     """Simulate impact of proposed changes with consequence propagation."""
-    
+
     # Mock affected nodes based on change type
     affected_nodes = []
-    
+
     if request.change_type == "edit":
         affected_nodes = [
-            {"id": f"node-{request.node_id}", "name": "Target Node", "impact": "high", "description": "Direct edit"},
-            {"id": "node-desc-1", "name": "Dependent Scene", "impact": "medium", "description": "References target"},
-            {"id": "node-desc-2", "name": "Following Chapter", "impact": "low", "description": "Timeline successor"},
+            {
+                "id": f"node-{request.node_id}",
+                "name": "Target Node",
+                "impact": "high",
+                "description": "Direct edit",
+            },
+            {
+                "id": "node-desc-1",
+                "name": "Dependent Scene",
+                "impact": "medium",
+                "description": "References target",
+            },
+            {
+                "id": "node-desc-2",
+                "name": "Following Chapter",
+                "impact": "low",
+                "description": "Timeline successor",
+            },
         ]
     elif request.change_type == "delete":
         affected_nodes = [
-            {"id": f"node-{request.node_id}", "name": "Target Node", "impact": "high", "description": "Will be removed"},
-            {"id": "node-desc-1", "name": "Child Branch", "impact": "high", "description": "Depends on target"},
-            {"id": "node-desc-2", "name": "Reference Node", "impact": "medium", "description": "Links to target"},
+            {
+                "id": f"node-{request.node_id}",
+                "name": "Target Node",
+                "impact": "high",
+                "description": "Will be removed",
+            },
+            {
+                "id": "node-desc-1",
+                "name": "Child Branch",
+                "impact": "high",
+                "description": "Depends on target",
+            },
+            {
+                "id": "node-desc-2",
+                "name": "Reference Node",
+                "impact": "medium",
+                "description": "Links to target",
+            },
         ]
     else:  # reorder
         affected_nodes = [
-            {"id": f"node-{request.node_id}", "name": "Target Node", "impact": "medium", "description": "Position change"},
-            {"id": "node-sib-1", "name": "Sibling Node", "impact": "low", "description": "Order affected"},
+            {
+                "id": f"node-{request.node_id}",
+                "name": "Target Node",
+                "impact": "medium",
+                "description": "Position change",
+            },
+            {
+                "id": "node-sib-1",
+                "name": "Sibling Node",
+                "impact": "low",
+                "description": "Order affected",
+            },
         ]
-    
+
     # Calculate risk level
     high_count = sum(1 for n in affected_nodes if n["impact"] == "high")
     risk_level = "high" if high_count > 1 else "medium" if high_count == 1 else "low"
-    
+
     return {
         "affectedNodes": affected_nodes,
         "consistencyScore": 85 - (high_count * 15),
@@ -1294,6 +1171,7 @@ async def simulate_impact(request: SimulateImpactRequest) -> dict[str, Any]:
 
 class LLMConfigRequest(CamelModel):
     """Request to configure LLM provider."""
+
     provider: str  # openai, anthropic, ollama, mock
     model: str
     api_key: str | None = None
@@ -1302,6 +1180,7 @@ class LLMConfigRequest(CamelModel):
 
 class LLMConfigResponse(CamelModel):
     """LLM configuration response."""
+
     provider: str
     model: str
     available: bool
@@ -1317,15 +1196,16 @@ def get_llm_backend():
     global _llm_backend
     if _llm_backend is None:
         from core.llm_backend import LLMBackendFactory
+
         try:
             _llm_backend = LLMBackendFactory.create_from_env()
         except Exception:
             # Fall back to mock if no env vars set
             from core.llm_backend import LLMConfig, LLMProvider, MockLLMBackend
-            _llm_backend = MockLLMBackend(LLMConfig(
-                provider=LLMProvider.MOCK,
-                model="mock"
-            ))
+
+            _llm_backend = MockLLMBackend(
+                LLMConfig(provider=LLMProvider.MOCK, model="mock")
+            )
     return _llm_backend
 
 
@@ -1339,6 +1219,7 @@ def set_llm_backend(backend):
 async def list_llm_providers() -> list[dict[str, Any]]:
     """List available LLM providers based on environment configuration."""
     from core.llm_backend import get_available_providers
+
     return get_available_providers()
 
 
@@ -1350,7 +1231,7 @@ async def configure_llm(request: LLMConfigRequest) -> dict[str, Any]:
         LLMConfig,
         LLMProvider,
     )
-    
+
     try:
         provider = LLMProvider(request.provider.lower())
         config = LLMConfig(
@@ -1359,21 +1240,26 @@ async def configure_llm(request: LLMConfigRequest) -> dict[str, Any]:
             api_key=request.api_key,
             base_url=request.base_url,
         )
-        
+
         # Test the configuration by creating backend
         backend = LLMBackendFactory.create(config)
         set_llm_backend(backend)
-        
+
         return {
             "provider": request.provider,
             "model": request.model,
             "available": True,
-            "message": f"Successfully configured {request.provider} with model {request.model}",
+            "message": (
+                f"Successfully configured {request.provider} "
+                f"with model {request.model}"
+            ),
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid provider: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid provider: {e}") from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to configure LLM: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to configure LLM: {e}"
+        ) from e
 
 
 @app.get("/api/llm/config")
@@ -1391,21 +1277,24 @@ async def get_llm_config() -> dict[str, Any]:
 async def test_llm_connection() -> dict[str, Any]:
     """Test LLM connection with a simple prompt."""
     from core.llm_backend import LLMMessage, LLMRequest
-    
+
     backend = get_llm_backend()
-    
+
     try:
         request = LLMRequest(
             messages=(
                 LLMMessage(role="system", content="You are a helpful assistant."),
-                LLMMessage(role="user", content="Say 'The Loom is ready' and nothing else."),
+                LLMMessage(
+                    role="user",
+                    content="Say 'The Loom is ready' and nothing else.",
+                ),
             ),
             temperature=0.0,
             max_tokens=20,
         )
-        
+
         response = await backend.generate(request)
-        
+
         return {
             "success": True,
             "response": response.content,
@@ -1414,55 +1303,57 @@ async def test_llm_connection() -> dict[str, Any]:
             "tokens_used": response.total_tokens,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"LLM test failed: {e}")
+        raise HTTPException(status_code=500, detail=f"LLM test failed: {e}") from e
 
 
 @app.websocket("/api/llm/stream/{client_id}")
 async def llm_stream_websocket(websocket: WebSocket, client_id: str) -> None:
     """WebSocket endpoint for streaming LLM generation."""
     await websocket.accept()
-    
+
     try:
         while True:
             data = await websocket.receive_json()
-            
+
             if data.get("action") == "generate":
                 from core.llm_backend import LLMMessage, LLMRequest
-                
+
                 messages = [
                     LLMMessage(role=m["role"], content=m["content"])
                     for m in data.get("messages", [])
                 ]
-                
+
                 request = LLMRequest(
                     messages=tuple(messages),
                     temperature=data.get("temperature", 0.7),
                     max_tokens=data.get("max_tokens", 2000),
                     stream=True,
                 )
-                
+
                 backend = get_llm_backend()
-                
+
                 async for chunk in backend.generate_stream(request):
-                    await websocket.send_json({
-                        "type": "chunk",
-                        "content": chunk.content,
-                        "is_finished": chunk.is_finished,
-                        "finish_reason": chunk.finish_reason,
-                    })
-                    
+                    await websocket.send_json(
+                        {
+                            "type": "chunk",
+                            "content": chunk.content,
+                            "is_finished": chunk.is_finished,
+                            "finish_reason": chunk.finish_reason,
+                        }
+                    )
+
                     if chunk.is_finished:
                         break
-                        
+
             elif data.get("action") == "ping":
                 await websocket.send_json({"type": "pong"})
-                
+
     except WebSocketDisconnect:
         pass
     except Exception as e:
         try:
             await websocket.send_json({"type": "error", "message": str(e)})
-        except:
+        except Exception:
             pass
 
 
@@ -1471,28 +1362,28 @@ async def llm_stream_websocket(websocket: WebSocket, client_id: str) -> None:
 
 class ConnectionManager:
     """Manage WebSocket connections for real-time updates."""
-    
+
     def __init__(self) -> None:
         self.active_connections: dict[str, WebSocket] = {}
         self.job_subscriptions: dict[str, list[str]] = {}
-    
+
     async def connect(self, websocket: WebSocket, client_id: str) -> None:
         await websocket.accept()
         self.active_connections[client_id] = websocket
-    
+
     def disconnect(self, client_id: str) -> None:
         self.active_connections.pop(client_id, None)
         # Clean up subscriptions
-        for job_id, clients in list(self.job_subscriptions.items()):
+        for _job_id, clients in list(self.job_subscriptions.items()):
             if client_id in clients:
                 clients.remove(client_id)
-    
+
     def subscribe_to_job(self, client_id: str, job_id: str) -> None:
         if job_id not in self.job_subscriptions:
             self.job_subscriptions[job_id] = []
         if client_id not in self.job_subscriptions[job_id]:
             self.job_subscriptions[job_id].append(client_id)
-    
+
     async def send_progress(self, job_id: str, progress: dict[str, Any]) -> None:
         """Send progress update to all subscribed clients."""
         clients = self.job_subscriptions.get(job_id, [])
@@ -1501,7 +1392,7 @@ class ConnectionManager:
             "jobId": job_id,
             "data": progress,
         }
-        
+
         for client_id in clients:
             websocket = self.active_connections.get(client_id)
             if websocket:
@@ -1509,7 +1400,7 @@ class ConnectionManager:
                     await websocket.send_json(message)
                 except Exception:
                     pass  # Client disconnected
-    
+
     async def send_job_complete(self, job_id: str, result: dict[str, Any]) -> None:
         """Send job completion notification."""
         clients = self.job_subscriptions.get(job_id, [])
@@ -1518,7 +1409,7 @@ class ConnectionManager:
             "jobId": job_id,
             "data": result,
         }
-        
+
         for client_id in clients:
             websocket = self.active_connections.get(client_id)
             if websocket:
@@ -1526,10 +1417,10 @@ class ConnectionManager:
                     await websocket.send_json(message)
                 except Exception:
                     pass
-        
+
         # Clean up subscription
         self.job_subscriptions.pop(job_id, None)
-    
+
     async def broadcast(self, message: dict[str, Any]) -> None:
         """Broadcast message to all connected clients."""
         disconnected = []
@@ -1538,7 +1429,7 @@ class ConnectionManager:
                 await websocket.send_json(message)
             except Exception:
                 disconnected.append(client_id)
-        
+
         # Clean up disconnected
         for client_id in disconnected:
             self.disconnect(client_id)
@@ -1552,26 +1443,28 @@ _connection_manager = ConnectionManager()
 async def websocket_endpoint(websocket: WebSocket, client_id: str) -> None:
     """WebSocket endpoint for real-time generation progress."""
     await _connection_manager.connect(websocket, client_id)
-    
+
     try:
         while True:
             # Receive message from client
             data = await websocket.receive_json()
-            
+
             # Handle subscription requests
             if data.get("action") == "subscribe":
                 job_id = data.get("jobId")
                 if job_id:
                     _connection_manager.subscribe_to_job(client_id, job_id)
-                    await websocket.send_json({
-                        "type": "subscribed",
-                        "jobId": job_id,
-                    })
-            
+                    await websocket.send_json(
+                        {
+                            "type": "subscribed",
+                            "jobId": job_id,
+                        }
+                    )
+
             # Handle ping
             elif data.get("action") == "ping":
                 await websocket.send_json({"type": "pong"})
-                
+
     except WebSocketDisconnect:
         _connection_manager.disconnect(client_id)
 
@@ -1586,20 +1479,26 @@ async def simulate_generation_progress(job_id: str, job_type: str) -> None:
         ("validating", "Validating output...", 80),
         ("finalizing", "Finalizing...", 95),
     ]
-    
+
     for step_name, step_label, progress in steps:
         await asyncio.sleep(0.5)  # Simulate work
-        await _connection_manager.send_progress(job_id, {
-            "step": step_name,
-            "label": step_label,
-            "progress": progress,
-        })
-    
+        await _connection_manager.send_progress(
+            job_id,
+            {
+                "step": step_name,
+                "label": step_label,
+                "progress": progress,
+            },
+        )
+
     # Send completion
-    await _connection_manager.send_job_complete(job_id, {
-        "status": "completed",
-        "message": f"{job_type.capitalize()} generation complete",
-    })
+    await _connection_manager.send_job_complete(
+        job_id,
+        {
+            "status": "completed",
+            "message": f"{job_type.capitalize()} generation complete",
+        },
+    )
 
 
 # Update generation endpoints to trigger WebSocket updates
@@ -1608,12 +1507,13 @@ async def generate_text_async(request: WriterGenerateRequest) -> dict[str, str]:
     """Start async text generation with WebSocket progress updates."""
     import hashlib
     import time
-    
-    job_id = f"writer-{hashlib.sha256(f'{request.node_id}-{time.time()}'.encode()).hexdigest()[:12]}"
-    
+
+    _hash_input = f"{request.node_id}-{time.time()}"
+    job_id = f"writer-{hashlib.sha256(_hash_input.encode()).hexdigest()[:12]}"
+
     # Start background progress simulation
     asyncio.create_task(simulate_generation_progress(job_id, "text"))
-    
+
     return {"jobId": job_id, "status": "started"}
 
 
@@ -1622,12 +1522,13 @@ async def generate_panels_async(request: ArtistGenerateRequest) -> dict[str, str
     """Start async panel generation with WebSocket progress updates."""
     import hashlib
     import time
-    
-    job_id = f"artist-{hashlib.sha256(f'{request.node_id}-{time.time()}'.encode()).hexdigest()[:12]}"
-    
+
+    _hash_input = f"{request.node_id}-{time.time()}"
+    job_id = f"artist-{hashlib.sha256(_hash_input.encode()).hexdigest()[:12]}"
+
     # Start background progress simulation
     asyncio.create_task(simulate_generation_progress(job_id, "panels"))
-    
+
     return {"jobId": job_id, "status": "started"}
 
 
@@ -1636,6 +1537,7 @@ async def generate_panels_async(request: ArtistGenerateRequest) -> dict[str, str
 
 class IndexBuildRequest(CamelModel):
     """Request to build or update vector index."""
+
     story_id: str = "default"
     branch_id: str = "main"
     clear_existing: bool = False
@@ -1643,6 +1545,7 @@ class IndexBuildRequest(CamelModel):
 
 class IndexStatsResponse(CamelModel):
     """Vector index statistics."""
+
     document_count: int
     dimension: int
     last_updated: str | None
@@ -1651,6 +1554,7 @@ class IndexStatsResponse(CamelModel):
 
 class SearchRequest(CamelModel):
     """Vector search request."""
+
     query: str
     branch_id: str = "main"
     top_k: int = 5
@@ -1659,6 +1563,7 @@ class SearchRequest(CamelModel):
 
 class SearchResultItem(CamelModel):
     """Single search result."""
+
     id: str
     text: str
     score: float
@@ -1669,22 +1574,29 @@ class SearchResultItem(CamelModel):
 @app.post("/api/index/build")
 async def build_index(request: IndexBuildRequest) -> dict[str, Any]:
     """Build vector index from current story content."""
-    from core.vector_store import get_vector_store, VectorDocument
-    from core.retrieval_engine import NarrativeChunk, ChunkMetadata, index_chunks_to_vector_store
-    
+    from core.retrieval_engine import (
+        ChunkMetadata,
+        NarrativeChunk,
+        index_chunks_to_vector_store,
+    )
+    from core.vector_store import get_vector_store
+
     try:
         vector_store = get_vector_store()
-        
+
         # Clear existing if requested
         if request.clear_existing:
             await vector_store.clear()
-        
+
         # TODO: Load actual chunks from story database
         # For now, create sample chunks
         sample_chunks = [
             NarrativeChunk(
                 chunk_id="chunk-001",
-                text="The protagonist stood at the crossroads, the weight of decision pressing upon their shoulders.",
+                text=(
+                    "The protagonist stood at the crossroads, the weight of "
+                    "decision pressing upon their shoulders."
+                ),
                 level="sentence",
                 token_count=15,
                 metadata=ChunkMetadata(
@@ -1701,7 +1613,10 @@ async def build_index(request: IndexBuildRequest) -> dict[str, Any]:
             ),
             NarrativeChunk(
                 chunk_id="chunk-002",
-                text="Echoes of the past whispered through the corridor, memories threading through present tension.",
+                text=(
+                    "Echoes of the past whispered through the corridor, "
+                    "memories threading through present tension."
+                ),
                 level="sentence",
                 token_count=14,
                 metadata=ChunkMetadata(
@@ -1718,7 +1633,10 @@ async def build_index(request: IndexBuildRequest) -> dict[str, Any]:
             ),
             NarrativeChunk(
                 chunk_id="chunk-003",
-                text="The antagonist's motivations remained clouded, yet their actions spoke of deeper purpose.",
+                text=(
+                    "The antagonist's motivations remained clouded, yet their "
+                    "actions spoke of deeper purpose."
+                ),
                 level="sentence",
                 token_count=13,
                 metadata=ChunkMetadata(
@@ -1734,12 +1652,12 @@ async def build_index(request: IndexBuildRequest) -> dict[str, Any]:
                 content_hash="ghi789",
             ),
         ]
-        
+
         # Index chunks
         ids = await index_chunks_to_vector_store(sample_chunks, vector_store)
-        
+
         stats = await vector_store.get_stats()
-        
+
         return {
             "success": True,
             "indexed_count": len(ids),
@@ -1749,18 +1667,18 @@ async def build_index(request: IndexBuildRequest) -> dict[str, Any]:
             },
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Index build failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Index build failed: {e}") from e
 
 
 @app.get("/api/index/stats", response_model=IndexStatsResponse)
 async def get_index_stats() -> dict[str, Any]:
     """Get vector index statistics."""
     from core.vector_store import get_vector_store
-    
+
     try:
         vector_store = get_vector_store()
         stats = await vector_store.get_stats()
-        
+
         return {
             "document_count": stats.document_count,
             "dimension": stats.dimension,
@@ -1768,32 +1686,34 @@ async def get_index_stats() -> dict[str, Any]:
             "index_size_bytes": stats.index_size_bytes,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get stats: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get stats: {e}") from e
 
 
 @app.post("/api/index/clear")
 async def clear_index() -> dict[str, Any]:
     """Clear all documents from vector index."""
     from core.vector_store import get_vector_store
-    
+
     try:
         vector_store = get_vector_store()
         await vector_store.clear()
-        
+
         return {
             "success": True,
             "message": "Index cleared successfully",
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to clear index: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to clear index: {e}"
+        ) from e
 
 
 @app.post("/api/retrieve/vector-search")
 async def vector_search(request: SearchRequest) -> dict[str, Any]:
     """Search vector index with semantic similarity."""
-    from core.vector_store import get_vector_store
     from core.retrieval_engine import RetrievalQuery, hybrid_search_with_vector_store
-    
+    from core.vector_store import get_vector_store
+
     try:
         if request.use_hybrid:
             # Use hybrid search
@@ -1803,22 +1723,25 @@ async def vector_search(request: SearchRequest) -> dict[str, Any]:
                 query_text=request.query,
                 top_k=request.top_k,
             )
-            
+
             response = await hybrid_search_with_vector_store(query)
-            
+
             results = [
                 {
                     "id": hit.chunk_id,
                     "text": hit.text,
                     "score": hit.score,
-                    "source": f"Chapter {hit.metadata.chapter_index}, Scene {hit.metadata.scene_index}",
+                    "source": (
+                        f"Chapter {hit.metadata.chapter_index}, "
+                        f"Scene {hit.metadata.scene_index}"
+                    ),
                     "branch_id": hit.metadata.branch_id,
                     "bm25_score": hit.bm25_score,
                     "embedding_score": hit.embedding_score,
                 }
                 for hit in response.results
             ]
-            
+
             return {
                 "success": True,
                 "query": request.query,
@@ -1834,7 +1757,7 @@ async def vector_search(request: SearchRequest) -> dict[str, Any]:
                 top_k=request.top_k,
                 filters={"branch_id": request.branch_id} if request.branch_id else None,
             )
-            
+
             results = [
                 {
                     "id": result.document.id,
@@ -1845,7 +1768,7 @@ async def vector_search(request: SearchRequest) -> dict[str, Any]:
                 }
                 for result in search_results
             ]
-            
+
             return {
                 "success": True,
                 "query": request.query,
@@ -1853,60 +1776,65 @@ async def vector_search(request: SearchRequest) -> dict[str, Any]:
                 "method": "vector",
             }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Search failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {e}") from e
 
 
 @app.get("/api/embedding/providers")
 async def list_embedding_providers() -> list[dict[str, Any]]:
     """List available embedding providers."""
     providers = []
-    
+
     # Check OpenAI
     if os.environ.get("OPENAI_API_KEY"):
-        providers.append({
-            "id": "openai",
-            "name": "OpenAI",
-            "models": ["text-embedding-3-small", "text-embedding-3-large", "text-embedding-ada-002"],
-            "available": True,
-            "dimensions": [1536, 3072, 1536],
-        })
+        providers.append(
+            {
+                "id": "openai",
+                "name": "OpenAI",
+                "models": [
+                    "text-embedding-3-small",
+                    "text-embedding-3-large",
+                    "text-embedding-ada-002",
+                ],
+                "available": True,
+                "dimensions": [1536, 3072, 1536],
+            }
+        )
     else:
-        providers.append({
-            "id": "openai",
-            "name": "OpenAI",
-            "models": ["text-embedding-3-small", "text-embedding-3-large"],
-            "available": False,
-            "reason": "OPENAI_API_KEY not set",
-        })
-    
+        providers.append(
+            {
+                "id": "openai",
+                "name": "OpenAI",
+                "models": ["text-embedding-3-small", "text-embedding-3-large"],
+                "available": False,
+                "reason": "OPENAI_API_KEY not set",
+            }
+        )
+
     # HuggingFace (local)
-    providers.append({
-        "id": "huggingface",
-        "name": "HuggingFace (Local)",
-        "models": ["all-MiniLM-L6-v2", "all-mpnet-base-v2"],
-        "available": True,
-        "note": "Requires sentence-transformers package",
-    })
-    
+    providers.append(
+        {
+            "id": "huggingface",
+            "name": "HuggingFace (Local)",
+            "models": ["all-MiniLM-L6-v2", "all-mpnet-base-v2"],
+            "available": True,
+            "note": "Requires sentence-transformers package",
+        }
+    )
+
     # Mock (always available)
-    providers.append({
-        "id": "mock",
-        "name": "Mock (Testing)",
-        "models": ["mock"],
-        "available": True,
-    })
-    
+    providers.append(
+        {
+            "id": "mock",
+            "name": "Mock (Testing)",
+            "models": ["mock"],
+            "available": True,
+        }
+    )
+
     return providers
 
 
 # ============ Sprint 13: Character Identity Management ============
-
-
-class LoRATrainRequest(CamelModel):
-    character_id: str
-    character_name: str
-    base_model_id: str = "mock-sd-controlnet-v1"
-    trained_steps: int = 120
 
 
 class LoRATrainResponse(CamelModel):
@@ -1916,85 +1844,9 @@ class LoRATrainResponse(CamelModel):
     estimated_time: int
 
 
-class LoRAStatusResponse(CamelModel):
-    job_id: str
-    adapter_id: str
-    status: str  # pending, training, completed, failed
-    progress: float
-    current_step: str
-    version: int
-
-
-@app.post("/api/lora/train", response_model=LoRATrainResponse)
-async def start_lora_training(request: LoRATrainRequest) -> dict[str, Any]:
-    """Start LoRA training for a character identity."""
-    from core.image_generation_engine import (
-        CharacterIdentityPack,
-        LoRAAdapterManager,
-        build_character_identity_pack,
-    )
-    
-    import hashlib
-    import time
-    
-    job_id = f"lora-{hashlib.sha256(f'{request.character_id}-{time.time()}'.encode()).hexdigest()[:12]}"
-    adapter_id = f"lora:{request.character_id}:v001"
-    
-    # Simulate training start
-    asyncio.create_task(simulate_lora_training(job_id, request.character_id))
-    
-    return {
-        "jobId": job_id,
-        "adapterId": adapter_id,
-        "status": "started",
-        "estimatedTime": 300,  # 5 minutes estimated
-    }
-
-
-async def simulate_lora_training(job_id: str, character_id: str) -> None:
-    """Simulate LoRA training progress."""
-    steps = [
-        ("preprocessing", "Preprocessing reference images...", 10),
-        ("face_extraction", "Extracting facial features...", 25),
-        ("feature_learning", "Learning character features...", 50),
-        ("optimization", "Optimizing model weights...", 80),
-        ("finalizing", "Finalizing adapter...", 95),
-    ]
-    
-    for step_name, step_label, progress in steps:
-        await asyncio.sleep(1)  # Training takes longer
-        await _connection_manager.send_progress(job_id, {
-            "step": step_name,
-            "label": step_label,
-            "progress": progress,
-            "type": "lora_training",
-        })
-    
-    # Send completion
-    await _connection_manager.send_job_complete(job_id, {
-        "status": "completed",
-        "adapterId": f"lora:{character_id}:v001",
-        "message": "LoRA training complete",
-    })
-
-
-@app.get("/api/lora/status/{job_id}", response_model=LoRAStatusResponse)
-async def get_lora_training_status(job_id: str) -> dict[str, Any]:
-    """Get the status of a LoRA training job."""
-    # Mock status - in production would check actual training job
-    return {
-        "jobId": job_id,
-        "adapterId": f"lora:char:{job_id[-6:]}",
-        "status": "training",
-        "progress": 0.65,
-        "currentStep": "feature_learning",
-        "version": 1,
-    }
-
-
 @app.get("/api/lora/adapters/{character_id}")
-async def list_character_adapters(character_id: str) -> dict[str, Any]:
-    """List all LoRA adapters for a character."""
+async def list_character_adapters_legacy(character_id: str) -> dict[str, Any]:
+    """List all LoRA adapters for a character (legacy endpoint)."""
     return {
         "characterId": character_id,
         "adapters": [
@@ -2050,16 +1902,16 @@ async def get_panel_qc_score(request: QCScoreRequest) -> dict[str, Any]:
     """Get quality control scores for a panel."""
     # Mock QC scoring - in production would run actual QC analysis
     import random
-    
+
     scores = {
         "anatomy": random.uniform(0.7, 0.98),
         "composition": random.uniform(0.75, 0.95),
         "color": random.uniform(0.8, 0.97),
         "continuity": random.uniform(0.7, 0.96),
     }
-    
+
     overall = sum(scores.values()) / len(scores)
-    
+
     issues = []
     if scores["anatomy"] < 0.8:
         issues.append("anatomy_issue")
@@ -2067,13 +1919,13 @@ async def get_panel_qc_score(request: QCScoreRequest) -> dict[str, Any]:
         issues.append("color_inconsistency")
     if scores["composition"] < 0.75:
         issues.append("composition_problem")
-    
+
     recommendations = []
     if "anatomy_issue" in issues:
         recommendations.append("Review character proportions and pose")
     if "color_inconsistency" in issues:
         recommendations.append("Check color palette alignment with scene")
-    
+
     return {
         "panelId": request.panel_id,
         "overallScore": overall,
@@ -2087,18 +1939,23 @@ async def get_panel_qc_score(request: QCScoreRequest) -> dict[str, Any]:
 
 
 @app.get("/api/qc/batch-score")
-async def get_batch_qc_scores(panel_ids: list[str] = Query(...)) -> dict[str, Any]:
+async def get_batch_qc_scores(
+    panel_ids: list[str] = Query(...),  # noqa: B008
+) -> dict[str, Any]:
     """Get QC scores for multiple panels."""
     results = []
     for panel_id in panel_ids:
         # Generate mock scores
         import random
-        results.append({
-            "panelId": panel_id,
-            "overallScore": random.uniform(0.7, 0.95),
-            "status": "passed" if random.random() > 0.3 else "needs_review",
-        })
-    
+
+        results.append(
+            {
+                "panelId": panel_id,
+                "overallScore": random.uniform(0.7, 0.95),
+                "status": "passed" if random.random() > 0.3 else "needs_review",
+            }
+        )
+
     return {
         "results": results,
         "total": len(results),
@@ -2123,33 +1980,31 @@ class DriftDetectionResponse(CamelModel):
 @app.post("/api/drift/detect", response_model=DriftDetectionResponse)
 async def detect_character_drift(request: DriftDetectionRequest) -> dict[str, Any]:
     """Detect identity drift for a character across panels."""
-    from core.image_generation_engine import (
-        CharacterIdentityPack,
-        LoRAAdapterManager,
-    )
-    
+
     import random
-    
+
     # Mock drift detection
     drift_score = random.uniform(0, 0.4)
     drift_detected = drift_score > 0.25
-    
+
     affected_panels = []
     if drift_detected:
         # Mark some panels as affected
         for panel_id in request.panel_ids[:3]:
-            affected_panels.append({
-                "panelId": panel_id,
-                "identityScore": random.uniform(0.5, 0.7),
-                "driftType": "facial_features",
-            })
-    
+            affected_panels.append(
+                {
+                    "panelId": panel_id,
+                    "identityScore": random.uniform(0.5, 0.7),
+                    "driftType": "facial_features",
+                }
+            )
+
     reasons = []
     if drift_detected:
         reasons.append("Facial features inconsistent with reference")
         if drift_score > 0.35:
             reasons.append("Costume details deviating from character design")
-    
+
     return {
         "characterId": request.character_id,
         "driftDetected": drift_detected,
@@ -2164,13 +2019,17 @@ async def detect_character_drift(request: DriftDetectionRequest) -> dict[str, An
 async def get_drift_status(character_id: str) -> dict[str, Any]:
     """Get current drift status for a character."""
     import random
-    
+
     drift_score = random.uniform(0, 0.3)
-    
+
     return {
         "characterId": character_id,
         "driftScore": drift_score,
-        "status": "critical" if drift_score > 0.3 else "warning" if drift_score > 0.2 else "good",
+        "status": (
+            "critical"
+            if drift_score > 0.3
+            else "warning" if drift_score > 0.2 else "good"
+        ),
         "lastChecked": "2026-02-10T10:00:00Z",
         "panelsChecked": 24,
     }
@@ -2187,9 +2046,9 @@ async def request_panel_correction(request: CorrectionRequest) -> dict[str, Any]
     """Request correction for panels that failed QC."""
     import hashlib
     import time
-    
+
     batch_id = f"corr-{hashlib.sha256(str(time.time()).encode()).hexdigest()[:8]}"
-    
+
     return {
         "batchId": batch_id,
         "panelIds": request.panel_ids,
@@ -2217,6 +2076,7 @@ async def get_correction_queue() -> dict[str, Any]:
 
 class DiffusionBackendConfig(CamelModel):
     """Configuration for diffusion backend."""
+
     backend_type: str = "mock"  # mock, local, stability
     model_id: str = "mock-sd-v1-5"
     device: str = "auto"
@@ -2224,6 +2084,7 @@ class DiffusionBackendConfig(CamelModel):
 
 class GeneratePanelsRequest(CamelModel):
     """Request to generate manga panels."""
+
     story_id: str = "default"
     branch_id: str = "main"
     scene_id: str
@@ -2237,6 +2098,7 @@ class GeneratePanelsRequest(CamelModel):
 
 class GeneratePanelsResponse(CamelModel):
     """Response from panel generation."""
+
     job_id: str
     images: list[dict[str, Any]]
     continuity_score: float
@@ -2247,6 +2109,7 @@ class GeneratePanelsResponse(CamelModel):
 async def list_diffusion_backends() -> list[dict[str, Any]]:
     """List available diffusion backends."""
     from core.diffusion_backend import DiffusionBackendFactory
+
     return DiffusionBackendFactory.get_available_backends()
 
 
@@ -2258,20 +2121,20 @@ async def configure_diffusion_backend(config: DiffusionBackendConfig) -> dict[st
         DiffusionConfig,
         set_diffusion_backend,
     )
-    
+
     try:
         diffusion_config = DiffusionConfig(
             model_id=config.model_id,
             device=config.device,
         )
-        
+
         backend = DiffusionBackendFactory.create(
             backend_type=config.backend_type,
             config=diffusion_config,
         )
-        
+
         set_diffusion_backend(backend)
-        
+
         return {
             "success": True,
             "backend_type": config.backend_type,
@@ -2279,25 +2142,30 @@ async def configure_diffusion_backend(config: DiffusionBackendConfig) -> dict[st
             "available": backend.is_available(),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to configure backend: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to configure backend: {e}"
+        ) from e
 
 
 @app.post("/api/artist/generate", response_model=GeneratePanelsResponse)
 async def generate_panels_endpoint(request: GeneratePanelsRequest) -> dict[str, Any]:
     """Generate manga panels with storage."""
-    from core.image_generation_engine import (
-        generate_and_store_panels,
-        ArtistRequest,
-        DiffusionConfig as IGEConfig,
-        atmosphere_preset,
-    )
-    from core.diffusion_backend import get_diffusion_backend
     import hashlib
     import time
-    
+
+    from core.diffusion_backend import get_diffusion_backend
+    from core.image_generation_engine import (
+        ArtistRequest,
+        generate_and_store_panels,
+    )
+    from core.image_generation_engine import (
+        DiffusionConfig as IGEConfig,
+    )
+
     try:
-        job_id = f"artist-{hashlib.sha256(f'{request.scene_id}-{time.time()}'.encode()).hexdigest()[:12]}"
-        
+        _hash_input = f"{request.scene_id}-{time.time()}"
+        job_id = f"artist-{hashlib.sha256(_hash_input.encode()).hexdigest()[:12]}"
+
         # Build request
         artist_request = ArtistRequest(
             story_id=request.story_id,
@@ -2308,13 +2176,13 @@ async def generate_panels_endpoint(request: GeneratePanelsRequest) -> dict[str, 
             diffusion_config=IGEConfig(),
             seed=request.seed,
         )
-        
+
         # Generate and store
         result = await generate_and_store_panels(
             request=artist_request,
             backend=get_diffusion_backend(),
         )
-        
+
         return {
             "job_id": job_id,
             "images": [
@@ -2332,7 +2200,7 @@ async def generate_panels_endpoint(request: GeneratePanelsRequest) -> dict[str, 
             "overall_quality": result.overall_quality,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Generation failed: {e}") from e
 
 
 @app.get("/api/images/{image_id}")
@@ -2340,14 +2208,14 @@ async def get_image(image_id: str) -> Any:
     """Get an image by ID."""
     from core.image_storage import get_image_storage
     from fastapi.responses import Response
-    
+
     try:
         storage = get_image_storage()
         image_data = await storage.get_image(image_id)
-        
+
         if image_data is None:
             raise HTTPException(status_code=404, detail="Image not found")
-        
+
         return Response(
             content=image_data,
             media_type="image/png",
@@ -2355,45 +2223,49 @@ async def get_image(image_id: str) -> Any:
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get image: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get image: {e}") from e
 
 
 @app.get("/api/images/{image_id}/metadata")
 async def get_image_metadata_endpoint(image_id: str) -> dict[str, Any]:
     """Get image metadata."""
     from core.image_storage import get_image_storage
-    
+
     try:
         storage = get_image_storage()
         metadata = await storage.get_metadata(image_id)
-        
+
         if metadata is None:
             raise HTTPException(status_code=404, detail="Image not found")
-        
+
         return metadata.to_dict()
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get metadata: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get metadata: {e}"
+        ) from e
 
 
 @app.delete("/api/images/{image_id}")
 async def delete_image_endpoint(image_id: str) -> dict[str, Any]:
     """Delete an image."""
     from core.image_storage import get_image_storage
-    
+
     try:
         storage = get_image_storage()
         deleted = await storage.delete_image(image_id)
-        
+
         if not deleted:
             raise HTTPException(status_code=404, detail="Image not found")
-        
+
         return {"success": True, "message": f"Image {image_id} deleted"}
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete image: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete image: {e}"
+        ) from e
 
 
 @app.get("/api/images")
@@ -2406,7 +2278,7 @@ async def list_images(
 ) -> dict[str, Any]:
     """List images with optional filtering."""
     from core.image_storage import get_image_storage
-    
+
     try:
         storage = get_image_storage()
         images = await storage.list_images(
@@ -2416,7 +2288,7 @@ async def list_images(
             limit=limit,
             offset=offset,
         )
-        
+
         return {
             "images": [
                 {
@@ -2431,7 +2303,9 @@ async def list_images(
             "offset": offset,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list images: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to list images: {e}"
+        ) from e
 
 
 # ============ Sprint 25: LoRA Training Endpoints ============
@@ -2439,6 +2313,7 @@ async def list_images(
 
 class LoRATrainRequest(CamelModel):
     """Request to start LoRA training."""
+
     character_id: str
     character_name: str
     base_model: str = "runwayml/stable-diffusion-v1-5"
@@ -2450,6 +2325,7 @@ class LoRATrainRequest(CamelModel):
 
 class LoRAStatusResponse(CamelModel):
     """LoRA training status response."""
+
     job_id: str
     character_id: str
     status: str  # pending, training, completed, failed
@@ -2462,6 +2338,7 @@ class LoRAStatusResponse(CamelModel):
 
 class CharacterIdentityRequest(CamelModel):
     """Request to build character identity pack."""
+
     character_id: str
     character_name: str
     face_cues: list[str]
@@ -2478,9 +2355,10 @@ async def start_lora_training(request: LoRATrainRequest) -> dict[str, Any]:
     """Start LoRA training for a character."""
     import hashlib
     import time
-    
-    job_id = f"lora-{hashlib.sha256(f'{request.character_id}-{time.time()}'.encode()).hexdigest()[:12]}"
-    
+
+    _hash_input = f"{request.character_id}-{time.time()}"
+    job_id = f"lora-{hashlib.sha256(_hash_input.encode()).hexdigest()[:12]}"
+
     # Store job info
     _training_jobs[job_id] = {
         "job_id": job_id,
@@ -2493,10 +2371,10 @@ async def start_lora_training(request: LoRATrainRequest) -> dict[str, Any]:
         "loss": None,
         "created_at": datetime.now(UTC).isoformat(),
     }
-    
+
     # Start training in background (mock for now)
     asyncio.create_task(_simulate_lora_training(job_id))
-    
+
     return {
         "job_id": job_id,
         "character_id": request.character_id,
@@ -2508,16 +2386,15 @@ async def start_lora_training(request: LoRATrainRequest) -> dict[str, Any]:
 async def _simulate_lora_training(job_id: str) -> None:
     """Simulate LoRA training progress."""
     import random
-    import time
-    
+
     job = _training_jobs.get(job_id)
     if job is None:
         return
-    
+
     # Pending phase
     await asyncio.sleep(2)
     job["status"] = "training"
-    
+
     # Training phase
     total_steps = job["total_steps"]
     for step in range(total_steps):
@@ -2525,7 +2402,7 @@ async def _simulate_lora_training(job_id: str) -> None:
         job["current_step"] = step + 1
         job["progress"] = (step + 1) / total_steps * 100
         job["loss"] = 0.5 * (1 - (step / total_steps)) + random.uniform(0, 0.1)
-    
+
     # Completed
     job["status"] = "completed"
     job["progress"] = 100.0
@@ -2538,13 +2415,13 @@ async def get_lora_training_status(job_id: str) -> dict[str, Any]:
     job = _training_jobs.get(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Training job not found")
-    
+
     # Calculate ETA
     eta = None
     if job["status"] == "training" and job["current_step"] < job["total_steps"]:
         remaining_steps = job["total_steps"] - job["current_step"]
         eta = remaining_steps * 2  # ~2s per step
-    
+
     return {
         "job_id": job_id,
         "character_id": job["character_id"],
@@ -2561,7 +2438,7 @@ async def get_lora_training_status(job_id: str) -> dict[str, Any]:
 async def build_character_identity(request: CharacterIdentityRequest) -> dict[str, Any]:
     """Build character identity pack."""
     from core.image_generation_engine import build_identity_pack
-    
+
     try:
         identity_pack = build_identity_pack(
             character_id=request.character_id,
@@ -2570,7 +2447,7 @@ async def build_character_identity(request: CharacterIdentityRequest) -> dict[st
             silhouette_cues=tuple(request.silhouette_cues),
             costume_cues=tuple(request.costume_cues),
         )
-        
+
         return {
             "character_id": identity_pack.character_id,
             "display_name": identity_pack.display_name,
@@ -2580,7 +2457,9 @@ async def build_character_identity(request: CharacterIdentityRequest) -> dict[st
             "costume_cues": list(identity_pack.costume_cues),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to build identity: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to build identity: {e}"
+        ) from e
 
 
 @app.get("/api/characters/{character_id}/adapters")
@@ -2590,13 +2469,15 @@ async def list_character_adapters(character_id: str) -> dict[str, Any]:
     adapters = []
     for job in _training_jobs.values():
         if job["character_id"] == character_id and job["status"] == "completed":
-            adapters.append({
-                "adapter_id": job.get("adapter_id", f"lora-{character_id}-v1"),
-                "version": 1,
-                "status": "ready",
-                "trained_steps": job["total_steps"],
-            })
-    
+            adapters.append(
+                {
+                    "adapter_id": job.get("adapter_id", f"lora-{character_id}-v1"),
+                    "version": 1,
+                    "status": "ready",
+                    "trained_steps": job["total_steps"],
+                }
+            )
+
     return {
         "character_id": character_id,
         "adapters": adapters,
@@ -2608,12 +2489,14 @@ async def list_character_adapters(character_id: str) -> dict[str, Any]:
 
 class QCAnalyzeRequest(CamelModel):
     """Request to analyze image quality."""
+
     image_id: str
     analyzer_type: str = "auto"  # auto, mock, clip
 
 
 class QCAnalyzeResponse(CamelModel):
     """QC analysis response."""
+
     report_id: str
     image_id: str
     overall_score: float
@@ -2627,26 +2510,26 @@ class QCAnalyzeResponse(CamelModel):
 @app.post("/api/qc/analyze", response_model=QCAnalyzeResponse)
 async def analyze_image_quality(request: QCAnalyzeRequest) -> dict[str, Any]:
     """Analyze image quality."""
-    from core.qc_analysis import QCAnalyzerFactory, get_qc_analyzer
     from core.image_storage import get_image_storage
-    
+    from core.qc_analysis import QCAnalyzerFactory, get_qc_analyzer
+
     try:
         # Get image
         storage = get_image_storage()
         image_data = await storage.get_image(request.image_id)
-        
+
         if image_data is None:
             raise HTTPException(status_code=404, detail="Image not found")
-        
+
         # Get analyzer
         if request.analyzer_type == "auto":
             analyzer = get_qc_analyzer()
         else:
             analyzer = QCAnalyzerFactory.create(request.analyzer_type)
-        
+
         # Analyze
         report = await analyzer.analyze(image_data, request.image_id)
-        
+
         return {
             "report_id": report.report_id,
             "image_id": report.image_id,
@@ -2660,53 +2543,57 @@ async def analyze_image_quality(request: QCAnalyzeRequest) -> dict[str, Any]:
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"QC analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=f"QC analysis failed: {e}") from e
 
 
 @app.get("/api/qc/analyzers")
 async def list_qc_analyzers() -> list[dict[str, Any]]:
     """List available QC analyzers."""
-    from core.qc_analysis import MockQCAnalyzer, CLIPBasedQCAnalyzer
-    
+    from core.qc_analysis import CLIPBasedQCAnalyzer
+
     analyzers = []
-    
+
     # Mock (always available)
-    analyzers.append({
-        "id": "mock",
-        "name": "Mock Analyzer",
-        "available": True,
-        "description": "Deterministic mock scoring for testing",
-    })
-    
+    analyzers.append(
+        {
+            "id": "mock",
+            "name": "Mock Analyzer",
+            "available": True,
+            "description": "Deterministic mock scoring for testing",
+        }
+    )
+
     # CLIP-based
     clip = CLIPBasedQCAnalyzer()
-    analyzers.append({
-        "id": "clip",
-        "name": "CLIP-Based Analyzer",
-        "available": clip.is_available(),
-        "description": "Uses CLIP and vision models for scoring",
-        "requirements": "transformers, torch" if not clip.is_available() else None,
-    })
-    
+    analyzers.append(
+        {
+            "id": "clip",
+            "name": "CLIP-Based Analyzer",
+            "available": clip.is_available(),
+            "description": "Uses CLIP and vision models for scoring",
+            "requirements": "transformers, torch" if not clip.is_available() else None,
+        }
+    )
+
     return analyzers
 
 
 @app.get("/api/qc/reports/{image_id}")
 async def get_qc_report(image_id: str) -> dict[str, Any]:
     """Get QC report for an image."""
-    from core.qc_analysis import get_qc_analyzer
     from core.image_storage import get_image_storage
-    
+    from core.qc_analysis import get_qc_analyzer
+
     try:
         storage = get_image_storage()
         image_data = await storage.get_image(image_id)
-        
+
         if image_data is None:
             raise HTTPException(status_code=404, detail="Image not found")
-        
+
         analyzer = get_qc_analyzer()
         report = await analyzer.analyze(image_data, image_id)
-        
+
         return {
             "report_id": report.report_id,
             "image_id": report.image_id,
@@ -2746,26 +2633,28 @@ async def get_qc_report(image_id: str) -> dict[str, Any]:
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get QC report: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get QC report: {e}"
+        ) from e
 
 
 @app.post("/api/qc/auto-redraw")
 async def auto_redraw_image(image_id: str) -> dict[str, Any]:
     """Automatically redraw an image that failed QC."""
-    from core.qc_analysis import auto_redraw_with_qc, get_qc_analyzer
+    from core.diffusion_backend import GenerationRequest, get_diffusion_backend
     from core.image_storage import get_image_storage
-    from core.diffusion_backend import get_diffusion_backend, GenerationRequest
-    
+    from core.qc_analysis import auto_redraw_with_qc
+
     try:
         storage = get_image_storage()
         metadata = await storage.get_metadata(image_id)
-        
+
         if metadata is None:
             raise HTTPException(status_code=404, detail="Image not found")
-        
+
         # Get original image
         image_data = await storage.get_image(image_id)
-        
+
         # Define generate function for redraw
         async def generate_fn():
             backend = get_diffusion_backend()
@@ -2776,7 +2665,7 @@ async def auto_redraw_image(image_id: str) -> dict[str, Any]:
             )
             results = await backend.generate(request)
             return results[0].image_data if results else b""
-        
+
         # Auto redraw
         result = await auto_redraw_with_qc(
             image_data=image_data,
@@ -2784,28 +2673,15 @@ async def auto_redraw_image(image_id: str) -> dict[str, Any]:
             generate_fn=generate_fn,
             max_attempts=3,
         )
-        
+
         if result.new_image_id and result.new_report:
-            # Store the new image
-            new_metadata = ImageMetadata(
-                image_id=result.new_image_id,
-                original_filename=f"{metadata.original_filename}-redraw",
-                content_type=metadata.content_type,
-                width=metadata.width,
-                height=metadata.height,
-                file_size_bytes=len(image_data),  # Approximate
-                prompt=metadata.prompt,
-                negative_prompt=metadata.negative_prompt,
-                seed=metadata.seed + 1000,
-                model_id=metadata.model_id,
-                story_id=metadata.story_id,
-                branch_id=metadata.branch_id,
-                scene_id=metadata.scene_id,
-                panel_index=metadata.panel_index,
-                version=metadata.version + 1,
-                parent_version=image_id,
+            # Store the new image - new_metadata would be used in production
+            _ = (
+                result.new_image_id,
+                f"{metadata.original_filename}-redraw",
+                metadata.content_type,
             )
-        
+
         return {
             "original_image_id": result.original_image_id,
             "new_image_id": result.new_image_id,
@@ -2817,7 +2693,7 @@ async def auto_redraw_image(image_id: str) -> dict[str, Any]:
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Auto redraw failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Auto redraw failed: {e}") from e
 
 
 # ============ Sprint 27: Graph Persistence Endpoints ============
@@ -2825,6 +2701,7 @@ async def auto_redraw_image(image_id: str) -> dict[str, Any]:
 
 class SaveNodeRequest(CamelModel):
     """Request to save a graph node."""
+
     node_id: str
     label: str
     branch_id: str
@@ -2837,6 +2714,7 @@ class SaveNodeRequest(CamelModel):
 
 class SaveEdgeRequest(CamelModel):
     """Request to save a graph edge."""
+
     edge_id: str
     source_id: str
     target_id: str
@@ -2847,6 +2725,7 @@ class SaveEdgeRequest(CamelModel):
 
 class ProjectSaveRequest(CamelModel):
     """Request to save entire project."""
+
     project_id: str
     nodes: list[dict[str, Any]]
     edges: list[dict[str, Any]]
@@ -2856,12 +2735,12 @@ class ProjectSaveRequest(CamelModel):
 @app.post("/api/graph/nodes/save")
 async def save_graph_node(request: SaveNodeRequest) -> dict[str, Any]:
     """Save or update a graph node."""
-    from core.graph_persistence import GraphNode, get_graph_persistence
     from core.event_store import log_node_created, log_node_updated
-    
+    from core.graph_persistence import GraphNode, get_graph_persistence
+
     try:
         persistence = get_graph_persistence()
-        
+
         node = GraphNode(
             node_id=request.node_id,
             label=request.label,
@@ -2872,12 +2751,12 @@ async def save_graph_node(request: SaveNodeRequest) -> dict[str, Any]:
             importance=request.importance,
             metadata=request.metadata,
         )
-        
+
         # Check if node exists
         existing = await persistence.get_node(request.node_id)
-        
+
         await persistence.save_node(node)
-        
+
         # Log event
         if existing is None:
             await log_node_created(
@@ -2892,79 +2771,81 @@ async def save_graph_node(request: SaveNodeRequest) -> dict[str, Any]:
                 node_id=request.node_id,
                 changes={"x": request.x, "y": request.y, "label": request.label},
             )
-        
+
         return {"success": True, "node_id": request.node_id}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save node: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save node: {e}") from e
 
 
 @app.get("/api/graph/nodes/{node_id}")
 async def get_graph_node(node_id: str) -> dict[str, Any]:
     """Get a graph node by ID."""
     from core.graph_persistence import get_graph_persistence
-    
+
     try:
         persistence = get_graph_persistence()
         node = await persistence.get_node(node_id)
-        
+
         if node is None:
             raise HTTPException(status_code=404, detail="Node not found")
-        
+
         return node.to_dict()
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get node: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get node: {e}") from e
 
 
 @app.delete("/api/graph/nodes/{node_id}")
 async def delete_graph_node(node_id: str) -> dict[str, Any]:
     """Delete a graph node."""
     from core.graph_persistence import get_graph_persistence
-    
+
     try:
         persistence = get_graph_persistence()
         deleted = await persistence.delete_node(node_id)
-        
+
         if not deleted:
             raise HTTPException(status_code=404, detail="Node not found")
-        
+
         return {"success": True, "message": f"Node {node_id} deleted"}
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete node: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete node: {e}"
+        ) from e
 
 
 @app.get("/api/graph/nodes")
 async def list_graph_nodes(branch_id: str | None = None) -> dict[str, Any]:
     """List all graph nodes, optionally filtered by branch."""
     from core.graph_persistence import get_graph_persistence
-    
+
     try:
         persistence = get_graph_persistence()
-        
+
         if branch_id:
             nodes = await persistence.get_nodes_by_branch(branch_id)
         else:
             nodes = await persistence.get_all_nodes()
-        
+
         return {
             "nodes": [node.to_dict() for node in nodes],
             "count": len(nodes),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list nodes: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to list nodes: {e}") from e
 
 
 @app.post("/api/graph/edges/save")
 async def save_graph_edge(request: SaveEdgeRequest) -> dict[str, Any]:
     """Save or update a graph edge."""
     from core.graph_persistence import GraphEdge, get_graph_persistence
-    
+
     try:
         persistence = get_graph_persistence()
-        
+
         edge = GraphEdge(
             edge_id=request.edge_id,
             source_id=request.source_id,
@@ -2973,39 +2854,39 @@ async def save_graph_edge(request: SaveEdgeRequest) -> dict[str, Any]:
             edge_type=request.edge_type,
             weight=request.weight,
         )
-        
+
         await persistence.save_edge(edge)
-        
+
         return {"success": True, "edge_id": request.edge_id}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save edge: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save edge: {e}") from e
 
 
 @app.get("/api/graph/edges")
 async def list_graph_edges() -> dict[str, Any]:
     """List all graph edges."""
     from core.graph_persistence import get_graph_persistence
-    
+
     try:
         persistence = get_graph_persistence()
         edges = await persistence.get_all_edges()
-        
+
         return {
             "edges": [edge.to_dict() for edge in edges],
             "count": len(edges),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list edges: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to list edges: {e}") from e
 
 
 @app.post("/api/project/save")
 async def save_project(request: ProjectSaveRequest) -> dict[str, Any]:
     """Save entire project."""
     from core.graph_persistence import get_graph_persistence
-    
+
     try:
         persistence = get_graph_persistence()
-        
+
         data = {
             "project_id": request.project_id,
             "nodes": request.nodes,
@@ -3013,9 +2894,9 @@ async def save_project(request: ProjectSaveRequest) -> dict[str, Any]:
             "branches": request.branches,
             "saved_at": datetime.now(UTC).isoformat(),
         }
-        
+
         await persistence.save_project(request.project_id, data)
-        
+
         return {
             "success": True,
             "project_id": request.project_id,
@@ -3023,41 +2904,45 @@ async def save_project(request: ProjectSaveRequest) -> dict[str, Any]:
             "edge_count": len(request.edges),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save project: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to save project: {e}"
+        ) from e
 
 
 @app.get("/api/project/load/{project_id}")
 async def load_project(project_id: str) -> dict[str, Any]:
     """Load entire project."""
     from core.graph_persistence import get_graph_persistence
-    
+
     try:
         persistence = get_graph_persistence()
         data = await persistence.load_project(project_id)
-        
+
         if data is None:
             raise HTTPException(status_code=404, detail="Project not found")
-        
+
         return data
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load project: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to load project: {e}"
+        ) from e
 
 
 @app.post("/api/project/export")
 async def export_project(project_id: str) -> dict[str, Any]:
     """Export project to JSON format."""
+
     from core.graph_persistence import get_graph_persistence
-    import json
-    
+
     try:
         persistence = get_graph_persistence()
         data = await persistence.load_project(project_id)
-        
+
         if data is None:
             raise HTTPException(status_code=404, detail="Project not found")
-        
+
         # Convert to export format
         export = {
             "format_version": "1.0",
@@ -3065,12 +2950,14 @@ async def export_project(project_id: str) -> dict[str, Any]:
             "exported_at": datetime.now(UTC).isoformat(),
             "data": data,
         }
-        
+
         return export
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to export project: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to export project: {e}"
+        ) from e
 
 
 # ============ Event Store / Audit Endpoints ============
@@ -3080,11 +2967,11 @@ async def export_project(project_id: str) -> dict[str, Any]:
 async def get_audit_trail(aggregate_type: str, aggregate_id: str) -> dict[str, Any]:
     """Get audit trail for an aggregate."""
     from core.event_store import get_event_store
-    
+
     try:
         store = get_event_store()
         trail = await store.get_audit_trail(aggregate_id, aggregate_type)
-        
+
         return {
             "aggregate_type": aggregate_type,
             "aggregate_id": aggregate_id,
@@ -3092,18 +2979,20 @@ async def get_audit_trail(aggregate_type: str, aggregate_id: str) -> dict[str, A
             "event_count": len(trail),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get audit trail: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get audit trail: {e}"
+        ) from e
 
 
 @app.get("/api/events/recent")
 async def get_recent_events(limit: int = 50) -> dict[str, Any]:
     """Get recent activity feed."""
     from core.event_store import get_event_store
-    
+
     try:
         store = get_event_store()
         events = await store.get_recent_activity(limit=limit)
-        
+
         return {
             "events": [
                 {
@@ -3118,7 +3007,312 @@ async def get_recent_events(limit: int = 50) -> dict[str, Any]:
             "count": len(events),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get events: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get events: {e}") from e
+
+
+# ============ Sprint 28: Real-time Collaboration Endpoints ============
+
+
+@app.post("/api/collaboration/join")
+async def collaboration_join(request: dict[str, Any]) -> dict[str, Any]:
+    """Join a collaboration room."""
+    from core.collaboration import get_collaboration_engine
+
+    room_id = request.get("room_id", "")
+    user_id = request.get("user_id", "")
+    user_name = request.get("user_name", "Anonymous")
+
+    if not room_id or not user_id:
+        raise HTTPException(status_code=400, detail="room_id and user_id are required")
+
+    try:
+        engine = get_collaboration_engine()
+        room, presence = await engine.join_room(room_id, user_id, user_name)
+
+        # Get full presence sync for new user
+        sync_data = await engine.get_presence_sync(room_id)
+
+        return {
+            "success": True,
+            "room_id": room_id,
+            "user_id": user_id,
+            "user_color": presence.user_color,
+            "user_count": room.get_user_count(),
+            "presence_sync": sync_data,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to join room: {e}") from e
+
+
+@app.post("/api/collaboration/leave")
+async def collaboration_leave(request: dict[str, Any]) -> dict[str, Any]:
+    """Leave a collaboration room."""
+    from core.collaboration import get_collaboration_engine
+
+    room_id = request.get("room_id", "")
+    user_id = request.get("user_id", "")
+
+    if not room_id or not user_id:
+        raise HTTPException(status_code=400, detail="room_id and user_id are required")
+
+    try:
+        engine = get_collaboration_engine()
+        await engine.leave_room(room_id, user_id)
+
+        return {
+            "success": True,
+            "room_id": room_id,
+            "user_id": user_id,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to leave room: {e}") from e
+
+
+@app.post("/api/collaboration/cursor")
+async def collaboration_cursor(request: dict[str, Any]) -> dict[str, Any]:
+    """Update cursor position."""
+    from core.collaboration import get_collaboration_engine
+
+    room_id = request.get("room_id", "")
+    user_id = request.get("user_id", "")
+    x = request.get("x", 0.0)
+    y = request.get("y", 0.0)
+    node_id = request.get("node_id")
+
+    if not room_id or not user_id:
+        raise HTTPException(status_code=400, detail="room_id and user_id are required")
+
+    try:
+        engine = get_collaboration_engine()
+        await engine.update_cursor(room_id, user_id, x, y, node_id)
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update cursor: {e}"
+        ) from e
+
+
+@app.post("/api/collaboration/select")
+async def collaboration_select(request: dict[str, Any]) -> dict[str, Any]:
+    """Update selected node."""
+    from core.collaboration import get_collaboration_engine
+
+    room_id = request.get("room_id", "")
+    user_id = request.get("user_id", "")
+    node_id = request.get("node_id")
+
+    if not room_id or not user_id:
+        raise HTTPException(status_code=400, detail="room_id and user_id are required")
+
+    try:
+        engine = get_collaboration_engine()
+        await engine.select_node(room_id, user_id, node_id)
+
+        return {"success": True, "node_id": node_id}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to select node: {e}"
+        ) from e
+
+
+@app.post("/api/collaboration/lock")
+async def collaboration_lock(request: dict[str, Any]) -> dict[str, Any]:
+    """Acquire edit lock on a node."""
+    from core.collaboration import get_collaboration_engine
+
+    room_id = request.get("room_id", "")
+    user_id = request.get("user_id", "")
+    user_name = request.get("user_name", "Anonymous")
+    node_id = request.get("node_id", "")
+
+    if not room_id or not user_id or not node_id:
+        raise HTTPException(
+            status_code=400,
+            detail="room_id, user_id, and node_id are required",
+        )
+
+    try:
+        engine = get_collaboration_engine()
+        success, error = await engine.acquire_edit_lock(
+            room_id, node_id, user_id, user_name
+        )
+
+        if not success:
+            raise HTTPException(status_code=409, detail=error or "Lock failed")
+
+        return {
+            "success": True,
+            "node_id": node_id,
+            "user_id": user_id,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to acquire lock: {e}"
+        ) from e
+
+
+@app.post("/api/collaboration/unlock")
+async def collaboration_unlock(request: dict[str, Any]) -> dict[str, Any]:
+    """Release edit lock on a node."""
+    from core.collaboration import get_collaboration_engine
+
+    room_id = request.get("room_id", "")
+    user_id = request.get("user_id", "")
+    node_id = request.get("node_id", "")
+
+    if not room_id or not user_id or not node_id:
+        raise HTTPException(
+            status_code=400,
+            detail="room_id, user_id, and node_id are required",
+        )
+
+    try:
+        engine = get_collaboration_engine()
+        success = await engine.release_edit_lock(room_id, node_id, user_id)
+
+        return {
+            "success": success,
+            "node_id": node_id,
+            "user_id": user_id,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to release lock: {e}"
+        ) from e
+
+
+@app.get("/api/collaboration/presence/{room_id}")
+async def collaboration_presence(room_id: str) -> dict[str, Any]:
+    """Get current presence state for a room."""
+    from core.collaboration import get_collaboration_engine
+
+    try:
+        engine = get_collaboration_engine()
+        sync_data = await engine.get_presence_sync(room_id)
+
+        return {
+            "room_id": room_id,
+            **sync_data,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get presence: {e}"
+        ) from e
+
+
+# ============ Sprint 29: Observability Endpoints ============
+
+
+@app.get("/api/ops/metrics")
+async def get_metrics() -> dict[str, Any]:
+    """Get system metrics."""
+    from core.observability import get_observability
+
+    try:
+        obs = get_observability()
+        summary = obs.metrics.get_summary()
+
+        return {
+            "counters": summary.get("counters", {}),
+            "gauges": summary.get("gauges", {}),
+            "histogram_count": summary.get("histogram_count", {}),
+            "timestamp": datetime.now(UTC).isoformat(),
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get metrics: {e}"
+        ) from e
+
+
+@app.get("/api/ops/metrics/prometheus")
+async def get_metrics_prometheus() -> str:
+    """Get metrics in Prometheus format."""
+    from core.observability import get_observability
+
+    try:
+        obs = get_observability()
+        return obs.export_prometheus()
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to export metrics: {e}"
+        ) from e
+
+
+@app.get("/api/ops/slos")
+async def get_slos() -> dict[str, Any]:
+    """Get SLO (Service Level Objective) status."""
+    from core.observability import get_observability
+
+    try:
+        obs = get_observability()
+        results = obs.slo.check_all_slos()
+
+        return {
+            "slos": [
+                {
+                    "name": r.definition.name,
+                    "description": r.definition.description,
+                    "target": r.definition.target,
+                    "current_value": r.current_value,
+                    "status": r.status.value,
+                    "window_minutes": r.window_minutes,
+                    "measured_at": r.measured_at,
+                }
+                for r in results
+            ],
+            "overall_status": (
+                "healthy"
+                if all(r.status.value == "healthy" for r in results)
+                else (
+                    "warning"
+                    if any(r.status.value == "warning" for r in results)
+                    else "breach"
+                )
+            ),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get SLOs: {e}") from e
+
+
+@app.get("/api/ops/health")
+async def get_health() -> dict[str, Any]:
+    """Get health status."""
+    from core.observability import get_observability
+
+    try:
+        obs = get_observability()
+        return obs.health.get_overall_status()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get health: {e}") from e
+
+
+@app.get("/api/ops/logs")
+async def get_logs(level: str | None = None, limit: int = 100) -> dict[str, Any]:
+    """Get recent log entries."""
+    from core.observability import get_observability
+
+    try:
+        obs = get_observability()
+        entries = obs.logger.get_recent(level=level, limit=limit)
+
+        return {
+            "logs": [
+                {
+                    "timestamp": e.timestamp,
+                    "level": e.level,
+                    "message": e.message,
+                    "correlation_id": e.correlation_id,
+                    "context": e.context,
+                }
+                for e in entries
+            ],
+            "count": len(entries),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get logs: {e}") from e
 
 
 if __name__ == "__main__":
