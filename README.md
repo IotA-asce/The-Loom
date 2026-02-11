@@ -17,6 +17,7 @@
 | Feature | Description |
 |---------|-------------|
 | **📚 Multi-Format Ingestion** | Parse `.txt`, `.pdf`, `.epub`, `.cbz`, and loose image folders |
+| **📖 Manga Reader** | Import and read manga with viewer, thumbnails, and keyboard shortcuts |
 | **🎭 Tone Preservation** | Replicate any genre—from children's tales to visceral fiction |
 | **🌳 Branching Narratives** | Visual "Tree of Possibilities" with drag-and-drop graph editor |
 | **✍️ Prose Generation** | Style-faithful text with character voice integrity |
@@ -125,6 +126,18 @@ from agents.archivist import ingest_text_file
 result = ingest_text_file("path/to/story.txt")
 print(f"Ingested {result.chunk_count} chunks")
 ```
+
+### 2. Import Manga/Comics
+
+**Quick CLI Import:**
+```bash
+# Import a folder of manga pages
+python scripts/import_manga_folder.py "/path/to/manga/volume1" "My Manga Title"
+```
+
+Then open the app, go to the **📥 Import** tab, and click **👁️ View** to read!
+
+See [docs/MANGA_WORKFLOW_COMPLETE.md](docs/MANGA_WORKFLOW_COMPLETE.md) for detailed instructions.
 
 ### 2. Create a Branch Timeline
 
