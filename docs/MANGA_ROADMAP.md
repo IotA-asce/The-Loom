@@ -12,6 +12,7 @@
 ### Core Import & Reading
 | Feature | Status |
 |---------|--------|
+| Story Extraction (scenes from OCR) | ✅ Complete |
 | Data Model Alignment (node_type field) | ✅ Complete |
 | Association & Linking (volume↔node) | ✅ Complete |
 | Manga Viewer (image serving, navigation) | ✅ Complete |
@@ -94,7 +95,7 @@ For large libraries (1000+ volumes):
 |----------|-------|
 | ✅ Completed | 17 features |
 | 🚧 Planned | 5 enhancements |
-| **Total Effort Remaining** | **32-46 hours** |
+| **Total Effort Remaining** | **28-40 hours** |
 
 ---
 
@@ -108,6 +109,40 @@ For large libraries (1000+ volumes):
 - [x] Resume reading from last page
 - [x] Batch manage volumes
 - [x] Mobile-friendly viewer
+- [x] Story extraction scaffolding
+
+---
+
+## 🔮 Story Extraction Enhancements
+
+Planned improvements to the story extraction feature:
+
+### Scene Segmentation AI
+**Priority:** 🟡 Medium  
+**Effort:** 4-6 hours
+
+Implement AI-powered scene detection:
+- Send OCR text to LLM for scene boundaries
+- Create scene nodes linked to manga volume
+- Identify characters, dialogue, mood/tone
+
+### Character Extraction
+**Priority:** 🟢 Low  
+**Effort:** 3-4 hours
+
+Extract characters as separate graph nodes:
+- Detect character names from dialogue
+- Create character entity nodes
+- Link characters to scenes they appear in
+
+### Interactive Scene Editor
+**Priority:** 🟢 Low  
+**Effort:** 6-8 hours
+
+Edit extracted scenes in the graph:
+- Merge/split scenes
+- Add branching choices
+- Modify dialogue and descriptions
 
 ---
 
