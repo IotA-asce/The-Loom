@@ -3,7 +3,7 @@ import { useAppStore } from '../store'
 import './MangaLibrary.css'
 
 export function MangaLibrary() {
-  const { mangaVolumes, fetchMangaVolumes, deleteMangaVolume, addToast, selectNode, nodes } = useAppStore()
+  const { mangaVolumes, fetchMangaVolumes, deleteMangaVolume, addToast, selectNode, nodes, openMangaViewer } = useAppStore()
   const [loading, setLoading] = useState(false)
   const [selectedVolume, setSelectedVolume] = useState<string | null>(null)
 
@@ -98,6 +98,16 @@ export function MangaLibrary() {
                 )}
               </div>
               <div className="manga-item-actions">
+                <button
+                  className="manga-action-btn view"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    openMangaViewer(volume.volume_id)
+                  }}
+                  title="View manga"
+                >
+                  👁️
+                </button>
                 {volume.graph_node_id && (
                   <button
                     className="manga-action-btn goto"

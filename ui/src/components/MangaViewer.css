@@ -1,0 +1,493 @@
+/* MangaViewer Overlay */
+.manga-viewer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #0a0a0a;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.manga-viewer-overlay.fullscreen {
+  background: #000;
+}
+
+/* Loading & Error States */
+.manga-viewer-loading,
+.manga-viewer-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  gap: 1rem;
+}
+
+.manga-viewer-loading .spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid #333;
+  border-top-color: #e91e63;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.manga-viewer-error .close-btn {
+  padding: 0.5rem 1.5rem;
+  background: #e91e63;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+/* Header */
+.manga-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(to bottom, #1a1a1a, #0a0a0a);
+  border-bottom: 1px solid #333;
+  gap: 1rem;
+}
+
+.manga-viewer-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #fff;
+}
+
+.manga-icon {
+  font-size: 1.3rem;
+}
+
+.manga-title-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+.manga-viewer-page-info {
+  color: #888;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.manga-viewer-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.control-btn {
+  width: 36px;
+  height: 36px;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.control-btn:hover {
+  background: #3a3a3a;
+  border-color: #666;
+}
+
+.control-btn.close {
+  background: #5c2a2a;
+  border-color: #7a3a3a;
+}
+
+.control-btn.close:hover {
+  background: #7a3a3a;
+}
+
+/* Content Area */
+.manga-viewer-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Thumbnail Sidebar */
+.manga-thumbnails {
+  width: 160px;
+  background: #111;
+  border-right: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+}
+
+.thumbnails-header {
+  padding: 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #888;
+  border-bottom: 1px solid #333;
+  text-align: center;
+}
+
+.thumbnails-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.thumbnail-item {
+  position: relative;
+  cursor: pointer;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+  aspect-ratio: 2/3;
+  background: #1a1a1a;
+}
+
+.thumbnail-item:hover {
+  border-color: #666;
+}
+
+.thumbnail-item.active {
+  border-color: #e91e63;
+  box-shadow: 0 0 8px rgba(233, 30, 99, 0.4);
+}
+
+.thumbnail-number {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 1px 4px;
+  border-radius: 2px;
+  z-index: 1;
+}
+
+.thumbnail-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Image Viewer */
+.manga-image-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: auto;
+  background: #0a0a0a;
+}
+
+.manga-image-wrapper {
+  transition: transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.manga-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  cursor: zoom-in;
+}
+
+.manga-image.fit-height {
+  max-height: calc(100vh - 140px);
+  width: auto;
+}
+
+.manga-image.fit-width {
+  max-width: 100%;
+  height: auto;
+}
+
+.manga-image.fit-original {
+  max-width: none;
+  max-height: none;
+}
+
+/* Navigation Arrows */
+.nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 50px;
+  height: 80px;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  color: #fff;
+  font-size: 2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s;
+  z-index: 10;
+}
+
+.manga-image-container:hover .nav-arrow {
+  opacity: 1;
+}
+
+.nav-arrow:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.nav-arrow:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+.nav-arrow.prev {
+  left: 0;
+  border-radius: 0 8px 8px 0;
+}
+
+.nav-arrow.next {
+  right: 0;
+  border-radius: 8px 0 0 8px;
+}
+
+/* Footer */
+.manga-viewer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(to top, #1a1a1a, #0a0a0a);
+  border-top: 1px solid #333;
+  gap: 1rem;
+}
+
+/* Zoom Controls */
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.zoom-controls button {
+  width: 32px;
+  height: 32px;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.zoom-controls button:hover {
+  background: #3a3a3a;
+  border-color: #666;
+}
+
+.zoom-level {
+  color: #888;
+  font-size: 0.9rem;
+  min-width: 50px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Page Controls */
+.page-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.page-controls button {
+  padding: 0.4rem 1rem;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-controls button:hover:not(:disabled) {
+  background: #3a3a3a;
+  border-color: #666;
+}
+
+.page-controls button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.page-input {
+  width: 60px;
+  padding: 0.4rem;
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #fff;
+  text-align: center;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.page-input:focus {
+  outline: none;
+  border-color: #e91e63;
+}
+
+.page-controls span {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+/* Fit Controls */
+.fit-controls {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.fit-controls button {
+  width: 36px;
+  height: 32px;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #888;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.fit-controls button:hover {
+  background: #3a3a3a;
+  border-color: #666;
+  color: #fff;
+}
+
+.fit-controls button.active {
+  background: #e91e63;
+  border-color: #e91e63;
+  color: #fff;
+}
+
+/* Shortcuts Help */
+.manga-shortcuts-help {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 20px;
+  font-size: 0.75rem;
+  color: #888;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.manga-viewer-overlay:hover .manga-shortcuts-help {
+  opacity: 1;
+}
+
+.manga-shortcuts-help span {
+  white-space: nowrap;
+}
+
+/* Scrollbar Styling */
+.manga-thumbnails::-webkit-scrollbar {
+  width: 6px;
+}
+
+.manga-thumbnails::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+.manga-thumbnails::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 3px;
+}
+
+.manga-thumbnails::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .manga-thumbnails {
+    width: 100px;
+  }
+
+  .manga-viewer-title {
+    font-size: 0.9rem;
+  }
+
+  .manga-title-text {
+    max-width: 150px;
+  }
+
+  .manga-viewer-page-info {
+    font-size: 0.8rem;
+  }
+
+  .nav-arrow {
+    width: 40px;
+    height: 60px;
+    font-size: 1.5rem;
+    opacity: 0.5;
+  }
+
+  .manga-viewer-footer {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .zoom-controls,
+  .fit-controls {
+    order: 2;
+  }
+
+  .page-controls {
+    order: 1;
+    width: 100%;
+    justify-content: center;
+  }
+}

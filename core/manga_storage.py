@@ -248,6 +248,47 @@ class MangaStorage:
         finally:
             conn.close()
 
+    def get_page(self, volume_id: str, page_number: int) -> MangaPage | None:
+        """Get a specific page by volume ID and page number."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute("""
+                SELECT page_number, format_name, width, height, content_hash, ocr_text
+                FROM manga_pages WHERE volume_id = ? AND page_number = ?
+            """, (volume_id, page_number))
+
+            row = cursor.fetchone()
+            if not row:
+                return None
+
+            return MangaPage(
+                page_number=row[0],
+                format_name=row[1],
+                width=row[2],
+                height=row[3],
+                content_hash=row[4],
+                ocr_text=row[5],
+            )
+        finally:
+            conn.close()
+
+    def get_volume_source_path(self, volume_id: str) -> str | None:
+        """Get the source path for a volume."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                "SELECT source_path FROM manga_volumes WHERE volume_id = ?",
+                (volume_id,)
+            )
+            row = cursor.fetchone()
+            return row[0] if row else None
+        finally:
+            conn.close()
+
     def get_all_volumes(self, limit: int = 100, offset: int = 0) -> list[MangaVolume]:
         """Get all volumes (without pages for listing)."""
         conn = self._get_connection()

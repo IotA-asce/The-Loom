@@ -101,7 +101,7 @@ const VALIDATION_RULES: Record<NodeType, Array<{ field: string; validate: (value
 }
 
 export function SceneMetadata({ nodeId }: SceneMetadataProps) {
-  const { nodes, updateNodeMetadata, updateNodeType, characters, toggleCharacterInNode } = useAppStore()
+  const { nodes, updateNodeMetadata, updateNodeType, characters, toggleCharacterInNode, openMangaViewer } = useAppStore()
   const node = nodes.find(n => n.id === nodeId)
   
   const [title, setTitle] = useState('')
@@ -338,9 +338,14 @@ export function SceneMetadata({ nodeId }: SceneMetadataProps) {
         <div className="metadata-section">
           <button
             className="view-manga-btn"
-            onClick={() => alert(`Manga viewer coming in Sprint 3!\nThis node represents imported manga volumes.`)}
+            onClick={() => {
+              const volumeId = (node.metadata as any)?.volume_id
+              if (volumeId) {
+                openMangaViewer(volumeId)
+              }
+            }}
           >
-            📖 View Manga
+            📖 View Manga ({(node.metadata as any)?.page_count || '?'} pages)
           </button>
         </div>
       )}

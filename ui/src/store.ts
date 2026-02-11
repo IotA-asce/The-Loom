@@ -509,6 +509,12 @@ interface AppState {
   fetchMangaVolumes: () => Promise<void>
   deleteMangaVolume: (volume_id: string) => Promise<boolean>
   
+  // Manga Viewer
+  mangaViewerOpen: boolean
+  mangaViewerVolumeId: string | null
+  openMangaViewer: (volumeId: string) => void
+  closeMangaViewer: () => void
+  
   // Graph Persistence
   loadGraphNodes: () => Promise<void>
   
@@ -1684,6 +1690,24 @@ export const useAppStore = create<AppState>((set, get) => ({
     } catch (error) {
       console.error('Failed to load graph nodes:', error)
     }
+  },
+  
+  // ==================== MANGA VIEWER ====================
+  mangaViewerOpen: false,
+  mangaViewerVolumeId: null,
+  
+  openMangaViewer: (volumeId: string) => {
+    set({ 
+      mangaViewerOpen: true, 
+      mangaViewerVolumeId: volumeId 
+    })
+  },
+  
+  closeMangaViewer: () => {
+    set({ 
+      mangaViewerOpen: false, 
+      mangaViewerVolumeId: null 
+    })
   },
   
   // ==================== MANGA STORAGE ====================

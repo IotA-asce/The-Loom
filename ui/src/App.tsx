@@ -28,6 +28,7 @@ import { BookmarkDropdown } from './components/BookmarkDropdown'
 import { OperationsDashboard } from './components/OperationsDashboard'
 import { MaturityRating, RatingBadge } from './components/MaturityRating'
 import { RecommendationsPanel } from './components/RecommendationsPanel'
+import { MangaViewer } from './components/MangaViewer'
 import { ProfileEditor } from './components/ProfileEditor'
 import { CommentsPanel } from './components/CommentsPanel'
 import { OfflineStatus, OfflineBanner } from './components/OfflineStatus'
@@ -87,6 +88,9 @@ function App() {
     showNodePreview,
     toggleNodePreview,
     addToast,
+    mangaViewerOpen,
+    mangaViewerVolumeId,
+    closeMangaViewer,
   } = useAppStore()
   
   const [sidebarTab, setSidebarTab] = useState<'branches' | 'import' | 'metadata'>('branches')
@@ -238,6 +242,14 @@ function App() {
       
       {/* Reading View Overlay */}
       <ReadingView />
+      
+      {/* Manga Viewer Overlay */}
+      {mangaViewerOpen && mangaViewerVolumeId && (
+        <MangaViewer
+          volumeId={mangaViewerVolumeId}
+          onClose={closeMangaViewer}
+        />
+      )}
       
       {/* Onboarding Modal */}
       <OnboardingModal

@@ -168,6 +168,10 @@
   background: var(--primary-bg, #2a3a5c);
 }
 
+.manga-action-btn.view:hover {
+  background: var(--success-bg, #2a5c3a);
+}
+
 .manga-footer {
   margin-top: 12px;
   padding-top: 8px;

@@ -30,6 +30,7 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 # Pydantic models for API
@@ -1025,6 +1026,98 @@ async def delete_manga_volume(volume_id: str) -> dict[str, Any]:
         }
     else:
         raise HTTPException(status_code=500, detail="Failed to delete manga volume")
+
+
+@app.get("/api/manga/{volume_id}/pages/{page_number}/image")
+async def get_manga_page_image(
+    volume_id: str,
+    page_number: int,
+    thumbnail: bool = Query(False, description="Return thumbnail if available"),
+) -> FileResponse:
+    """Get the image file for a specific manga page.
+    
+    Returns the actual image file (webp, png, or jpg) for the requested page.
+    """
+    from core.manga_storage import get_manga_storage
+
+    storage = get_manga_storage()
+    
+    # Get the page metadata
+    page = storage.get_page(volume_id, page_number)
+    if not page:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Page {page_number} not found in volume {volume_id}"
+        )
+    
+    # Get the volume source path
+    source_path = storage.get_volume_source_path(volume_id)
+    if not source_path:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Volume {volume_id} not found"
+        )
+    
+    # Construct the image file path
+    source_dir = Path(source_path)
+    if not source_dir.exists():
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Source directory not found: {source_path}"
+        )
+    
+    # Find the image file for this page
+    # Page files are typically named like: 001.webp, 002.webp, etc.
+    # Or they could be named with the content hash
+    possible_extensions = [".webp", ".png", ".jpg", ".jpeg"]
+    image_path = None
+    
+    # Try to find by page number pattern
+    for ext in possible_extensions:
+        # Try zero-padded: 001.ext, 002.ext
+        padded_name = f"{page_number:03d}{ext}"
+        candidate = source_dir / padded_name
+        if candidate.exists():
+            image_path = candidate
+            break
+        
+        # Try non-padded: 1.ext, 2.ext
+        plain_name = f"{page_number}{ext}"
+        candidate = source_dir / plain_name
+        if candidate.exists():
+            image_path = candidate
+            break
+        
+        # Try page_ prefix: page_001.ext
+        prefixed_name = f"page_{page_number:03d}{ext}"
+        candidate = source_dir / prefixed_name
+        if candidate.exists():
+            image_path = candidate
+            break
+    
+    if not image_path:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Image file for page {page_number} not found in {source_path}"
+        )
+    
+    # Determine media type
+    media_type = {
+        ".webp": "image/webp",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+    }.get(image_path.suffix.lower(), "application/octet-stream")
+    
+    return FileResponse(
+        path=image_path,
+        media_type=media_type,
+        headers={
+            "Cache-Control": "public, max-age=86400",  # Cache for 1 day
+            "X-Page-Number": str(page_number),
+            "X-Page-Format": page.format_name,
+        },
+    )
 
 
 @app.get("/api/health")
