@@ -1249,18 +1249,103 @@ class StoryExtractionResponse(BaseModel):
     manga_node_id: str | None = None
 
 
+async def _extract_text_from_images(
+    llm_backend,
+    image_paths: list[Path],
+    volume_title: str,
+) -> str:
+    """Extract text from manga page images using vision-capable LLM.
+    
+    Samples a subset of pages and extracts dialogue/narration.
+    """
+    import base64
+    from PIL import Image
+    
+    if not image_paths:
+        return ""
+    
+    # Sample pages - take first, middle, and last pages for coverage
+    # Also include some spread-out pages for variety
+    total_pages = len(image_paths)
+    if total_pages <= 10:
+        sample_indices = list(range(total_pages))
+    else:
+        # Take first 3, middle 4, and last 3
+        sample_indices = (
+            list(range(0, 3)) +
+            list(range(total_pages // 2 - 2, total_pages // 2 + 2)) +
+            list(range(total_pages - 3, total_pages))
+        )
+    
+    sample_paths = [image_paths[i] for i in sample_indices if i < total_pages]
+    
+    # Convert images to bytes (resize to reduce token usage)
+    image_bytes_list = []
+    for img_path in sample_paths[:8]:  # Max 8 images to avoid token limits
+        try:
+            with Image.open(img_path) as img:
+                # Resize to reasonable dimensions for vision model
+                max_size = (1024, 1024)
+                img.thumbnail(max_size, Image.Resampling.LANCZOS)
+                
+                # Convert to RGB if necessary
+                if img.mode in ('RGBA', 'LA', 'P'):
+                    img = img.convert('RGB')
+                
+                # Save to bytes
+                import io
+                buffer = io.BytesIO()
+                img.save(buffer, format='JPEG', quality=85)
+                image_bytes_list.append(buffer.getvalue())
+        except Exception as e:
+            print(f"Failed to process image {img_path}: {e}")
+            continue
+    
+    if not image_bytes_list:
+        return ""
+    
+    # Build prompt for vision extraction
+    prompt = f"""Extract all dialogue, narration, and text from these manga pages of "{volume_title}".
+
+Please extract:
+1. Character dialogue (who is speaking and what they say)
+2. Narration text (boxes, captions)
+3. Sound effects (if relevant to story)
+
+Format the output as:
+[Page X]: 
+- Character Name: "Dialogue text"
+- Narration: Text here
+- etc.
+
+Be thorough and transcribe everything you can read. If text is unclear, note it with [unclear]."""
+
+    try:
+        response = await llm_backend.generate_from_images(
+            image_bytes_list,
+            prompt,
+            temperature=0.2,
+            max_tokens=4000,
+        )
+        return response.content
+    except Exception as e:
+        print(f"Vision extraction failed: {e}")
+        return ""
+
+
 @app.post("/api/manga/{volume_id}/extract-story")
 async def extract_story_from_manga(
     volume_id: str,
     request: StoryExtractionRequest,
 ) -> StoryExtractionResponse:
-    """Extract story content from manga OCR text and create scene nodes.
+    """Extract story content from manga and create scene nodes.
     
     This endpoint:
-    1. Retrieves all OCR text from the manga pages
-    2. Uses AI to segment the text into scenes/chapters
-    3. Creates scene nodes in the story graph
-    4. Links scenes to the manga node
+    1. Retrieves OCR text from manga pages (if available)
+    2. If no OCR, uses vision-capable LLM to extract text from page images
+    3. Uses AI to segment the text into scenes/chapters
+    4. Creates scene nodes in the story graph
+    5. Links scenes to the manga node
     """
     from core.manga_storage import get_manga_storage
     from core.graph_persistence import get_graph_persistence, GraphNode
@@ -1270,6 +1355,7 @@ async def extract_story_from_manga(
 
     storage = get_manga_storage()
     graph_db = get_graph_persistence()
+    llm = get_llm_backend()
 
     # Get the manga volume
     volume = storage.get_volume(volume_id)
@@ -1278,35 +1364,59 @@ async def extract_story_from_manga(
 
     # Get all OCR text from pages
     ocr_pages = storage.get_volume_ocr_text(volume_id)
-    if not ocr_pages:
-        return StoryExtractionResponse(
-            success=False,
-            message="No OCR text found in this manga. Ensure OCR was performed during import.",
-            scenes=[],
-        )
-
-    # Combine OCR text with page numbers
-    combined_text = "\n\n".join([
-        f"[Page {p['page_number']}]: {p['ocr_text']}"
-        for p in ocr_pages if p['ocr_text'].strip()
-    ])
-
+    combined_text = ""
+    extraction_method = "ocr"
+    
+    if ocr_pages:
+        # Combine OCR text with page numbers
+        combined_text = "\n\n".join([
+            f"[Page {p['page_number']}]: {p['ocr_text']}"
+            for p in ocr_pages if p['ocr_text'].strip()
+        ])
+    
+    # If no OCR text, try vision extraction
     if not combined_text.strip():
-        return StoryExtractionResponse(
-            success=False,
-            message="OCR text is empty. The manga may not have extractable text.",
-            scenes=[],
-        )
+        if llm.supports_vision:
+            # Get image paths for the volume
+            source_path = Path(volume.source_path) if volume.source_path else None
+            if source_path and source_path.exists():
+                # Find all image files
+                image_extensions = {'.jpg', '.jpeg', '.png', '.webp'}
+                image_paths = sorted([
+                    f for f in source_path.iterdir()
+                    if f.suffix.lower() in image_extensions
+                ])
+                
+                if image_paths:
+                    # Extract text from images using vision
+                    vision_text = await _extract_text_from_images(
+                        llm, image_paths, volume.title
+                    )
+                    if vision_text.strip():
+                        combined_text = vision_text
+                        extraction_method = "vision"
+        
+        if not combined_text.strip():
+            return StoryExtractionResponse(
+                success=False,
+                message=(
+                    "No text could be extracted from this manga. "
+                    "The manga may not have extractable text, or no vision-capable LLM is configured. "
+                    "Please ensure you have a vision-capable model (Gemini, GPT-4V) configured."
+                ),
+                scenes=[],
+            )
 
     # Use LLM to extract scenes
     try:
-        llm = get_llm_backend()
+        text_source = "OCR text" if extraction_method == "ocr" else "vision-extracted text"
         
-        extraction_prompt = f"""Analyze this manga OCR text and extract the story scenes.
+        extraction_prompt = f"""Analyze this manga text and extract the story scenes.
 
 Manga Title: {volume.title}
+Text Source: {text_source}
 
-OCR Text by Page:
+Extracted Text by Page:
 {combined_text[:8000]}  # Limit to avoid token limits
 
 Extract the narrative into scenes. For each scene, provide:
@@ -1420,9 +1530,10 @@ Extract 3-10 scenes depending on the manga length and complexity."""
                         "label": f"Pages {scene.get('page_start', 1)}-{scene.get('page_end', 1)}",
                     })
 
+        method_note = f" (using {extraction_method.upper()})" if extraction_method != "ocr" else ""
         return StoryExtractionResponse(
             success=True,
-            message=f"Successfully extracted {len(created_scenes)} scenes from manga",
+            message=f"Successfully extracted {len(created_scenes)} scenes from manga{method_note}",
             scenes=created_scenes,
             manga_node_id=manga_node_id,
         )

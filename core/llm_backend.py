@@ -63,6 +63,7 @@ class LLMMessage:
 
     role: Literal["system", "user", "assistant"]
     content: str
+    images: tuple[str, ...] = ()  # Base64-encoded images for vision models
 
 
 @dataclass(frozen=True)
@@ -139,6 +140,37 @@ class LLMBackend(ABC):
     def count_tokens(self, text: str) -> int:
         """Estimate token count for text."""
         pass
+
+    @property
+    def supports_vision(self) -> bool:
+        """Whether this backend supports image/vision inputs."""
+        return False
+
+    async def generate_from_images(
+        self,
+        images: list[bytes],
+        prompt: str,
+        *,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> LLMResponse:
+        """Generate a response from images (for vision models).
+        
+        Args:
+            images: List of image bytes
+            prompt: Text prompt to accompany images
+            temperature: Optional temperature override
+            max_tokens: Optional max tokens override
+            
+        Returns:
+            LLMResponse with the generated content
+            
+        Raises:
+            NotImplementedError: If vision is not supported by this backend
+        """
+        raise NotImplementedError(
+            f"Vision not supported by {self.config.provider.value} backend"
+        )
 
 
 class MockLLMBackend(LLMBackend):
@@ -297,6 +329,62 @@ class OpenAIBackend(LLMBackend):
         except Exception:
             # Fallback to rough estimate
             return len(text.split()) * 4 // 3
+
+    @property
+    def supports_vision(self) -> bool:
+        """OpenAI GPT-4V and GPT-4o support vision."""
+        vision_models = {"gpt-4-vision-preview", "gpt-4o", "gpt-4o-mini"}
+        return any(vm in self.config.model.lower() for vm in vision_models)
+
+    async def generate_from_images(
+        self,
+        images: list[bytes],
+        prompt: str,
+        *,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> LLMResponse:
+        """Generate from images using OpenAI's vision capabilities."""
+        import base64
+
+        client = self._get_client()
+
+        # Build messages with images
+        content = [{"type": "text", "text": prompt}]
+        for img_bytes in images:
+            base64_image = base64.b64encode(img_bytes).decode("utf-8")
+            content.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/jpeg;base64,{base64_image}"
+                }
+            })
+
+        messages = [{"role": "user", "content": content}]
+
+        response = await client.chat.completions.create(
+            model=self.config.model,
+            messages=messages,
+            temperature=temperature or self.config.temperature,
+            max_tokens=max_tokens or self.config.max_tokens,
+            stream=False,
+        )
+
+        choice = response.choices[0]
+        return LLMResponse(
+            content=choice.message.content or "",
+            model=response.model,
+            usage=(
+                {
+                    "prompt_tokens": response.usage.prompt_tokens,
+                    "completion_tokens": response.usage.completion_tokens,
+                    "total_tokens": response.usage.total_tokens,
+                }
+                if response.usage
+                else None
+            ),
+            finish_reason=choice.finish_reason,
+        )
 
 
 class AnthropicBackend(LLMBackend):
@@ -568,6 +656,75 @@ class GeminiBackend(LLMBackend):
         """Estimate tokens for Gemini."""
         # Gemini uses roughly 4 chars per token on average
         return len(text) // 4
+
+    @property
+    def supports_vision(self) -> bool:
+        """Gemini supports vision."""
+        return True
+
+    async def generate_from_images(
+        self,
+        images: list[bytes],
+        prompt: str,
+        *,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> LLMResponse:
+        """Generate from images using Gemini's vision capabilities."""
+        import asyncio
+        import base64
+
+        client = self._get_client()
+
+        # Build content parts with images
+        content_parts = [prompt]
+        for img_bytes in images:
+            # Gemini can handle raw bytes directly
+            content_parts.append({
+                "mime_type": "image/jpeg",
+                "data": img_bytes
+            })
+
+        # Build generation config
+        generation_config = {
+            "temperature": temperature or self.config.temperature,
+            "max_output_tokens": max_tokens or self.config.max_tokens,
+        }
+
+        # Create model
+        model = client.GenerativeModel(
+            model_name=self.config.model,
+        )
+
+        # Generate (run in executor since Gemini SDK is sync)
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: model.generate_content(
+                content_parts,
+                generation_config=generation_config,
+            ),
+        )
+
+        # Extract content
+        content = response.text if hasattr(response, "text") else ""
+
+        # Extract usage if available
+        usage = None
+        if hasattr(response, "usage_metadata"):
+            meta = response.usage_metadata
+            usage = {
+                "prompt_tokens": getattr(meta, "prompt_token_count", 0),
+                "completion_tokens": getattr(meta, "candidates_token_count", 0),
+                "total_tokens": getattr(meta, "total_token_count", 0),
+            }
+
+        return LLMResponse(
+            content=content,
+            model=self.config.model,
+            usage=usage,
+            finish_reason="stop" if response.candidates else "error",
+        )
 
 
 class OllamaBackend(LLMBackend):
