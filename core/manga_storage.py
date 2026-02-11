@@ -289,6 +289,29 @@ class MangaStorage:
         finally:
             conn.close()
 
+    def get_volume_ocr_text(self, volume_id: str) -> list[dict]:
+        """Get all OCR text for a volume, organized by page.
+        
+        Returns list of dicts with page_number and ocr_text.
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute("""
+                SELECT page_number, ocr_text 
+                FROM manga_pages 
+                WHERE volume_id = ? 
+                ORDER BY page_number
+            """, (volume_id,))
+
+            return [
+                {"page_number": row[0], "ocr_text": row[1] or ""}
+                for row in cursor.fetchall()
+            ]
+        finally:
+            conn.close()
+
     def get_all_volumes(self, limit: int = 100, offset: int = 0) -> list[MangaVolume]:
         """Get all volumes (without pages for listing)."""
         conn = self._get_connection()

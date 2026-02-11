@@ -135,6 +135,45 @@ export function MangaLibrary() {
     setBatchMode(false)
     setSelectedVolumes(new Set())
   }
+  
+  // Story extraction
+  const [extractingVolume, setExtractingVolume] = useState<string | null>(null)
+  
+  const handleExtractStory = async (volume: typeof mangaVolumes[0]) => {
+    if (!confirm(`Extract story from "${volume.title}"?\n\nThis will use AI to analyze the manga text and create scene nodes in your story graph.`)) {
+      return
+    }
+    
+    setExtractingVolume(volume.volume_id)
+    addToast({ message: `Extracting story from "${volume.title}"... This may take a minute.`, type: 'info' })
+    
+    try {
+      const response = await fetch(`/api/manga/${volume.volume_id}/extract-story`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ volume_id: volume.volume_id }),
+      })
+      
+      if (!response.ok) {
+        throw new Error('Extraction failed')
+      }
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        addToast({ 
+          message: `Extracted ${result.scenes.length} scenes! Reload the graph to see them.`, 
+          type: 'success' 
+        })
+      } else {
+        addToast({ message: result.message || 'No text found to extract', type: 'warning' })
+      }
+    } catch (error) {
+      addToast({ message: 'Failed to extract story', type: 'error' })
+    } finally {
+      setExtractingVolume(null)
+    }
+  }
 
   if (loading) {
     return (
@@ -326,6 +365,17 @@ export function MangaLibrary() {
                       title="Edit title"
                     >
                       ✏️
+                    </button>
+                    <button
+                      className="manga-action-btn extract"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleExtractStory(volume)
+                      }}
+                      disabled={extractingVolume === volume.volume_id}
+                      title="Extract story from manga"
+                    >
+                      {extractingVolume === volume.volume_id ? '⏳' : '📖'}
                     </button>
                     {volume.graph_node_id && (
                       <button

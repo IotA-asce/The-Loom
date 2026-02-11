@@ -230,6 +230,19 @@
   background: var(--primary-bg, #2a3a5c);
 }
 
+.manga-action-btn.extract {
+  color: #9c27b0;
+}
+
+.manga-action-btn.extract:hover {
+  background: rgba(156, 39, 176, 0.2);
+}
+
+.manga-action-btn.extract:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .manga-action-btn.resume {
   background: var(--primary-color, #4a9eff);
   opacity: 1;

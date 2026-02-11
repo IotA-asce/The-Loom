@@ -1237,6 +1237,201 @@ def _get_or_create_thumbnail(image_path: Path, content_hash: str, size: tuple[in
         return None
 
 
+class StoryExtractionRequest(BaseModel):
+    volume_id: str
+    extraction_mode: str = "scenes"  # "scenes" or "chapters"
+
+
+class StoryExtractionResponse(BaseModel):
+    success: bool
+    message: str
+    scenes: list[dict[str, Any]]
+    manga_node_id: str | None = None
+
+
+@app.post("/api/manga/{volume_id}/extract-story")
+async def extract_story_from_manga(
+    volume_id: str,
+    request: StoryExtractionRequest,
+) -> StoryExtractionResponse:
+    """Extract story content from manga OCR text and create scene nodes.
+    
+    This endpoint:
+    1. Retrieves all OCR text from the manga pages
+    2. Uses AI to segment the text into scenes/chapters
+    3. Creates scene nodes in the story graph
+    4. Links scenes to the manga node
+    """
+    from core.manga_storage import get_manga_storage
+    from core.graph_persistence import get_graph_persistence, GraphNode
+    from core.llm_backend import get_llm_backend
+    import uuid
+    import json
+
+    storage = get_manga_storage()
+    graph_db = get_graph_persistence()
+
+    # Get the manga volume
+    volume = storage.get_volume(volume_id)
+    if not volume:
+        raise HTTPException(status_code=404, detail=f"Manga volume not found: {volume_id}")
+
+    # Get all OCR text from pages
+    ocr_pages = storage.get_volume_ocr_text(volume_id)
+    if not ocr_pages:
+        return StoryExtractionResponse(
+            success=False,
+            message="No OCR text found in this manga. Ensure OCR was performed during import.",
+            scenes=[],
+        )
+
+    # Combine OCR text with page numbers
+    combined_text = "\n\n".join([
+        f"[Page {p['page_number']}]: {p['ocr_text']}"
+        for p in ocr_pages if p['ocr_text'].strip()
+    ])
+
+    if not combined_text.strip():
+        return StoryExtractionResponse(
+            success=False,
+            message="OCR text is empty. The manga may not have extractable text.",
+            scenes=[],
+        )
+
+    # Use LLM to extract scenes
+    try:
+        llm = get_llm_backend()
+        
+        extraction_prompt = f"""Analyze this manga OCR text and extract the story scenes.
+
+Manga Title: {volume.title}
+
+OCR Text by Page:
+{combined_text[:8000]}  # Limit to avoid token limits
+
+Extract the narrative into scenes. For each scene, provide:
+1. Scene title (brief, descriptive)
+2. Scene content (the narrative text, rewritten for clarity)
+3. Characters present (list of names)
+4. Page range (start and end page numbers)
+5. Mood/atmosphere (e.g., tense, peaceful, mysterious)
+6. Key events (what happens in this scene)
+
+Format your response as JSON:
+{{
+  "scenes": [
+    {{
+      "title": "Scene title",
+      "content": "Scene narrative text...",
+      "characters": ["Character1", "Character2"],
+      "page_start": 1,
+      "page_end": 5,
+      "mood": "tense",
+      "key_events": ["Event 1", "Event 2"]
+    }}
+  ]
+}}
+
+Extract 3-10 scenes depending on the manga length and complexity."""
+
+        # Call LLM
+        response = await llm.generate(
+            prompt=extraction_prompt,
+            temperature=0.3,
+            max_tokens=4000,
+        )
+
+        # Parse the response
+        try:
+            # Try to find JSON in the response
+            response_text = response.text if hasattr(response, 'text') else str(response)
+            
+            # Look for JSON block
+            json_start = response_text.find('{')
+            json_end = response_text.rfind('}') + 1
+            if json_start >= 0 and json_end > json_start:
+                extracted_data = json.loads(response_text[json_start:json_end])
+            else:
+                extracted_data = json.loads(response_text)
+            
+            scenes_data = extracted_data.get('scenes', [])
+        except (json.JSONDecodeError, AttributeError) as e:
+            print(f"Failed to parse LLM response: {e}")
+            print(f"Response was: {response_text[:500]}")
+            # Create a single scene as fallback
+            scenes_data = [{
+                "title": f"{volume.title} - Full Story",
+                "content": combined_text[:2000],
+                "characters": [],
+                "page_start": 1,
+                "page_end": len(ocr_pages),
+                "mood": "neutral",
+                "key_events": ["Story extracted from manga"],
+            }]
+
+        # Create scene nodes in the graph
+        created_scenes = []
+        manga_node_id = volume.graph_node_id
+
+        for i, scene in enumerate(scenes_data):
+            scene_id = f"scene_{uuid.uuid4().hex[:12]}"
+            
+            # Create scene node
+            scene_node = GraphNode(
+                node_id=scene_id,
+                label=scene.get('title', f'Scene {i+1}'),
+                branch_id="main",
+                scene_id=f"scene_{uuid.uuid4().hex[:8]}",
+                x=150.0 + (i * 50),  # Stagger positions
+                y=150.0 + (i * 30),
+                importance=0.7,
+                node_type="scene",
+                metadata={
+                    "type": "scene",
+                    "extracted_from_manga": volume_id,
+                    "page_start": scene.get('page_start', 1),
+                    "page_end": scene.get('page_end', 1),
+                    "characters": scene.get('characters', []),
+                    "mood": scene.get('mood', 'neutral'),
+                    "key_events": scene.get('key_events', []),
+                    "content": scene.get('content', ''),
+                },
+            )
+
+            # Save scene node
+            success = await graph_db.save_node(scene_node)
+            
+            if success:
+                created_scenes.append({
+                    "id": scene_id,
+                    "title": scene_node.label,
+                    "page_start": scene.get('page_start', 1),
+                    "page_end": scene.get('page_end', 1),
+                })
+
+                # Link scene to manga node if it exists
+                if manga_node_id:
+                    edge_id = f"edge_{uuid.uuid4().hex[:12]}"
+                    await graph_db.save_edge({
+                        "edge_id": edge_id,
+                        "source": manga_node_id,
+                        "target": scene_id,
+                        "type": "contains",
+                        "label": f"Pages {scene.get('page_start', 1)}-{scene.get('page_end', 1)}",
+                    })
+
+        return StoryExtractionResponse(
+            success=True,
+            message=f"Successfully extracted {len(created_scenes)} scenes from manga",
+            scenes=created_scenes,
+            manga_node_id=manga_node_id,
+        )
+
+    except Exception as e:
+        print(f"Error extracting story: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to extract story: {str(e)}")
+
+
 @app.get("/api/health")
 async def health_check() -> dict[str, str]:
     """Health check endpoint."""
