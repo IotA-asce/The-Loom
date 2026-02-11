@@ -1,0 +1,122 @@
+#!/usr/bin/env python3
+"""Import manga pages from a folder (webp, png, jpg supported).
+
+Usage:
+    python scripts/import_manga_folder.py /path/to/manga/folder "Manga Title"
+
+The script will:
+1. Scan the folder for supported image files
+2. Sort them naturally by filename
+3. Import them as a manga volume
+4. Display the ingestion report
+"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+# Add parent to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from agents.archivist import (
+    SUPPORTED_MANGA_IMAGE_EXTENSIONS,
+    ingest_image_folder_pages,
+    list_manga_image_pages,
+)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Import manga pages from a folder")
+    parser.add_argument(
+        "folder",
+        type=Path,
+        help="Path to folder containing manga pages",
+    )
+    parser.add_argument(
+        "title",
+        nargs="?",
+        default=None,
+        help="Manga title (defaults to folder name)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="List files without importing",
+    )
+
+    args = parser.parse_args()
+
+    folder_path = args.folder.resolve()
+    title = args.title or folder_path.name
+
+    # Validate folder
+    if not folder_path.exists():
+        print(f"❌ Error: Folder not found: {folder_path}")
+        return 1
+
+    if not folder_path.is_dir():
+        print(f"❌ Error: Not a directory: {folder_path}")
+        return 1
+
+    # List pages
+    pages = list_manga_image_pages(folder_path)
+
+    if not pages:
+        print(f"❌ No supported image files found in: {folder_path}")
+        print(f"   Supported formats: {SUPPORTED_MANGA_IMAGE_EXTENSIONS}")
+        return 1
+
+    print(f"📁 Folder: {folder_path}")
+    print(f"📚 Title: {title}")
+    print(f"📄 Pages found: {len(pages)}")
+    print()
+
+    # Show first few pages
+    print("First 5 pages:")
+    for i, page in enumerate(pages[:5], 1):
+        print(f"  {i}. {page.name}")
+    if len(pages) > 5:
+        print(f"  ... and {len(pages) - 5} more")
+    print()
+
+    if args.dry_run:
+        print("✅ Dry run complete. Use without --dry-run to import.")
+        return 0
+
+    # Import
+    print("🔄 Importing pages...")
+    try:
+        report = ingest_image_folder_pages(folder_path)
+
+        print()
+        print("=" * 50)
+        print("✅ Import successful!")
+        print("=" * 50)
+        print(f"Pages imported: {report.page_count}")
+        print(f"Spreads detected: {report.spread_count}")
+        print(f"Source hash: {report.source_hash[:16]}...")
+
+        if report.warnings:
+            print()
+            print("⚠️  Warnings:")
+            for warning in report.warnings:
+                print(f"  - {warning}")
+
+        print()
+        print("Page details:")
+        for i, meta in enumerate(report.page_metadata[:10], 1):
+            print(f"  Page {i}: {meta.format_name}, " f"{meta.width}x{meta.height}")
+        if len(report.page_metadata) > 10:
+            print(f"  ... and {len(report.page_metadata) - 10} more pages")
+
+        return 0
+
+    except Exception as e:
+        print(f"❌ Import failed: {e}")
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

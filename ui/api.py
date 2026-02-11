@@ -787,6 +787,88 @@ async def ingest_manga(file: UploadFile) -> dict[str, Any]:
             temp_path.unlink()
 
 
+@app.post("/api/ingest/manga/pages")
+async def ingest_manga_pages(
+    files: list[UploadFile],
+    title: str = Query(..., description="Manga title"),
+) -> dict[str, Any]:
+    """Bulk import manga pages as individual image files (webp, png, jpg).
+
+    Accepts multiple image files, automatically sorts by filename,
+    and ingests them as a single manga volume.
+    """
+    import shutil
+    import tempfile
+
+    from agents.archivist import (
+        SUPPORTED_MANGA_IMAGE_EXTENSIONS,
+        ingest_image_folder_pages,
+    )
+
+    if not files:
+        raise HTTPException(status_code=400, detail="No files provided")
+
+    # Create a temporary folder for the pages
+    temp_folder = Path(tempfile.mkdtemp(prefix="loom_manga_"))
+
+    try:
+        # Save all uploaded files to the temp folder
+        saved_count = 0
+        skipped_files = []
+
+        for file in files:
+            if not file.filename:
+                continue
+
+            file_path = Path(file.filename)
+            suffix = file_path.suffix.lower()
+
+            # Validate file extension
+            if suffix not in SUPPORTED_MANGA_IMAGE_EXTENSIONS:
+                skipped_files.append(f"{file.filename} (unsupported format)")
+                continue
+
+            # Read and save file
+            content = await file.read()
+            dest_path = temp_folder / file_path.name
+            dest_path.write_bytes(content)
+            saved_count += 1
+
+        if saved_count == 0:
+            supported = SUPPORTED_MANGA_IMAGE_EXTENSIONS
+            raise HTTPException(
+                status_code=400,
+                detail=f"No valid image files found. Supported: {supported}",
+            )
+
+        # Ingest the folder
+        report = ingest_image_folder_pages(temp_folder)
+
+        return {
+            "success": True,
+            "title": title,
+            "pages_imported": report.page_count,
+            "pages": [
+                {
+                    "page_number": i + 1,
+                    "format": meta.format_name,
+                    "width": meta.width,
+                    "height": meta.height,
+                    "hash": meta.source_hash[:16],
+                }
+                for i, meta in enumerate(report.page_metadata)
+            ],
+            "skipped_files": skipped_files,
+            "warnings": list(report.warnings),
+            "source_hash": report.source_hash,
+        }
+
+    finally:
+        # Clean up temp folder
+        if temp_folder.exists():
+            shutil.rmtree(temp_folder)
+
+
 @app.get("/api/ingest/supported-formats")
 async def get_supported_formats() -> dict[str, list[str]]:
     """Get list of supported ingestion formats."""
