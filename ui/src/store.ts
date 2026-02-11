@@ -497,6 +497,18 @@ interface AppState {
   setViewerMode: (mode: 'grid' | 'sequential' | 'split') => void
   selectPanel: (panelId: string | null) => void
   
+  // Manga Storage
+  mangaVolumes: Array<{
+    volume_id: string
+    title: string
+    page_count: number
+    source_hash: string
+    graph_node_id?: string
+    created_at: string
+  }>
+  fetchMangaVolumes: () => Promise<void>
+  deleteMangaVolume: (volume_id: string) => Promise<boolean>
+  
   // Phase D: Search & Memory
   searchPanelOpen: boolean
   toggleSearchPanel: () => void
@@ -1624,14 +1636,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   
   // ==================== MANGA STORAGE ====================
-  mangaVolumes: Array<{
-    volume_id: string
-    title: string
-    page_count: number
-    source_hash: string
-    graph_node_id?: string
-    created_at: string
-  }>
+  mangaVolumes: [],
+  
   fetchMangaVolumes: async () => {
     try {
       const response = await fetch(`${API_BASE}/manga`)
