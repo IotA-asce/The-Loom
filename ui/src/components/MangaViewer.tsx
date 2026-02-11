@@ -36,8 +36,26 @@ export function MangaViewer({ volumeId, initialPage = 1, onClose }: MangaViewerP
   const imageRef = useRef<HTMLImageElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const progressSaveTimeout = useRef<NodeJS.Timeout | null>(null)
+  
+  // Touch handling for mobile swipe
+  const touchStartX = useRef<number | null>(null)
+  const touchStartY = useRef<number | null>(null)
+  const touchStartTime = useRef<number | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
+  const [showMobileControls, setShowMobileControls] = useState(true)
+  const mobileControlsTimeout = useRef<NodeJS.Timeout | null>(null)
 
   const API_BASE = 'http://localhost:8000'
+  
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768 || 'ontouchstart' in window)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
   
   // Load saved progress when volume loads
   useEffect(() => {
@@ -173,6 +191,60 @@ export function MangaViewer({ volumeId, initialPage = 1, onClose }: MangaViewerP
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
 
+  // Touch gesture handlers for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+    touchStartTime.current = Date.now()
+  }
+  
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return
+    
+    const touchEndX = e.changedTouches[0].clientX
+    const touchEndY = e.changedTouches[0].clientY
+    const touchDuration = Date.now() - (touchStartTime.current || 0)
+    
+    const deltaX = touchStartX.current - touchEndX
+    const deltaY = touchStartY.current - touchEndY
+    
+    // Only handle horizontal swipes (ignore vertical scrolling)
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50 && touchDuration < 300) {
+      if (deltaX > 0) {
+        // Swipe left -> next page
+        goToNext()
+      } else {
+        // Swipe right -> previous page
+        goToPrevious()
+      }
+    }
+    
+    // Tap to toggle controls
+    if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10 && touchDuration < 200) {
+      setShowMobileControls(prev => !prev)
+      
+      // Auto-hide controls after 3 seconds
+      if (mobileControlsTimeout.current) {
+        clearTimeout(mobileControlsTimeout.current)
+      }
+      mobileControlsTimeout.current = setTimeout(() => {
+        setShowMobileControls(false)
+      }, 3000)
+    }
+    
+    touchStartX.current = null
+    touchStartY.current = null
+  }
+  
+  // Cleanup mobile controls timeout
+  useEffect(() => {
+    return () => {
+      if (mobileControlsTimeout.current) {
+        clearTimeout(mobileControlsTimeout.current)
+      }
+    }
+  }, [])
+  
   const getImageUrl = (pageNum: number, thumbnail: boolean = false) => {
     const url = `${API_BASE}/api/manga/${volumeId}/pages/${pageNum}/image`
     return thumbnail ? `${url}?thumbnail=true` : url
@@ -201,7 +273,19 @@ export function MangaViewer({ volumeId, initialPage = 1, onClose }: MangaViewerP
   }
 
   return (
-    <div className={`manga-viewer-overlay ${isFullscreen ? 'fullscreen' : ''}`} ref={containerRef}>
+    <div 
+      className={`manga-viewer-overlay ${isFullscreen ? 'fullscreen' : ''} ${isMobile ? 'mobile' : ''} ${showMobileControls ? '' : 'hide-controls'}`} 
+      ref={containerRef}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Mobile swipe hint */}
+      {isMobile && showMobileControls && (
+        <div className="mobile-swipe-hint">
+          <span>← Swipe to navigate →</span>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="manga-viewer-header">
         <div className="manga-viewer-title">

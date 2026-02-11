@@ -491,3 +491,107 @@
     justify-content: center;
   }
 }
+
+/* Mobile Touch Optimizations */
+.manga-viewer-overlay.mobile {
+  touch-action: pan-y; /* Allow vertical scroll, handle horizontal in JS */
+}
+
+/* Mobile Swipe Hint */
+.mobile-swipe-hint {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: #888;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  z-index: 100;
+  animation: fadeOut 3s forwards;
+  animation-delay: 2s;
+  pointer-events: none;
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+/* Hide Controls Mode (for mobile tap-to-toggle) */
+.manga-viewer-overlay.mobile.hide-controls .manga-viewer-header,
+.manga-viewer-overlay.mobile.hide-controls .manga-viewer-footer {
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.manga-viewer-overlay.mobile.hide-controls .manga-viewer-footer {
+  transform: translateY(100%);
+}
+
+.manga-viewer-overlay.mobile .manga-viewer-header,
+.manga-viewer-overlay.mobile .manga-viewer-footer {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* Mobile Thumbnail Bottom Sheet */
+@media (max-width: 768px) {
+  .manga-viewer-overlay.mobile .manga-thumbnails {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 120px;
+    border-right: none;
+    border-top: 1px solid #333;
+    z-index: 50;
+    background: rgba(17, 17, 17, 0.95);
+  }
+  
+  .manga-viewer-overlay.mobile .thumbnails-list {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+  
+  .manga-viewer-overlay.mobile .thumbnail-item {
+    flex-shrink: 0;
+    width: 70px;
+    height: 100px;
+  }
+  
+  .manga-viewer-overlay.mobile.hide-controls .manga-thumbnails {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  
+  .manga-viewer-overlay.mobile .manga-thumbnails {
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+  
+  /* Larger touch targets on mobile */
+  .manga-viewer-overlay.mobile .control-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 1.2rem;
+  }
+  
+  .manga-viewer-overlay.mobile .nav-arrow {
+    width: 60px;
+    height: 100px;
+    opacity: 0.3;
+  }
+  
+  .manga-viewer-overlay.mobile .zoom-controls button,
+  .manga-viewer-overlay.mobile .page-controls button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
