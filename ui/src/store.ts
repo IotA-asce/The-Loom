@@ -509,6 +509,9 @@ interface AppState {
   fetchMangaVolumes: () => Promise<void>
   deleteMangaVolume: (volume_id: string) => Promise<boolean>
   
+  // Graph Persistence
+  loadGraphNodes: () => Promise<void>
+  
   // Phase D: Search & Memory
   searchPanelOpen: boolean
   toggleSearchPanel: () => void
@@ -648,7 +651,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   toasts: [],
   
   // ==================== INITIALIZATION ====================
-  initialize: () => {
+  initialize: async () => {
+    // Load existing graph nodes
+    await get().loadGraphNodes()
+    
     // Initialize WebSocket connection
     get().initializeWebSocket()
     
@@ -1632,6 +1638,51 @@ export const useAppStore = create<AppState>((set, get) => ({
     } catch (error) {
       console.error('Failed to ingest file:', error)
       return { success: false, message: String(error) }
+    }
+  },
+  
+  // ==================== GRAPH PERSISTENCE ====================
+  loadGraphNodes: async () => {
+    try {
+      const response = await fetch(`${API_BASE}/graph/nodes`)
+      if (response.ok) {
+        const result = await response.json()
+        if (result.nodes && result.nodes.length > 0) {
+          // Convert backend nodes to frontend format
+          const nodes: GraphNode[] = result.nodes.map((n: any) => ({
+            id: n.node_id,
+            label: n.label,
+            branchId: n.branch_id,
+            sceneId: n.scene_id,
+            x: n.x,
+            y: n.y,
+            importance: n.importance,
+            // Extract type from metadata or default to 'scene'
+            type: (n.metadata?.type as NodeType) || 'scene',
+            content: {
+              text: '',
+              version: 1,
+              lastModified: n.updated_at,
+              wordCount: 0,
+            },
+            metadata: {
+              title: n.label,
+              location: n.metadata?.location || '',
+              timeOfDay: n.metadata?.time_of_day || '',
+              estimatedReadingTime: 0,
+              moodTags: n.metadata?.mood_tags || [],
+              ...n.metadata,
+            },
+            versions: [],
+            characters: n.metadata?.characters || [],
+          }))
+          
+          set({ nodes })
+          console.log(`Loaded ${nodes.length} nodes from graph database`)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load graph nodes:', error)
     }
   },
   

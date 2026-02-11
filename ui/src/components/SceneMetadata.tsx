@@ -68,6 +68,15 @@ const TYPE_SPECIFIC_FIELDS: Record<NodeType, {
       { key: 'listener', label: 'Listening To', type: 'text', placeholder: 'Who are they speaking to?' },
     ]
   },
+  manga: {
+    label: '📖 Manga Details',
+    fields: [
+      { key: 'volume_id', label: 'Volume ID', type: 'text', placeholder: 'Internal volume reference', required: true },
+      { key: 'page_count', label: 'Total Pages', type: 'number', placeholder: 'e.g., 200', required: true },
+      { key: 'chapter_range', label: 'Chapter Range', type: 'text', placeholder: 'e.g., Ch. 1-5' },
+      { key: 'notes', label: 'Notes', type: 'textarea', placeholder: 'Additional notes about this volume...' },
+    ]
+  },
 }
 
 // Validation rules per type
@@ -84,6 +93,10 @@ const VALIDATION_RULES: Record<NodeType, Array<{ field: string; validate: (value
   ],
   dialogue: [
     { field: 'speaker', validate: (v) => !v || String(v).length < 1 ? 'Speaker is required' : null },
+  ],
+  manga: [
+    { field: 'volume_id', validate: (v) => !v || String(v).length < 1 ? 'Volume ID is required' : null },
+    { field: 'page_count', validate: (v) => !v || Number(v) < 1 ? 'Page count must be at least 1' : null },
   ],
 }
 
@@ -289,6 +302,7 @@ export function SceneMetadata({ nodeId }: SceneMetadataProps) {
     scene: '#4caf50',
     beat: '#ff9800',
     dialogue: '#9c27b0',
+    manga: '#e91e63',
   }
   
   return (
