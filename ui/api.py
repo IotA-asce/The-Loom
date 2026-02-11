@@ -1144,6 +1144,22 @@ async def get_manga_page_image(
             detail=f"Image file for page {page_number} not found in {source_path}"
         )
     
+    # If thumbnail is requested, generate or serve cached thumbnail
+    if thumbnail:
+        thumb_path = _get_or_create_thumbnail(image_path, page.content_hash)
+        if thumb_path and thumb_path.exists():
+            return FileResponse(
+                path=thumb_path,
+                media_type="image/webp",
+                headers={
+                    "Cache-Control": "public, max-age=86400",
+                    "X-Page-Number": str(page_number),
+                    "X-Page-Format": "webp",
+                    "X-Thumbnail": "true",
+                },
+            )
+        # If thumbnail generation fails, fall through to full image
+    
     # Determine media type
     media_type = {
         ".webp": "image/webp",
@@ -1161,6 +1177,44 @@ async def get_manga_page_image(
             "X-Page-Format": page.format_name,
         },
     )
+
+
+def _get_or_create_thumbnail(image_path: Path, content_hash: str, size: tuple[int, int] = (200, 280)) -> Path | None:
+    """Get existing thumbnail or create one if it doesn't exist.
+    
+    Thumbnails are stored in .loom/thumbnails/{hash}.webp
+    """
+    from PIL import Image
+    
+    # Thumbnail storage path
+    loom_dir = Path(".loom")
+    thumbs_dir = loom_dir / "thumbnails"
+    thumbs_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Thumbnail filename based on content hash
+    thumb_path = thumbs_dir / f"{content_hash}.webp"
+    
+    # Return existing thumbnail
+    if thumb_path.exists():
+        return thumb_path
+    
+    try:
+        # Generate thumbnail
+        with Image.open(image_path) as img:
+            # Convert to RGB if necessary
+            if img.mode in ('RGBA', 'LA', 'P'):
+                img = img.convert('RGB')
+            
+            # Calculate resize maintaining aspect ratio
+            img.thumbnail(size, Image.Resampling.LANCZOS)
+            
+            # Save as webp
+            img.save(thumb_path, "WEBP", quality=75, method=6)
+            
+        return thumb_path
+    except Exception as e:
+        print(f"Failed to generate thumbnail for {image_path}: {e}")
+        return None
 
 
 @app.get("/api/health")

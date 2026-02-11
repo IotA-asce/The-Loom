@@ -173,8 +173,9 @@ export function MangaViewer({ volumeId, initialPage = 1, onClose }: MangaViewerP
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
 
-  const getImageUrl = (pageNum: number) => {
-    return `${API_BASE}/api/manga/${volumeId}/pages/${pageNum}/image`
+  const getImageUrl = (pageNum: number, thumbnail: boolean = false) => {
+    const url = `${API_BASE}/api/manga/${volumeId}/pages/${pageNum}/image`
+    return thumbnail ? `${url}?thumbnail=true` : url
   }
 
   if (loading) {
@@ -252,10 +253,14 @@ export function MangaViewer({ volumeId, initialPage = 1, onClose }: MangaViewerP
                 >
                   <div className="thumbnail-number">{page.page_number}</div>
                   <img
-                    src={getImageUrl(page.page_number)}
+                    src={getImageUrl(page.page_number, true)}
                     alt={`Page ${page.page_number}`}
                     loading="lazy"
                     className="thumbnail-image"
+                    onError={(e) => {
+                      // Fallback to full image if thumbnail fails
+                      (e.target as HTMLImageElement).src = getImageUrl(page.page_number, false)
+                    }}
                   />
                 </div>
               ))}
