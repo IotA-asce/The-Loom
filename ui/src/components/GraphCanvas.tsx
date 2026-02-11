@@ -15,6 +15,7 @@ const NODE_TYPE_STYLES: Record<NodeType, { icon: string; color: string; shape: s
   scene: { icon: '🎬', color: '#4caf50', shape: 'circle' },
   beat: { icon: '🎵', color: '#ff9800', shape: 'square' },
   dialogue: { icon: '💬', color: '#9c27b0', shape: 'speech' },
+  manga: { icon: '📖', color: '#e91e63', shape: 'book' },
 }
 
 export function GraphCanvas() {
