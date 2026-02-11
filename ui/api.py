@@ -934,7 +934,7 @@ async def ingest_manga_pages(
                     "format": meta.format_name,
                     "width": meta.width,
                     "height": meta.height,
-                    "hash": meta.source_hash[:16],
+                    "hash": meta.content_hash[:16],
                 }
                 for i, meta in enumerate(report.page_metadata)
             ],
