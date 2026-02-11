@@ -31,7 +31,81 @@ The script will:
 3. Import all pages as a single manga volume
 4. Display a summary report
 
-### Method 2: API Endpoint
+**Note:** Large volumes (500+ pages) may take several minutes to process due to OCR analysis.
+
+### Method 2: React UI Components
+
+For web application integration, use the provided React components:
+
+#### Option A: Simple Folder Import (Recommended)
+
+```tsx
+import { MangaFolderImportSimple } from './components/MangaFolderImportSimple';
+
+function ImportPage() {
+  return (
+    <MangaFolderImportSimple 
+      onImportComplete={({ title, pages, hash }) => {
+        console.log(`Imported ${pages} pages of "${title}"`);
+        // Redirect to manga viewer, show success message, etc.
+      }}
+    />
+  );
+}
+```
+
+**Features:**
+- Click to select folder (uses native folder picker)
+- Drag & drop folder support
+- Auto-extracts title from folder name
+- Shows file count and preview
+- Progress indication during upload
+
+#### Option B: Full Drag & Drop Component
+
+```tsx
+import { MangaFolderImport } from './components/MangaFolderImport';
+
+function ImportPage() {
+  return (
+    <MangaFolderImport 
+      onImportComplete={(result) => {
+        // Handle successful import
+      }}
+    />
+  );
+}
+```
+
+**Features:**
+- Advanced drag & drop UI
+- Visual feedback during drag operations
+- File rejection handling
+- Requires `react-dropzone` dependency
+
+#### UI Component Props
+
+Both components accept the same props:
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `onImportComplete` | `(result: {title, pages, hash}) => void` | Callback when import finishes |
+
+#### Adding to Your App
+
+1. Copy the component file to your project:
+   ```bash
+   cp ui/src/components/MangaFolderImportSimple.tsx your-app/components/
+   ```
+
+2. Ensure you have Lucide icons installed:
+   ```bash
+   npm install lucide-react
+   ```
+
+3. Import and use the component in your page.
+
+### Method 3: API Endpoint
 
 **POST /api/ingest/manga/pages**
 
@@ -64,7 +138,7 @@ Or use any HTTP client that supports multipart file uploads.
 }
 ```
 
-### Method 3: CBZ Upload
+### Method 4: CBZ Upload
 
 **POST /api/ingest/manga**
 
@@ -103,6 +177,24 @@ For best results, name your files with zero-padded numbers:
   page10.webp  # Would sort before page2!
 ```
 
+## Large Volume Imports
+
+For manga volumes with 500+ pages:
+
+### CLI
+- Extended timeout (5 minutes) is automatically applied
+- Progress is shown during import
+- OCR processing happens in the background
+
+### UI
+- Upload progress is shown
+- Large imports may take several minutes
+- UI remains responsive during upload
+
+### API
+- Same extended timeout applies
+- Consider chunking if you hit timeouts with extremely large volumes
+
 ## Troubleshooting
 
 ### "No supported image files found"
@@ -114,9 +206,18 @@ For best results, name your files with zero-padded numbers:
 - Use zero-padded numbers in filenames
 - Ensure consistent naming pattern
 
+### Import times out (CLI)
+- The CLI now uses extended timeouts for large folders
+- If it still times out, consider splitting into smaller volumes
+
+### UI upload fails
+- Check browser console for error details
+- Verify backend is running at correct URL
+- Large files may hit browser/sever limits
+
 ### Import fails with large folders
-- Check `max_page_count` limit (default: 2000 pages)
-- Check individual file size (default: 50MB per file)
+- Check `max_page_count` limit (default: 10,000 pages)
+- Check individual file size (default: 100MB per file)
 
 ## Security Notes
 
@@ -124,6 +225,20 @@ For best results, name your files with zero-padded numbers:
 - Size limits prevent resource exhaustion
 - Temporary files are cleaned up after import
 - Source hashing prevents duplicate imports
+
+## Implementation Details
+
+### Components Location
+- `ui/src/components/MangaFolderImport.tsx` - Full drag & drop
+- `ui/src/components/MangaFolderImportSimple.tsx` - Simple folder picker
+
+### API Endpoint Location
+- `ui/api.py` - `POST /api/ingest/manga/pages`
+
+### Backend Processing
+- `agents/archivist.py` - `ingest_image_folder_pages()` function
+- Supports OCR text extraction from images
+- Generates perceptual hashes for deduplication
 
 ## See Also
 
