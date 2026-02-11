@@ -509,8 +509,8 @@ class AnthropicBackend(LLMBackend):
 class GeminiBackend(LLMBackend):
     """Google Gemini backend."""
 
-    # Default to Gemini 2.0 Flash - latest fast model
-    DEFAULT_MODEL = "gemini-2.0-flash"
+    # Default to Gemini 3 Flash Preview - latest preview model for OCR/vision
+    DEFAULT_MODEL = "gemini-3-flash-preview"
 
     def __init__(self, config: LLMConfig) -> None:
         super().__init__(config)
