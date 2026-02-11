@@ -509,9 +509,13 @@ class AnthropicBackend(LLMBackend):
 class GeminiBackend(LLMBackend):
     """Google Gemini backend."""
 
+    # Default to Gemini 2.0 Flash - latest fast model
+    DEFAULT_MODEL = "gemini-2.0-flash"
+
     def __init__(self, config: LLMConfig) -> None:
         super().__init__(config)
         self._client: Any | None = None
+        self._safety_settings = None
 
     def _validate_config(self) -> None:
         if not self.config.api_key:
@@ -536,6 +540,32 @@ class GeminiBackend(LLMBackend):
             self._client = genai
 
         return self._client
+
+    def _get_safety_settings(self) -> list[dict[str, str]]:
+        """Get safety settings with all filters set to BLOCK_NONE.
+        
+        This allows unrestricted content extraction from manga/comics.
+        """
+        if self._safety_settings is None:
+            self._safety_settings = [
+                {
+                    "category": "HARM_CATEGORY_HARASSMENT",
+                    "threshold": "BLOCK_NONE",
+                },
+                {
+                    "category": "HARM_CATEGORY_HATE_SPEECH",
+                    "threshold": "BLOCK_NONE",
+                },
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_NONE",
+                },
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "BLOCK_NONE",
+                },
+            ]
+        return self._safety_settings
 
     def _convert_messages(
         self, messages: tuple[LLMMessage, ...]
@@ -577,10 +607,11 @@ class GeminiBackend(LLMBackend):
             "max_output_tokens": request.max_tokens or self.config.max_tokens,
         }
 
-        # Create model
+        # Create model with safety settings disabled
         model = client.GenerativeModel(
             model_name=self.config.model,
             system_instruction=system,
+            safety_settings=self._get_safety_settings(),
         )
 
         # Generate (run in executor since Gemini SDK is sync)
@@ -632,6 +663,7 @@ class GeminiBackend(LLMBackend):
         model = client.GenerativeModel(
             model_name=self.config.model,
             system_instruction=system,
+            safety_settings=self._get_safety_settings(),
         )
 
         # Generate streaming (run in executor)
@@ -691,9 +723,10 @@ class GeminiBackend(LLMBackend):
             "max_output_tokens": max_tokens or self.config.max_tokens,
         }
 
-        # Create model
+        # Create model with safety settings disabled
         model = client.GenerativeModel(
             model_name=self.config.model,
+            safety_settings=self._get_safety_settings(),
         )
 
         # Generate (run in executor since Gemini SDK is sync)
@@ -871,7 +904,8 @@ class LLMBackendFactory:
                 model = os.environ.get("ANTHROPIC_MODEL", "claude-3-sonnet-20240229")
             elif os.environ.get("GEMINI_API_KEY"):
                 provider = LLMProvider.GEMINI
-                model = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+                # Default to Gemini 2.0 Flash - latest fast model
+                model = os.environ.get("GEMINI_MODEL", GeminiBackend.DEFAULT_MODEL)
             elif os.environ.get("OLLAMA_MODEL"):
                 provider = LLMProvider.OLLAMA
                 model = os.environ.get("OLLAMA_MODEL", "llama2")
@@ -884,7 +918,7 @@ class LLMBackendFactory:
                 LLMProvider.ANTHROPIC: os.environ.get(
                     "ANTHROPIC_MODEL", "claude-3-sonnet-20240229"
                 ),
-                LLMProvider.GEMINI: os.environ.get("GEMINI_MODEL", "gemini-1.5-flash"),
+                LLMProvider.GEMINI: os.environ.get("GEMINI_MODEL", GeminiBackend.DEFAULT_MODEL),
                 LLMProvider.OLLAMA: os.environ.get("OLLAMA_MODEL", "llama2"),
                 LLMProvider.MOCK: "mock",
             }[provider]
