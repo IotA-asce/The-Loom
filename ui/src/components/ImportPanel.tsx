@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { useAppStore } from '../store'
+import { MangaLibrary } from './MangaLibrary'
 import './ImportPanel.css'
 
 export function ImportPanel() {
@@ -208,6 +209,9 @@ export function ImportPanel() {
           </ul>
         </div>
       </section>
+      
+      {/* Manga Library */}
+      <MangaLibrary />
     </div>
   )
 }

@@ -1623,6 +1623,46 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   
+  // ==================== MANGA STORAGE ====================
+  mangaVolumes: Array<{
+    volume_id: string
+    title: string
+    page_count: number
+    source_hash: string
+    graph_node_id?: string
+    created_at: string
+  }>
+  fetchMangaVolumes: async () => {
+    try {
+      const response = await fetch(`${API_BASE}/manga`)
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          set({ mangaVolumes: result.volumes })
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch manga volumes:', error)
+    }
+  },
+  
+  deleteMangaVolume: async (volume_id: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/manga/${volume_id}`, {
+        method: 'DELETE',
+      })
+      if (response.ok) {
+        // Refresh the list
+        await get().fetchMangaVolumes()
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('Failed to delete manga volume:', error)
+      return false
+    }
+  },
+  
   // ==================== ERROR HANDLING ====================
   clearError: (key) => {
     set(state => ({ error: { ...state.error, [key]: null } }))

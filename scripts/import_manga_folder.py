@@ -8,13 +8,16 @@ The script will:
 1. Scan the folder for supported image files
 2. Sort them naturally by filename
 3. Import them as a manga volume
-4. Display the ingestion report
+4. Save to manga storage for UI access
+5. Optionally create a graph node
+6. Display the ingestion report
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
+import uuid
 from pathlib import Path
 
 # Add parent to path for imports
@@ -27,6 +30,7 @@ from agents.archivist import (
     ingest_image_folder_pages,
     list_manga_image_pages,
 )
+from core.manga_storage import get_manga_storage, MangaVolume, MangaPage
 
 
 def main() -> int:
@@ -46,6 +50,17 @@ def main() -> int:
         "--dry-run",
         action="store_true",
         help="List files without importing",
+    )
+    parser.add_argument(
+        "--no-graph-node",
+        action="store_true",
+        help="Don't create a graph node for this manga",
+    )
+    parser.add_argument(
+        "--db-path",
+        type=str,
+        default=None,
+        help="Custom database path (default: .loom/manga.db)",
     )
 
     args = parser.parse_args()
@@ -128,6 +143,93 @@ def main() -> int:
             print(f"  Page {i}: {meta.format_name}, " f"{meta.width}x{meta.height}")
         if len(report.page_metadata) > 10:
             print(f"  ... and {len(report.page_metadata) - 10} more pages")
+
+        # Save to manga storage
+        print()
+        print("💾 Saving to manga storage...")
+        
+        storage = get_manga_storage(args.db_path)
+        
+        # Check for existing volume with same hash
+        existing = storage.get_volume_by_hash(report.source_hash)
+        if existing:
+            print(f"⚠️  A manga with this content already exists: '{existing.title}'")
+            print(f"   Volume ID: {existing.volume_id}")
+            return 0
+
+        # Create volume record
+        volume_id = f"manga_{uuid.uuid4().hex[:12]}"
+        
+        manga_pages = tuple(
+            MangaPage(
+                page_number=i + 1,
+                format_name=meta.format_name,
+                width=meta.width,
+                height=meta.height,
+                content_hash=meta.content_hash,
+                ocr_text=getattr(meta, 'ocr_text', ''),  # OCR text if available
+            )
+            for i, meta in enumerate(report.page_metadata)
+        )
+
+        volume = MangaVolume(
+            volume_id=volume_id,
+            title=title,
+            source_path=str(folder_path),
+            page_count=report.page_count,
+            source_hash=report.source_hash,
+            pages=manga_pages,
+        )
+
+        if storage.save_volume(volume):
+            print(f"✅ Saved manga volume: {volume_id}")
+            print(f"   Title: {title}")
+            print(f"   Pages: {report.page_count}")
+            
+            # Optionally create graph node
+            if not args.no_graph_node:
+                print()
+                print("📝 Creating graph node...")
+                try:
+                    from core.graph_persistence import SQLiteGraphPersistence, GraphNode
+                    
+                    graph_db = SQLiteGraphPersistence()
+                    
+                    # Create a node for this manga
+                    node_id = f"node_{uuid.uuid4().hex[:12]}"
+                    node = GraphNode(
+                        node_id=node_id,
+                        label=title,
+                        branch_id="main",
+                        scene_id=f"scene_{uuid.uuid4().hex[:8]}",
+                        x=100.0,
+                        y=100.0,
+                        importance=0.8,
+                        metadata={
+                            "type": "manga",
+                            "volume_id": volume_id,
+                            "page_count": report.page_count,
+                            "source_hash": report.source_hash,
+                            "source_path": str(folder_path),
+                        },
+                    )
+                    
+                    # Use async method in sync context
+                    import asyncio
+                    success = asyncio.run(graph_db.save_node(node))
+                    
+                    if success:
+                        print(f"✅ Created graph node: {node_id}")
+                        print(f"   The manga is now available in the UI!")
+                    else:
+                        print("⚠️  Failed to create graph node (manga saved to storage)")
+                        
+                except Exception as e:
+                    print(f"⚠️  Could not create graph node: {e}")
+                    print("   Manga is saved but won't appear in the graph. Use --no-graph-node to skip this.")
+        else:
+            print("❌ Failed to save manga volume")
+            return 1
 
         return 0
 

@@ -895,6 +895,75 @@ async def get_supported_formats() -> dict[str, list[str]]:
     }
 
 
+# ============ Manga Storage Endpoints ============
+
+
+@app.get("/api/manga")
+async def list_manga_volumes(
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+) -> dict[str, Any]:
+    """List all imported manga volumes."""
+    from core.manga_storage import get_manga_storage
+
+    storage = get_manga_storage()
+    volumes = storage.get_all_volumes(limit=limit, offset=offset)
+
+    return {
+        "success": True,
+        "volumes": [
+            {
+                "volume_id": v.volume_id,
+                "title": v.title,
+                "page_count": v.page_count,
+                "source_hash": v.source_hash[:16],
+                "graph_node_id": v.graph_node_id,
+                "created_at": v.created_at,
+            }
+            for v in volumes
+        ],
+        "total": len(volumes),
+    }
+
+
+@app.get("/api/manga/{volume_id}")
+async def get_manga_volume(volume_id: str) -> dict[str, Any]:
+    """Get a specific manga volume with all pages."""
+    from core.manga_storage import get_manga_storage
+
+    storage = get_manga_storage()
+    volume = storage.get_volume(volume_id)
+
+    if not volume:
+        raise HTTPException(status_code=404, detail=f"Manga volume not found: {volume_id}")
+
+    return {
+        "success": True,
+        "volume": volume.to_dict(),
+    }
+
+
+@app.delete("/api/manga/{volume_id}")
+async def delete_manga_volume(volume_id: str) -> dict[str, Any]:
+    """Delete a manga volume."""
+    from core.manga_storage import get_manga_storage
+
+    storage = get_manga_storage()
+    
+    # Check if exists
+    volume = storage.get_volume(volume_id)
+    if not volume:
+        raise HTTPException(status_code=404, detail=f"Manga volume not found: {volume_id}")
+
+    if storage.delete_volume(volume_id):
+        return {
+            "success": True,
+            "message": f"Deleted manga volume: {volume.title}",
+        }
+    else:
+        raise HTTPException(status_code=500, detail="Failed to delete manga volume")
+
+
 @app.get("/api/health")
 async def health_check() -> dict[str, str]:
     """Health check endpoint."""
