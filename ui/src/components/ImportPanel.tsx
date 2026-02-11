@@ -219,7 +219,7 @@ export function ImportPanel() {
       
       {/* Manga Folder Import */}
       <section className="manga-import-section" aria-labelledby="manga-import-title">
-        <h3 id="manga-import-title" className="section-title">📖 Import Manga Folder</h3>
+        <h3 id="manga-import-title" className="section-title">Import Manga Folder</h3>
         <p className="section-description">
           Import a folder of manga pages directly from your browser. 
           Files stay on your computer - no upload needed.
