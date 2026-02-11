@@ -1,10 +1,11 @@
 import { useState, useRef } from 'react'
 import { useAppStore } from '../store'
 import { MangaLibrary } from './MangaLibrary'
+import { MangaFolderImportSimple } from './MangaFolderImportSimple'
 import './ImportPanel.css'
 
 export function ImportPanel() {
-  const { ingestFile, supportedFormats } = useAppStore()
+  const { ingestFile, supportedFormats, fetchMangaVolumes } = useAppStore()
   const [isImporting, setIsImporting] = useState(false)
   const [importResult, setImportResult] = useState<{
     success: boolean
@@ -29,6 +30,12 @@ export function ImportPanel() {
           : `Failed to import "${file.name}"`,
         details: result,
       })
+      
+      // If it was a CBZ/manga file, refresh the manga library
+      const extension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
+      if (result.success && ['.cbz', '.zip'].includes(extension)) {
+        await fetchMangaVolumes()
+      }
     } catch (error) {
       setImportResult({
         success: false,
@@ -208,6 +215,21 @@ export function ImportPanel() {
             <li><strong>.png, .jpg, .jpeg, .webp</strong> - Single images</li>
           </ul>
         </div>
+      </section>
+      
+      {/* Manga Folder Import */}
+      <section className="manga-import-section" aria-labelledby="manga-import-title">
+        <h3 id="manga-import-title" className="section-title">📖 Import Manga Folder</h3>
+        <p className="section-description">
+          Import a folder of manga pages directly from your browser. 
+          Files stay on your computer - no upload needed.
+        </p>
+        <MangaFolderImportSimple 
+          onImportComplete={() => {
+            // Refresh the manga library after import
+            fetchMangaVolumes()
+          }}
+        />
       </section>
       
       {/* Manga Library */}

@@ -508,12 +508,23 @@ interface AppState {
   }>
   fetchMangaVolumes: () => Promise<void>
   deleteMangaVolume: (volume_id: string) => Promise<boolean>
+  updateMangaVolume: (volume_id: string, updates: { title?: string }) => Promise<boolean>
   
   // Manga Viewer
   mangaViewerOpen: boolean
   mangaViewerVolumeId: string | null
   openMangaViewer: (volumeId: string) => void
   closeMangaViewer: () => void
+  
+  // Manga Reading Progress
+  mangaReadingProgress: Record<string, {
+    lastPage: number
+    totalPages: number
+    lastReadAt: string
+  }>
+  updateMangaReadingProgress: (volumeId: string, page: number, totalPages: number) => void
+  getMangaReadingProgress: (volumeId: string) => { lastPage: number; totalPages: number; percentComplete: number } | null
+  clearMangaReadingProgress: (volumeId: string) => void
   
   // Graph Persistence
   loadGraphNodes: () => Promise<void>
@@ -1710,6 +1721,85 @@ export const useAppStore = create<AppState>((set, get) => ({
     })
   },
   
+  // ==================== MANGA READING PROGRESS ====================
+  mangaReadingProgress: {},
+  
+  updateMangaReadingProgress: (volumeId: string, page: number, totalPages: number) => {
+    set(state => ({
+      mangaReadingProgress: {
+        ...state.mangaReadingProgress,
+        [volumeId]: {
+          lastPage: page,
+          totalPages,
+          lastReadAt: new Date().toISOString()
+        }
+      }
+    }))
+    
+    // Persist to localStorage
+    try {
+      const progress = get().mangaReadingProgress
+      localStorage.setItem('loom-manga-progress', JSON.stringify(progress))
+    } catch (e) {
+      console.warn('Failed to save reading progress:', e)
+    }
+  },
+  
+  getMangaReadingProgress: (volumeId: string) => {
+    const state = get()
+    const progress = state.mangaReadingProgress[volumeId]
+    
+    if (!progress) {
+      // Try to load from localStorage
+      try {
+        const saved = localStorage.getItem('loom-manga-progress')
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (parsed[volumeId]) {
+            // Update state with saved progress
+            set(s => ({
+              mangaReadingProgress: {
+                ...s.mangaReadingProgress,
+                [volumeId]: parsed[volumeId]
+              }
+            }))
+            const p = parsed[volumeId]
+            return {
+              lastPage: p.lastPage,
+              totalPages: p.totalPages,
+              percentComplete: Math.round((p.lastPage / p.totalPages) * 100)
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load reading progress:', e)
+      }
+      return null
+    }
+    
+    return {
+      lastPage: progress.lastPage,
+      totalPages: progress.totalPages,
+      percentComplete: Math.round((progress.lastPage / progress.totalPages) * 100)
+    }
+  },
+  
+  clearMangaReadingProgress: (volumeId: string) => {
+    set(state => {
+      const newProgress = { ...state.mangaReadingProgress }
+      delete newProgress[volumeId]
+      return { mangaReadingProgress: newProgress }
+    })
+    
+    // Update localStorage
+    try {
+      const progress = get().mangaReadingProgress
+      localStorage.setItem('loom-manga-progress', JSON.stringify(progress))
+    } catch (e) {
+      console.warn('Failed to clear reading progress:', e)
+    }
+  },
+  
   // ==================== MANGA STORAGE ====================
   mangaVolumes: [],
   
@@ -1740,6 +1830,25 @@ export const useAppStore = create<AppState>((set, get) => ({
       return false
     } catch (error) {
       console.error('Failed to delete manga volume:', error)
+      return false
+    }
+  },
+  
+  updateMangaVolume: async (volume_id: string, updates: { title?: string }) => {
+    try {
+      const response = await fetch(`${API_BASE}/manga/${volume_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+      if (response.ok) {
+        // Refresh the list
+        await get().fetchMangaVolumes()
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('Failed to update manga volume:', error)
       return false
     }
   },

@@ -1028,6 +1028,49 @@ async def delete_manga_volume(volume_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail="Failed to delete manga volume")
 
 
+class MangaUpdateRequest(BaseModel):
+    title: str | None = None
+    graph_node_id: str | None = None
+
+
+@app.patch("/api/manga/{volume_id}")
+async def update_manga_volume(
+    volume_id: str,
+    request: MangaUpdateRequest,
+) -> dict[str, Any]:
+    """Update a manga volume's metadata."""
+    from core.manga_storage import get_manga_storage, MangaVolume
+
+    storage = get_manga_storage()
+    
+    # Check if exists
+    volume = storage.get_volume(volume_id)
+    if not volume:
+        raise HTTPException(status_code=404, detail=f"Manga volume not found: {volume_id}")
+
+    # Create updated volume
+    updated_volume = MangaVolume(
+        volume_id=volume.volume_id,
+        title=request.title if request.title is not None else volume.title,
+        source_path=volume.source_path,
+        page_count=volume.page_count,
+        source_hash=volume.source_hash,
+        pages=volume.pages,
+        graph_node_id=request.graph_node_id if request.graph_node_id is not None else volume.graph_node_id,
+        created_at=volume.created_at,
+        updated_at=datetime.now(UTC).isoformat(),
+    )
+
+    if storage.save_volume(updated_volume):
+        return {
+            "success": True,
+            "message": f"Updated manga volume: {updated_volume.title}",
+            "volume": updated_volume.to_dict(),
+        }
+    else:
+        raise HTTPException(status_code=500, detail="Failed to update manga volume")
+
+
 @app.get("/api/manga/{volume_id}/pages/{page_number}/image")
 async def get_manga_page_image(
     volume_id: str,

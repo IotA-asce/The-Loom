@@ -35,6 +35,26 @@ export function ReadingView() {
   const currentIndex = branchNodes.findIndex(n => n.id === readingNodeId)
   const currentBranch = branches.find(b => b.branchId === readingBranchId)
   
+  // Safely get metadata with defaults
+  const metadata = currentNode?.metadata || {
+    title: '',
+    location: '',
+    timeOfDay: '',
+    estimatedReadingTime: 0,
+    moodTags: [],
+  }
+  
+  // Safely get content with defaults
+  const content = currentNode?.content || {
+    text: '',
+    version: 1,
+    lastModified: new Date().toISOString(),
+    wordCount: 0,
+  }
+  
+  // Safely get characters
+  const nodeCharacters = currentNode?.characters || []
+  
   const progress = branchNodes.length > 0
     ? ((currentIndex + 1) / branchNodes.length) * 100
     : 0
@@ -163,31 +183,31 @@ export function ReadingView() {
           <article className="reading-article">
             {/* Scene Header */}
             <header className="scene-header">
-              {currentNode.metadata.title && (
-                <h1 className="scene-title">{currentNode.metadata.title}</h1>
+              {metadata.title && (
+                <h1 className="scene-title">{metadata.title}</h1>
               )}
               
               <div className="scene-meta">
-                {currentNode.metadata.location && (
+                {metadata.location && (
                   <span className="meta-item">
-                    📍 {currentNode.metadata.location}
+                    📍 {metadata.location}
                   </span>
                 )}
-                {currentNode.metadata.timeOfDay && (
+                {metadata.timeOfDay && (
                   <span className="meta-item">
-                    🕐 {currentNode.metadata.timeOfDay}
+                    🕐 {metadata.timeOfDay}
                   </span>
                 )}
-                {currentNode.characters.length > 0 && (
+                {nodeCharacters.length > 0 && (
                   <span className="meta-item">
-                    👥 {getCharacterNames(currentNode.characters)}
+                    👥 {getCharacterNames(nodeCharacters)}
                   </span>
                 )}
               </div>
               
-              {currentNode.metadata.moodTags.length > 0 && (
+              {metadata.moodTags && metadata.moodTags.length > 0 && (
                 <div className="scene-moods">
-                  {currentNode.metadata.moodTags.map(mood => (
+                  {metadata.moodTags.map(mood => (
                     <span key={mood} className="mood-badge">{mood}</span>
                   ))}
                 </div>
@@ -196,8 +216,8 @@ export function ReadingView() {
             
             {/* Scene Content */}
             <div className="scene-content">
-              {currentNode.content.text ? (
-                currentNode.content.text.split('\n\n').map((paragraph, i) => (
+              {content.text ? (
+                content.text.split('\n\n').map((paragraph, i) => (
                   <p key={i} className="scene-paragraph">
                     {paragraph}
                   </p>
@@ -206,7 +226,7 @@ export function ReadingView() {
                 <p className="empty-content">
                   This scene has no content yet. 
                   <button 
-                    onClick={() => { exitReadingMode(); selectNode(currentNode.id); }}
+                    onClick={() => { exitReadingMode(); currentNode && selectNode(currentNode.id); }}
                     className="inline-link"
                   >
                     Edit this node
@@ -219,10 +239,10 @@ export function ReadingView() {
             {/* Scene Footer */}
             <footer className="scene-footer">
               <span className="word-count">
-                {currentNode.content.wordCount} words
+                {content.wordCount} words
               </span>
               <span className="reading-time">
-                ~{Math.ceil(currentNode.content.wordCount / 200)} min read
+                ~{Math.ceil(content.wordCount / 200)} min read
               </span>
             </footer>
           </article>

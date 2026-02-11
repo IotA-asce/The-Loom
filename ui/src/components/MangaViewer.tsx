@@ -24,7 +24,7 @@ interface VolumeInfo {
 }
 
 export function MangaViewer({ volumeId, initialPage = 1, onClose }: MangaViewerProps) {
-  const { addToast } = useAppStore()
+  const { addToast, updateMangaReadingProgress, getMangaReadingProgress } = useAppStore()
   const [volume, setVolume] = useState<VolumeInfo | null>(null)
   const [currentPage, setCurrentPage] = useState(initialPage)
   const [loading, setLoading] = useState(true)
@@ -35,8 +35,26 @@ export function MangaViewer({ volumeId, initialPage = 1, onClose }: MangaViewerP
   const [fitMode, setFitMode] = useState<'width' | 'height' | 'original'>('height')
   const imageRef = useRef<HTMLImageElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const progressSaveTimeout = useRef<NodeJS.Timeout | null>(null)
 
   const API_BASE = 'http://localhost:8000'
+  
+  // Load saved progress when volume loads
+  useEffect(() => {
+    if (volume && volumeId) {
+      const saved = getMangaReadingProgress(volumeId)
+      if (saved && saved.lastPage > 0 && saved.lastPage <= volume.page_count) {
+        // Only use saved page if initialPage is 1 (default), otherwise respect the prop
+        if (initialPage === 1) {
+          setCurrentPage(saved.lastPage)
+          addToast({ 
+            message: `Resumed from page ${saved.lastPage} (${saved.percentComplete}% complete)`, 
+            type: 'info' 
+          })
+        }
+      }
+    }
+  }, [volume, volumeId])
 
   // Fetch volume info
   useEffect(() => {
@@ -100,8 +118,25 @@ export function MangaViewer({ volumeId, initialPage = 1, onClose }: MangaViewerP
     if (page >= 1 && page <= volume.page_count) {
       setCurrentPage(page)
       setZoom(1) // Reset zoom on page change
+      
+      // Save progress (debounced to avoid excessive writes)
+      if (progressSaveTimeout.current) {
+        clearTimeout(progressSaveTimeout.current)
+      }
+      progressSaveTimeout.current = setTimeout(() => {
+        updateMangaReadingProgress(volumeId, page, volume.page_count)
+      }, 500)
     }
   }
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (progressSaveTimeout.current) {
+        clearTimeout(progressSaveTimeout.current)
+      }
+    }
+  }, [])
 
   const goToNext = () => {
     if (volume && currentPage < volume.page_count) {

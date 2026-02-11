@@ -244,10 +244,23 @@ export function GraphCanvas() {
     return 'Detail'
   }
 
-  // Handle double click to edit
+  // Handle double click to edit (or open manga viewer for manga nodes)
   const handleDoubleClick = (e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation()
     selectNode(nodeId)
+    
+    // Check if this is a manga node
+    const node = nodes.find(n => n.id === nodeId)
+    if (node?.type === 'manga') {
+      const volumeId = node.metadata?.volume_id as string
+      if (volumeId) {
+        // Open manga viewer
+        const { openMangaViewer } = useAppStore.getState()
+        openMangaViewer(volumeId)
+        return
+      }
+    }
+    
     startEditingNode(nodeId)
   }
 
