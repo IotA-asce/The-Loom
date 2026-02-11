@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 // ==================== TYPES ====================
 
-export type NodeType = 'chapter' | 'scene' | 'beat' | 'dialogue'
+export type NodeType = 'chapter' | 'scene' | 'beat' | 'dialogue' | 'manga'
 
 export interface SceneMetadata {
   title: string

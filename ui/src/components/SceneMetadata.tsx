@@ -332,6 +332,18 @@ export function SceneMetadata({ nodeId }: SceneMetadataProps) {
           ))}
         </div>
       </div>
+
+      {/* Manga-specific: View button */}
+      {node.type === 'manga' && (
+        <div className="metadata-section">
+          <button
+            className="view-manga-btn"
+            onClick={() => alert(`Manga viewer coming in Sprint 3!\nThis node represents imported manga volumes.`)}
+          >
+            📖 View Manga
+          </button>
+        </div>
+      )}
       
       {/* Common Fields */}
       <div className="metadata-section">

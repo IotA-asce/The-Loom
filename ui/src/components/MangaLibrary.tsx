@@ -3,7 +3,7 @@ import { useAppStore } from '../store'
 import './MangaLibrary.css'
 
 export function MangaLibrary() {
-  const { mangaVolumes, fetchMangaVolumes, deleteMangaVolume, addToast } = useAppStore()
+  const { mangaVolumes, fetchMangaVolumes, deleteMangaVolume, addToast, selectNode, nodes } = useAppStore()
   const [loading, setLoading] = useState(false)
   const [selectedVolume, setSelectedVolume] = useState<string | null>(null)
 
@@ -33,6 +33,17 @@ export function MangaLibrary() {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString()
+  }
+
+  const handleGoToNode = (graphNodeId: string) => {
+    // Find the node in the graph
+    const node = nodes.find(n => n.id === graphNodeId)
+    if (node) {
+      selectNode(graphNodeId)
+      addToast({ message: `Navigated to "${node.label}" in graph`, type: 'success' })
+    } else {
+      addToast({ message: 'Node not found in graph. Try refreshing.', type: 'error' })
+    }
   }
 
   if (loading) {
@@ -87,6 +98,18 @@ export function MangaLibrary() {
                 )}
               </div>
               <div className="manga-item-actions">
+                {volume.graph_node_id && (
+                  <button
+                    className="manga-action-btn goto"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleGoToNode(volume.graph_node_id!)
+                    }}
+                    title="Go to node in graph"
+                  >
+                    📝
+                  </button>
+                )}
                 <button
                   className="manga-action-btn delete"
                   onClick={(e) => {

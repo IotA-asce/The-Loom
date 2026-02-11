@@ -29,6 +29,7 @@ class GraphNode:
     x: float
     y: float
     importance: float = 0.5
+    node_type: str = "scene"  # NEW: explicit type field (scene, chapter, beat, dialogue, manga)
     metadata: dict[str, Any] = field(default_factory=dict)
     created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     updated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
@@ -42,6 +43,7 @@ class GraphNode:
             "x": self.x,
             "y": self.y,
             "importance": self.importance,
+            "node_type": self.node_type,
             "metadata": json.dumps(self.metadata),
             "created_at": self.created_at,
             "updated_at": self.updated_at,
@@ -52,6 +54,10 @@ class GraphNode:
         metadata = data.get("metadata", "{}")
         if isinstance(metadata, str):
             metadata = json.loads(metadata)
+        # Migrate node_type from metadata if not present
+        node_type = data.get("node_type")
+        if node_type is None and metadata:
+            node_type = metadata.get("type")
         return cls(
             node_id=data["node_id"],
             label=data["label"],
@@ -60,6 +66,7 @@ class GraphNode:
             x=data["x"],
             y=data["y"],
             importance=data.get("importance", 0.5),
+            node_type=node_type or "scene",
             metadata=metadata,
             created_at=data["created_at"],
             updated_at=data["updated_at"],
@@ -245,11 +252,33 @@ class SQLiteGraphPersistence(GraphPersistence):
                 x REAL DEFAULT 0,
                 y REAL DEFAULT 0,
                 importance REAL DEFAULT 0.5,
+                node_type TEXT DEFAULT 'scene',
                 metadata TEXT DEFAULT '{}',
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
         """)
+        
+        # Migration: Add node_type column if it doesn't exist (for existing databases)
+        try:
+            cursor.execute("SELECT node_type FROM nodes LIMIT 1")
+        except sqlite3.OperationalError:
+            # Column doesn't exist, add it
+            cursor.execute("ALTER TABLE nodes ADD COLUMN node_type TEXT DEFAULT 'scene'")
+            # Migrate existing nodes: extract type from metadata
+            cursor.execute("SELECT node_id, metadata FROM nodes")
+            for row in cursor.fetchall():
+                node_id, metadata_str = row
+                try:
+                    metadata = json.loads(metadata_str) if metadata_str else {}
+                    node_type = metadata.get("type", "scene")
+                    cursor.execute(
+                        "UPDATE nodes SET node_type = ? WHERE node_id = ?",
+                        (node_type, node_id)
+                    )
+                except (json.JSONDecodeError, AttributeError):
+                    pass
+            conn.commit()
 
         # Edges table
         cursor.execute("""
@@ -310,10 +339,10 @@ class SQLiteGraphPersistence(GraphPersistence):
             cursor.execute(
                 """
                 INSERT OR REPLACE INTO nodes 
-                (node_id, label, branch_id, scene_id, x, y, importance, metadata, 
+                (node_id, label, branch_id, scene_id, x, y, importance, node_type, metadata, 
                  created_at, updated_at)
                 VALUES (:node_id, :label, :branch_id, :scene_id, :x, :y, :importance, 
-                        :metadata, :created_at, :updated_at)
+                        :node_type, :metadata, :created_at, :updated_at)
             """,
                 data,
             )

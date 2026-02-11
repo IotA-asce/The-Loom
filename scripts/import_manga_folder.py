@@ -181,52 +181,69 @@ def main() -> int:
             pages=manga_pages,
         )
 
+        # Optionally create graph node first (before saving volume with link)
+        graph_node_id = None
+        if not args.no_graph_node:
+            print()
+            print("📝 Creating graph node...")
+            try:
+                from core.graph_persistence import SQLiteGraphPersistence, GraphNode
+                
+                graph_db = SQLiteGraphPersistence()
+                
+                # Create a node for this manga
+                node_id = f"node_{uuid.uuid4().hex[:12]}"
+                node = GraphNode(
+                    node_id=node_id,
+                    label=title,
+                    branch_id="main",
+                    scene_id=f"scene_{uuid.uuid4().hex[:8]}",
+                    x=100.0,
+                    y=100.0,
+                    importance=0.8,
+                    node_type="manga",
+                    metadata={
+                        "type": "manga",
+                        "volume_id": volume_id,
+                        "page_count": report.page_count,
+                        "source_hash": report.source_hash,
+                        "source_path": str(folder_path),
+                    },
+                )
+                
+                # Use async method in sync context
+                import asyncio
+                success = asyncio.run(graph_db.save_node(node))
+                
+                if success:
+                    graph_node_id = node_id
+                    print(f"✅ Created graph node: {node_id}")
+                else:
+                    print("⚠️  Failed to create graph node (will save manga without graph link)")
+                    
+            except Exception as e:
+                print(f"⚠️  Could not create graph node: {e}")
+                print("   Manga will be saved but won't appear in the graph. Use --no-graph-node to skip this.")
+        
+        # Update volume with graph_node_id and save
+        if graph_node_id:
+            volume = MangaVolume(
+                volume_id=volume_id,
+                title=title,
+                source_path=str(folder_path),
+                page_count=report.page_count,
+                source_hash=report.source_hash,
+                pages=manga_pages,
+                graph_node_id=graph_node_id,
+            )
+        
         if storage.save_volume(volume):
             print(f"✅ Saved manga volume: {volume_id}")
             print(f"   Title: {title}")
             print(f"   Pages: {report.page_count}")
-            
-            # Optionally create graph node
-            if not args.no_graph_node:
-                print()
-                print("📝 Creating graph node...")
-                try:
-                    from core.graph_persistence import SQLiteGraphPersistence, GraphNode
-                    
-                    graph_db = SQLiteGraphPersistence()
-                    
-                    # Create a node for this manga
-                    node_id = f"node_{uuid.uuid4().hex[:12]}"
-                    node = GraphNode(
-                        node_id=node_id,
-                        label=title,
-                        branch_id="main",
-                        scene_id=f"scene_{uuid.uuid4().hex[:8]}",
-                        x=100.0,
-                        y=100.0,
-                        importance=0.8,
-                        metadata={
-                            "type": "manga",
-                            "volume_id": volume_id,
-                            "page_count": report.page_count,
-                            "source_hash": report.source_hash,
-                            "source_path": str(folder_path),
-                        },
-                    )
-                    
-                    # Use async method in sync context
-                    import asyncio
-                    success = asyncio.run(graph_db.save_node(node))
-                    
-                    if success:
-                        print(f"✅ Created graph node: {node_id}")
-                        print(f"   The manga is now available in the UI!")
-                    else:
-                        print("⚠️  Failed to create graph node (manga saved to storage)")
-                        
-                except Exception as e:
-                    print(f"⚠️  Could not create graph node: {e}")
-                    print("   Manga is saved but won't appear in the graph. Use --no-graph-node to skip this.")
+            if graph_node_id:
+                print(f"   Graph Node: {graph_node_id}")
+                print(f"   The manga is now available in the UI!")
         else:
             print("❌ Failed to save manga volume")
             return 1

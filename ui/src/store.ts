@@ -1657,8 +1657,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             x: n.x,
             y: n.y,
             importance: n.importance,
-            // Extract type from metadata or default to 'scene'
-            type: (n.metadata?.type as NodeType) || 'scene',
+            // Use node_type from backend, fallback to metadata for backward compatibility
+            type: (n.node_type as NodeType) || (n.metadata?.type as NodeType) || 'scene',
             content: {
               text: '',
               version: 1,

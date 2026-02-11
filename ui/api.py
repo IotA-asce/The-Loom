@@ -58,6 +58,7 @@ class GraphNodeCreate(CamelModel):
     x: float
     y: float
     importance: float = 0.5
+    node_type: str = "scene"
 
 
 class ViewportUpdate(BaseModel):
@@ -791,6 +792,7 @@ async def ingest_manga(file: UploadFile) -> dict[str, Any]:
 async def ingest_manga_pages(
     files: list[UploadFile],
     title: str = Query(..., description="Manga title"),
+    create_graph_node: bool = Query(True, description="Create a graph node for this manga"),
 ) -> dict[str, Any]:
     """Bulk import manga pages as individual image files (webp, png, jpg).
 
@@ -799,6 +801,7 @@ async def ingest_manga_pages(
     """
     import shutil
     import tempfile
+    import uuid
 
     from agents.archivist import (
         SUPPORTED_MANGA_IMAGE_EXTENSIONS,
@@ -806,6 +809,8 @@ async def ingest_manga_pages(
         IngestionPolicy,
         ingest_image_folder_pages,
     )
+    from core.manga_storage import get_manga_storage, MangaVolume, MangaPage
+    from core.graph_persistence import get_graph_persistence, GraphNode
 
     if not files:
         raise HTTPException(status_code=400, detail="No files provided")
@@ -860,9 +865,67 @@ async def ingest_manga_pages(
             use_sandbox=False,
         )
 
+        # Save to manga storage
+        storage = get_manga_storage()
+        volume_id = f"manga_{uuid.uuid4().hex[:12]}"
+        
+        manga_pages = tuple(
+            MangaPage(
+                page_number=i + 1,
+                format_name=meta.format_name,
+                width=meta.width,
+                height=meta.height,
+                content_hash=meta.content_hash,
+                ocr_text=getattr(meta, 'ocr_text', ''),
+            )
+            for i, meta in enumerate(report.page_metadata)
+        )
+
+        # Optionally create graph node
+        graph_node_id = None
+        if create_graph_node:
+            try:
+                graph_db = get_graph_persistence()
+                node_id = f"node_{uuid.uuid4().hex[:12]}"
+                node = GraphNode(
+                    node_id=node_id,
+                    label=title,
+                    branch_id="main",
+                    scene_id=f"scene_{uuid.uuid4().hex[:8]}",
+                    x=100.0,
+                    y=100.0,
+                    importance=0.8,
+                    node_type="manga",
+                    metadata={
+                        "type": "manga",
+                        "volume_id": volume_id,
+                        "page_count": report.page_count,
+                        "source_hash": report.source_hash,
+                    },
+                )
+                await graph_db.save_node(node)
+                graph_node_id = node_id
+            except Exception as e:
+                # Log but don't fail - volume is still saved
+                print(f"Warning: Failed to create graph node: {e}")
+
+        # Create and save volume
+        volume = MangaVolume(
+            volume_id=volume_id,
+            title=title,
+            source_path=str(temp_folder),
+            page_count=report.page_count,
+            source_hash=report.source_hash,
+            pages=manga_pages,
+            graph_node_id=graph_node_id,
+        )
+        storage.save_volume(volume)
+
         return {
             "success": True,
             "title": title,
+            "volume_id": volume_id,
+            "graph_node_id": graph_node_id,
             "pages_imported": report.page_count,
             "pages": [
                 {
@@ -2877,6 +2940,7 @@ class SaveNodeRequest(CamelModel):
     x: float
     y: float
     importance: float = 0.5
+    node_type: str = "scene"
     metadata: dict[str, Any] = {}
 
 
@@ -2917,6 +2981,7 @@ async def save_graph_node(request: SaveNodeRequest) -> dict[str, Any]:
             x=request.x,
             y=request.y,
             importance=request.importance,
+            node_type=request.node_type,
             metadata=request.metadata,
         )
 
