@@ -129,50 +129,17 @@ Open **http://localhost:5173**
 ## 📚 Next Steps
 
 - **Import existing story**: Drag .txt, .pdf, or .epub to Import tab
-- **Import manga**: Run `python scripts/import_manga_folder.py "/path/to/manga" "Title"`
+- **Import manga**: See [MANGA_WORKFLOW_COMPLETE.md](MANGA_WORKFLOW_COMPLETE.md) for detailed instructions
 - **Collaborate**: Share your room ID from Profile menu
 - **Search**: Use **🔎 Search** for natural language queries
 - **Analyze**: Click **🎭 Tones** for emotional heatmap
 
 ---
 
-## 📖 Quick Manga Import
-
-### 1. Prepare Your Files
-
-Organize manga images in a folder with zero-padded numbers:
-```
-My_Manga/
-├── 001.webp
-├── 002.webp
-├── 003.webp
-└── ...
-```
-
-### 2. Import
-
-```bash
-# In your terminal
-source .venv/bin/activate
-python scripts/import_manga_folder.py "/path/to/My_Manga" "My Manga Title"
-```
-
-### 3. Read
-
-1. Open http://localhost:5173
-2. Click **📥 Import** tab
-3. Find your manga in **📚 Imported Manga**
-4. Click **👁️ View** button
-5. Use arrow keys to navigate pages
-
-See [MANGA_WORKFLOW_COMPLETE.md](MANGA_WORKFLOW_COMPLETE.md) for full details.
-
----
-
 ## 🆘 Need Help?
 
 - Full guide: `docs/USER_GUIDE.md`
-- Manga import: `docs/MANGA_IMPORT.md`
+- Manga import: `docs/MANGA_WORKFLOW_COMPLETE.md`
 - API docs: http://localhost:8000/docs
 - Issues: github.com/IotA-asce/The-Loom/issues
 

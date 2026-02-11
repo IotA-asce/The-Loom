@@ -8,42 +8,43 @@
 
 | Feature | Status | How to Access |
 |---------|--------|---------------|
-| Import manga from folders | ✅ Working | Command line (one simple command) |
-| View imported manga list | ✅ Working | Import tab in the app |
-| Read manga with viewer | ✅ Working | Click "View" button on any manga |
-| Navigate between pages | ✅ Working | Arrow keys, on-screen buttons, or thumbnails |
-| Zoom and fullscreen | ✅ Working | +/- keys, F key, or on-screen controls |
-| Link to graph nodes | ✅ Working | Automatic on import |
-| Delete manga | ✅ Working | Click trash icon in manga list |
+| Import manga (UI) | ✅ Working | Import tab → "Import Manga Folder" section |
+| Import manga (CLI) | ✅ Working | Command line script |
+| Import CBZ files | ✅ Working | Drag & drop in Import tab |
+| View imported manga | ✅ Working | Import tab → "Imported Manga" list |
+| Read manga with viewer | ✅ Working | Click "View" or "Resume" button |
+| Navigate pages | ✅ Working | Arrow keys, swipe (mobile), or thumbnails |
+| Zoom and fullscreen | ✅ Working | +/- keys, F key, double-click |
+| Reading progress | ✅ Working | Auto-saves, resume from last page |
+| Edit metadata | ✅ Working | Click ✏️ to edit title |
+| Batch operations | ✅ Working | Select multiple, batch delete |
+| Link to graph nodes | ✅ Working | Automatic on import, double-click node |
+| Delete manga | ✅ Working | Click 🗑️ icon |
 
 ---
 
-## 🚀 Quick Start (3 Steps)
+## 🚀 Quick Start
 
-### Step 1: Open Your Terminal
+### Option 1: Import via UI (Recommended - No Terminal!)
 
-**Windows:**
-1. Press `Win + R`
-2. Type `cmd` and press Enter
+1. Open The Loom in your browser (http://localhost:5173)
+2. Click the **📥 Import** tab on the left
+3. Scroll to **📖 Import Manga Folder** section
+4. Click to select your manga folder (or drag & drop)
+5. Enter a title and click **Import**
+6. Wait for processing, then click **👁️ View** to read!
 
-**Mac:**
-1. Press `Cmd + Space`
-2. Type `terminal` and press Enter
+### Option 2: Import via CLI
 
-**Linux:**
-1. Press `Ctrl + Alt + T`
-
-### Step 2: Run the Import Command
+For advanced users or automation:
 
 ```bash
 # Navigate to The Loom folder
 cd /path/to/The-Loom
 
-# Activate the environment (Windows)
-.venv\Scripts\activate
-
-# Activate the environment (Mac/Linux)
-source .venv/bin/activate
+# Activate the environment
+source .venv/bin/activate  # Mac/Linux
+# or: .venv\Scripts\activate  # Windows
 
 # Import your manga
 python scripts/import_manga_folder.py "/path/to/your/manga" "My Manga Title"
@@ -54,12 +55,7 @@ python scripts/import_manga_folder.py "/path/to/your/manga" "My Manga Title"
 python scripts/import_manga_folder.py "/Users/me/Downloads/MyMangaVol1" "Dragon Quest Volume 1"
 ```
 
-### Step 3: View in the App
-
-1. Open The Loom in your browser (http://localhost:5173)
-2. Click the **📥 Import** tab on the left
-3. Scroll down to see **📚 Imported Manga**
-4. Click the **👁️ View** button to start reading!
+Then open the app and click **📥 Import** → **📚 Imported Manga** to see your manga!
 
 ---
 
@@ -105,6 +101,59 @@ page1.webp, page2.webp ...
 
 ---
 
+## 📥 Import Methods (All Options)
+
+### Method 1: UI Folder Import (Easiest)
+Import directly from your browser - no terminal needed!
+
+1. Go to **📥 Import** tab → **📖 Import Manga Folder** section
+2. Click the drop zone to select a folder
+3. Enter a title for your manga
+4. Click **Import** and wait for processing
+
+**Features:**
+- ✅ No command line needed
+- ✅ Drag & drop support
+- ✅ Progress indication
+- ✅ Works on all platforms
+
+### Method 2: CLI Script (Power Users)
+Best for bulk imports or automation.
+
+```bash
+python scripts/import_manga_folder.py "/path/to/manga" "Title"
+```
+
+**Options:**
+- `--dry-run` - Preview without importing
+- `--no-graph-node` - Don't create graph node
+- `--db-path` - Custom database location
+
+### Method 3: CBZ File Import
+Drag and drop CBZ files directly:
+
+1. Go to **📥 Import** tab
+2. Drag your `.cbz` file onto the drop zone
+3. Wait for import to complete
+
+### Method 4: API (Developers)
+Direct API access for custom integrations:
+
+**Upload image folder:**
+```bash
+curl -X POST "http://localhost:8000/api/ingest/manga/pages?title=My%20Manga" \
+  -F "files=@page_001.webp" \
+  -F "files=@page_002.webp"
+```
+
+**Upload CBZ:**
+```bash
+curl -X POST "http://localhost:8000/api/ingest/manga" \
+  -F "file=@manga_volume.cbz"
+```
+
+---
+
 ## 📚 Using the Manga Library
 
 ### Where to Find It
@@ -117,16 +166,17 @@ page1.webp, page2.webp ...
 
 ```
 ┌─────────────────────────────────┐
-│ 📚 Imported Manga          🔄   │
+│ 📚 Imported Manga          ☑️ 🔄 │
 ├─────────────────────────────────┤
 │ 📖 Dragon Quest Volume 1        │
 │    529 pages • Imported 2/10/25 │
+│    ████████████░░░░░ 67%        │
 │    📝 In graph                  │
-│    [👁️] [📝] [🗑️]              │
+│    [▶️] [✏️] [📝] [🗑️]          │
 ├─────────────────────────────────┤
 │ 📖 My Other Manga               │
 │    45 pages • Imported 2/9/25   │
-│    [👁️] [🗑️]                   │
+│    [👁️] [✏️] [🗑️]              │
 └─────────────────────────────────┘
 ```
 
@@ -134,10 +184,36 @@ page1.webp, page2.webp ...
 
 | Button | What It Does |
 |--------|--------------|
-| 👁️ **View** | Opens the manga reader |
+| ▶️ **Resume** | Continue from last page (shows when you have progress) |
+| 👁️ **View** | Opens manga reader from page 1 |
+| ✏️ **Edit** | Edit the manga title |
 | 📝 **Go to Node** | Finds the manga in your story graph |
 | 🗑️ **Delete** | Removes the manga (cannot be undone) |
-| 🔄 **Refresh** | Updates the list if you just imported |
+| 🔄 **Refresh** | Updates the list after import |
+| ☑️ **Batch** | Enter batch selection mode |
+
+### Reading Progress
+
+Your reading progress is automatically saved:
+- **Progress bar** shows % complete
+- **"Resume" button** appears when you have progress
+- **Auto-saves** when you turn pages
+- Works across sessions (stored in browser)
+
+### Batch Operations
+
+Manage multiple volumes at once:
+1. Click **☑️** to enter batch mode
+2. Select volumes using checkboxes
+3. Click **Select All** to select everything
+4. Click **🗑️ (N)** to delete selected volumes
+
+### Editing Metadata
+
+Change a manga's title:
+1. Click **✏️** on any manga
+2. Type the new title
+3. Press **Enter** to save or **Esc** to cancel
 
 ---
 

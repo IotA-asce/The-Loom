@@ -365,118 +365,37 @@ If branches should reconverge:
 
 ### Workflow 3: Importing Manga/Comics
 
-The Loom can import manga and comics from image folders, making them available to read in the built-in viewer and link to your story graph.
+The Loom can import and read manga/comics from image folders or CBZ archives.
 
-#### Method A: CLI Import (Recommended)
+#### Quick Import (No Terminal!)
 
-**Step 1: Prepare Your Files**
+1. Open The Loom → **📥 Import** tab → **📖 Import Manga Folder**
+2. Select your manga folder (or drag & drop)
+3. Enter a title and click **Import**
+4. Click **👁️ View** to start reading
 
-Organize your manga images in a folder with zero-padded numbers:
-```
-My_Manga_Vol1/
-├── 001.webp
-├── 002.webp
-├── 003.webp
-└── ...
-```
+#### Import Methods
 
-**Why zero-padding?** Files sort alphabetically, so `10.webp` would come before `2.webp`. Using `001.webp`, `002.webp` ensures correct page order.
+| Method | Best For | How To |
+|--------|----------|--------|
+| **UI Import** | Most users | Import tab → "Import Manga Folder" |
+| **CLI Script** | Bulk/automation | `python scripts/import_manga_folder.py "/path" "Title"` |
+| **CBZ Files** | Archives | Drag & drop `.cbz` onto Import tab |
+| **API** | Developers | `POST /api/ingest/manga/pages` |
 
-**Step 2: Run the Import Script**
+#### Key Features
 
-Open your terminal and run:
-```bash
-# Navigate to The Loom folder
-cd /path/to/The-Loom
+- **Reading Progress**: Auto-saves, resume with ▶️ button
+- **Batch Operations**: Select multiple volumes to delete
+- **Metadata Editing**: Click ✏️ to change titles
+- **Graph Integration**: Double-click manga node to open viewer
+- **Mobile Support**: Swipe to navigate pages
 
-# Activate the virtual environment
-source .venv/bin/activate  # Mac/Linux
-# or: .venv\Scripts\activate  # Windows
-
-# Import the manga
-python scripts/import_manga_folder.py \
-  "/path/to/My_Manga_Vol1" \
-  "My Manga Volume 1"
-```
-
-**Step 3: Wait for Processing**
-
-The script will:
-- Scan and sort all image files
-- Analyze each page (dimensions, format)
-- Extract text via OCR (for searchability)
-- Create a manga volume record
-- Create a graph node (so it appears in your story graph)
-
-For large volumes (500+ pages), this may take 2-5 minutes.
-
-**Step 4: View in the App**
-
-1. Open http://localhost:5173
-2. Click the **📥 Import** tab
-3. Scroll to **📚 Imported Manga**
-4. Click **👁️ View** to start reading!
-
-> 📸 **[Screenshot: CLI import running]**
-> ```
-> Place screenshot here showing:
-> - Terminal with import command
-> - Progress output showing pages being processed
-> ```
-
-#### Method B: Web UI Import (CBZ Files)
-
-For CBZ (Comic Book ZIP) archives:
-
-1. Open The Loom in your browser
-2. Click **Import** tab in sidebar
-3. Drag and drop your `.cbz` file onto the drop zone
-4. Wait for import to complete
-
-#### Method C: API Upload (Advanced)
-
-For programmatic access or scripts:
-
-```bash
-curl -X POST "http://localhost:8000/api/ingest/manga/pages?title=My%20Manga" \
-  -F "files=@page_001.webp" \
-  -F "files=@page_002.webp"
-```
-
-#### Reading Imported Manga
-
-Once imported, manga appears in two places:
-
-**In the Import Tab:**
-- Shows all imported volumes
-- Click **👁️ View** to open the reader
-- Click **📝 Go to Node** to find it in the graph
-
-**In the Story Graph:**
-- Manga nodes have a 📖 book icon
-- Pink color distinguishes them from other nodes
-- Click the node, then **📖 View Manga** in the right panel
-
-> 📸 **[Screenshot: Manga viewer]**
-> ```
-> Place screenshot here showing:
-> - Manga viewer with page displayed
-> - Thumbnail sidebar visible
-> - Navigation controls at bottom
-> ```
-
-#### Manga Viewer Features
-
-| Feature | How to Use |
-|---------|------------|
-| Navigate pages | `←` / `→` arrow keys, or on-screen buttons |
-| Jump to page | Type page number in the footer input |
-| Zoom | `+` / `-` keys, or double-click image |
-| Fullscreen | `F` key, or fullscreen button |
-| Thumbnails | `T` key to toggle thumbnail sidebar |
-| Close | `Escape` key, or ✕ button |
-
-See [MANGA_WORKFLOW_COMPLETE.md](MANGA_WORKFLOW_COMPLETE.md) for detailed troubleshooting and advanced options.
+See [MANGA_WORKFLOW_COMPLETE.md](MANGA_WORKFLOW_COMPLETE.md) for complete details including:
+- File naming best practices
+- All import methods
+- Viewer controls & shortcuts
+- Troubleshooting
 
 ### Workflow 4: Generating Manga Panels
 

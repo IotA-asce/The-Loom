@@ -1,43 +1,57 @@
 # The Loom - Documentation
 
-Welcome to The Loom documentation. This directory contains comprehensive guides for using the application.
+Welcome to The Loom documentation. This directory contains guides for using and developing the application.
 
 ---
 
-## 📚 Available Guides
+## 📚 User Guides
+
+Start here depending on what you need:
 
 | Document | Purpose | Read If... |
 |----------|---------|------------|
-| [USER_GUIDE.md](USER_GUIDE.md) | Complete end-to-end guide | You're new to The Loom |
 | [QUICKSTART.md](QUICKSTART.md) | 5-minute setup + first story | You want to get started fast |
-| [MANGA_IMPORT.md](MANGA_IMPORT.md) | Importing manga/comics | You're working with visual content |
-| [SCREENSHOTS_CHECKLIST.md](SCREENSHOTS_CHECKLIST.md) | Screenshot requirements | You're updating documentation |
+| [USER_GUIDE.md](USER_GUIDE.md) | Complete application guide | You want comprehensive details |
+| [MANGA_WORKFLOW_COMPLETE.md](MANGA_WORKFLOW_COMPLETE.md) | Import and read manga | You're working with manga/comics |
 
 ---
 
-## 🚀 Start Here
+## 🚀 Quick Links
 
 ### New User?
 → Read [QUICKSTART.md](QUICKSTART.md) for a 5-minute introduction
 
-### Want Full Details?
-→ Read [USER_GUIDE.md](USER_GUIDE.md) for comprehensive coverage
-
 ### Importing Manga?
-→ See [MANGA_IMPORT.md](MANGA_IMPORT.md) for detailed instructions
+→ See [MANGA_WORKFLOW_COMPLETE.md](MANGA_WORKFLOW_COMPLETE.md) for detailed instructions
+
+### Developer?
+→ Check [development/README.md](development/README.md) and [architecture/README.md](architecture/README.md)
 
 ---
 
-## 📖 Documentation Structure
+## 📁 Documentation Structure
 
 ```
 docs/
-├── README.md                    # This file - documentation overview
-├── USER_GUIDE.md               # Complete user guide with examples
-├── QUICKSTART.md               # 5-minute quick start
-├── MANGA_IMPORT.md             # Manga/comic import guide
-├── SCREENSHOTS_CHECKLIST.md    # Screenshot requirements
-└── images/                     # Screenshots directory
+├── README.md                          # This file
+├── QUICKSTART.md                      # 5-minute quick start
+├── USER_GUIDE.md                      # Complete user guide
+├── MANGA_WORKFLOW_COMPLETE.md         # Manga import & reading guide
+├── MANGA_ROADMAP.md                   # Future manga features
+├── CHANGELOG.md                       # Version history
+├── SCREENSHOTS_CHECKLIST.md           # Screenshot requirements
+├── architecture/                      # System architecture
+│   ├── README.md
+│   ├── PRD.md
+│   └── STRATEGY.md
+├── deployment/                        # Deployment guides
+│   └── README.md
+├── development/                       # Developer docs
+│   ├── README.md
+│   ├── BACKEND_GOALS.md
+│   ├── UI_GOALS.md
+│   └── GOALS.md
+└── images/                            # Screenshots
     └── README.md
 ```
 
