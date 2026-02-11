@@ -870,6 +870,26 @@ async def ingest_manga_pages(
         storage = get_manga_storage()
         volume_id = f"manga_{uuid.uuid4().hex[:12]}"
         
+        # Copy files to permanent storage
+        permanent_folder = Path(".loom/manga_images") / volume_id
+        permanent_folder.mkdir(parents=True, exist_ok=True)
+        
+        # Copy all image files to permanent location, renaming to page numbers
+        for i, file in enumerate(files):
+            if not file.filename:
+                continue
+            file_path = Path(file.filename)
+            suffix = file_path.suffix.lower()
+            
+            if suffix not in SUPPORTED_MANGA_IMAGE_EXTENSIONS:
+                continue
+                
+            # Copy to permanent location with page number name
+            source = temp_folder / file_path.name
+            dest = permanent_folder / f"{i + 1:03d}{suffix}"
+            if source.exists():
+                shutil.copy2(source, dest)
+        
         manga_pages = tuple(
             MangaPage(
                 page_number=i + 1,
@@ -910,11 +930,11 @@ async def ingest_manga_pages(
                 # Log but don't fail - volume is still saved
                 print(f"Warning: Failed to create graph node: {e}")
 
-        # Create and save volume
+        # Create and save volume with permanent path
         volume = MangaVolume(
             volume_id=volume_id,
             title=title,
-            source_path=str(temp_folder),
+            source_path=str(permanent_folder),
             page_count=report.page_count,
             source_hash=report.source_hash,
             pages=manga_pages,
