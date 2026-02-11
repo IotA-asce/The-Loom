@@ -802,6 +802,8 @@ async def ingest_manga_pages(
 
     from agents.archivist import (
         SUPPORTED_MANGA_IMAGE_EXTENSIONS,
+        DEFAULT_INGESTION_POLICY,
+        IngestionPolicy,
         ingest_image_folder_pages,
     )
 
@@ -841,8 +843,22 @@ async def ingest_manga_pages(
                 detail=f"No valid image files found. Supported: {supported}",
             )
 
-        # Ingest the folder
-        report = ingest_image_folder_pages(temp_folder)
+        # Use extended timeout policy for large imports
+        policy = IngestionPolicy(
+            max_file_size_bytes=100 * 1024 * 1024,
+            max_page_count=10_000,
+            max_archive_entry_count=10_000,
+            max_archive_uncompressed_bytes=2 * 1024 * 1024 * 1024,
+            max_compression_ratio=100.0,
+            worker_timeout_seconds=300.0,  # 5 minutes
+        )
+
+        # Ingest the folder (non-sandbox for larger imports)
+        report = ingest_image_folder_pages(
+            temp_folder,
+            policy=policy,
+            use_sandbox=False,
+        )
 
         return {
             "success": True,

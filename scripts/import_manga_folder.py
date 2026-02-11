@@ -22,6 +22,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from agents.archivist import (
     SUPPORTED_MANGA_IMAGE_EXTENSIONS,
+    DEFAULT_INGESTION_POLICY,
+    IngestionPolicy,
     ingest_image_folder_pages,
     list_manga_image_pages,
 )
@@ -85,10 +87,26 @@ def main() -> int:
         print("✅ Dry run complete. Use without --dry-run to import.")
         return 0
 
-    # Import
+    # Import with extended timeout for large folders
     print("🔄 Importing pages...")
+    print("   (This may take a while for large volumes with OCR)")
+
+    # Use non-sandbox mode with extended timeout for CLI
+    policy = IngestionPolicy(
+        max_file_size_bytes=100 * 1024 * 1024,  # 100MB
+        max_page_count=10_000,
+        max_archive_entry_count=10_000,
+        max_archive_uncompressed_bytes=2 * 1024 * 1024 * 1024,  # 2GB
+        max_compression_ratio=100.0,
+        worker_timeout_seconds=300.0,  # 5 minutes for large imports
+    )
+
     try:
-        report = ingest_image_folder_pages(folder_path)
+        report = ingest_image_folder_pages(
+            folder_path,
+            policy=policy,
+            use_sandbox=False,  # Direct execution for CLI
+        )
 
         print()
         print("=" * 50)
