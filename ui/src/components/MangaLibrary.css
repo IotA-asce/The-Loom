@@ -355,3 +355,35 @@
   font-size: 12px;
   color: var(--text-secondary, #888);
 }
+
+/* Story Extraction Progress */
+.manga-extraction-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 120px;
+  margin-right: 8px;
+}
+
+.manga-extraction-bar-container {
+  height: 4px;
+  background: var(--progress-bg, #2a2a3e);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.manga-extraction-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-color, #4a9eff), var(--success-color, #4caf50));
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.manga-extraction-text {
+  font-size: 10px;
+  color: var(--text-secondary, #888);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

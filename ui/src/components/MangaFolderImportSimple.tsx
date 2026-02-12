@@ -1,16 +1,26 @@
-import React, { useState, useRef, ChangeEvent } from 'react';
-import { Upload, FileImage, AlertCircle, CheckCircle, Loader2, FolderOpen, X, Image } from 'lucide-react';
+import React, { useState, useRef, ChangeEvent, useEffect, useCallback } from 'react';
+import { Upload, AlertCircle, CheckCircle, Loader2, FolderOpen, X, Image, FileText, Database } from 'lucide-react';
 
 interface ImportStatus {
-  status: 'idle' | 'uploading' | 'success' | 'error';
+  status: 'idle' | 'uploading' | 'processing' | 'success' | 'error';
   message?: string;
   pagesImported?: number;
   progress?: number;
 }
 
+interface ImportPhase {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  progress: number;
+  status: 'pending' | 'active' | 'complete' | 'error';
+}
+
 interface MangaFolderImportSimpleProps {
   onImportComplete?: (result: { title: string; pages: number; hash: string }) => void;
 }
+
+const WS_URL = `ws://${window.location.host}/api/ws`;
 
 export const MangaFolderImportSimple: React.FC<MangaFolderImportSimpleProps> = ({ 
   onImportComplete 
@@ -20,7 +30,117 @@ export const MangaFolderImportSimple: React.FC<MangaFolderImportSimpleProps> = (
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [phases, setPhases] = useState<ImportPhase[]>([
+    { id: 'upload', label: 'Upload', icon: <Upload className="w-4 h-4" />, progress: 0, status: 'pending' },
+    { id: 'analysis', label: 'Thumbnails', icon: <Image className="w-4 h-4" />, progress: 0, status: 'pending' },
+    { id: 'ocr', label: 'OCR', icon: <FileText className="w-4 h-4" />, progress: 0, status: 'pending' },
+    { id: 'finalize', label: 'Save', icon: <Database className="w-4 h-4" />, progress: 0, status: 'pending' },
+  ]);
+  const [, setCurrentPhase] = useState<string>('');
+  const [processingMessage, setProcessingMessage] = useState('');
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const clientIdRef = useRef<string>(`client-${Math.random().toString(36).substr(2, 9)}`);
+
+  // Initialize WebSocket connection
+  useEffect(() => {
+    const connectWebSocket = () => {
+      const ws = new WebSocket(`${WS_URL}/${clientIdRef.current}`);
+      
+      ws.onopen = () => {
+        console.log('WebSocket connected for import progress');
+      };
+      
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        handleWebSocketMessage(data);
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+      
+      ws.onclose = () => {
+        console.log('WebSocket disconnected');
+      };
+      
+      wsRef.current = ws;
+    };
+    
+    connectWebSocket();
+    
+    return () => {
+      wsRef.current?.close();
+    };
+  }, []);
+
+  const handleWebSocketMessage = useCallback((data: any) => {
+    switch (data.type) {
+      case 'job_progress':
+        updatePhaseProgress(data.data);
+        break;
+      case 'job_complete':
+        handleImportSuccess(data.data);
+        break;
+      case 'error':
+        setImportStatus({
+          status: 'error',
+          message: data.message || 'Import failed',
+        });
+        break;
+    }
+  }, []);
+
+  const updatePhaseProgress = (data: any) => {
+    const { phase, message, progress } = data;
+    
+    setCurrentPhase(phase);
+    setProcessingMessage(message);
+    setUploadProgress(progress);
+    
+    setPhases(prev => prev.map(p => {
+      if (p.id === phase) {
+        return { ...p, status: 'active', progress };
+      }
+      if (prev.findIndex(ph => ph.id === phase) > prev.findIndex(ph => ph.id === p.id)) {
+        return { ...p, status: 'complete', progress: 100 };
+      }
+      return p;
+    }));
+  };
+
+  const handleImportSuccess = (data: any) => {
+    setPhases(prev => prev.map(p => ({ ...p, status: 'complete', progress: 100 })));
+    setImportStatus({
+      status: 'success',
+      pagesImported: data.pages_imported,
+      message: `Successfully imported "${data.title}"`,
+    });
+    
+    onImportComplete?.({
+      title: data.title,
+      pages: data.pages_imported,
+      hash: data.source_hash,
+    });
+    
+    setTimeout(() => {
+      clearSelection();
+      setImportStatus({ status: 'idle' });
+      resetPhases();
+    }, 3000);
+  };
+
+  const resetPhases = () => {
+    setPhases([
+      { id: 'upload', label: 'Upload', icon: <Upload className="w-4 h-4" />, progress: 0, status: 'pending' },
+      { id: 'analysis', label: 'Thumbnails', icon: <Image className="w-4 h-4" />, progress: 0, status: 'pending' },
+      { id: 'ocr', label: 'OCR', icon: <FileText className="w-4 h-4" />, progress: 0, status: 'pending' },
+      { id: 'finalize', label: 'Save', icon: <Database className="w-4 h-4" />, progress: 0, status: 'pending' },
+    ]);
+    setCurrentPhase('');
+    setProcessingMessage('');
+  };
 
   const processFiles = (files: File[]) => {
     const supportedFiles = files.filter(file => {
@@ -117,6 +237,12 @@ export const MangaFolderImportSimple: React.FC<MangaFolderImportSimpleProps> = (
 
     setImportStatus({ status: 'uploading', progress: 0 });
     setUploadProgress(0);
+    resetPhases();
+    
+    // Mark upload phase as active
+    setPhases(prev => prev.map(p => 
+      p.id === 'upload' ? { ...p, status: 'active' } : p
+    ));
 
     const formData = new FormData();
     selectedFiles.forEach(file => formData.append('files', file));
@@ -128,10 +254,19 @@ export const MangaFolderImportSimple: React.FC<MangaFolderImportSimpleProps> = (
         if (e.lengthComputable) {
           const percent = Math.round((e.loaded / e.total) * 100);
           setUploadProgress(percent);
+          setPhases(prev => prev.map(p => 
+            p.id === 'upload' ? { ...p, progress: percent * 0.25 } : p
+          ));
         }
       });
 
-      const response = await new Promise<{ success: boolean; pages_imported: number; title: string; source_hash: string }>((resolve, reject) => {
+      const response = await new Promise<{ 
+        success: boolean; 
+        pages_imported: number; 
+        title: string; 
+        source_hash: string;
+        job_id?: string;
+      }>((resolve, reject) => {
         xhr.addEventListener('load', () => {
           if (xhr.status === 200) {
             resolve(JSON.parse(xhr.responseText));
@@ -144,40 +279,53 @@ export const MangaFolderImportSimple: React.FC<MangaFolderImportSimpleProps> = (
         xhr.addEventListener('error', () => reject(new Error('Network error')));
         xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
         
-        xhr.open('POST', `/api/ingest/manga/pages?title=${encodeURIComponent(title)}`);
+        // Include client_id for WebSocket progress tracking
+        xhr.open('POST', `/api/ingest/manga/pages?title=${encodeURIComponent(title)}&client_id=${clientIdRef.current}`);
         xhr.send(formData);
       });
 
-      setImportStatus({
-        status: 'success',
-        pagesImported: response.pages_imported,
-        message: `Successfully imported "${response.title}"`,
-      });
-
-      onImportComplete?.({
-        title: response.title,
-        pages: response.pages_imported,
-        hash: response.source_hash,
-      });
-
-      setTimeout(() => {
-        clearSelection();
-        setImportStatus({ status: 'idle' });
-      }, 3000);
+      // If we have a job_id, switch to processing state and wait for WebSocket updates
+      if (response.job_id) {
+        setImportStatus({ status: 'processing', progress: 25 });
+        // Subscribe to job updates via WebSocket
+        wsRef.current?.send(JSON.stringify({
+          action: 'subscribe',
+          jobId: response.job_id,
+        }));
+      } else {
+        // Fallback: treat as complete immediately
+        handleImportSuccess(response);
+      }
 
     } catch (error) {
       setImportStatus({
         status: 'error',
         message: error instanceof Error ? error.message : 'Import failed',
       });
+      setPhases(prev => prev.map(p => 
+        p.status === 'active' ? { ...p, status: 'error' } : p
+      ));
     }
   };
 
   const getDropzoneClass = () => {
     const baseClass = 'import-dropzone';
-    if (importStatus.status === 'uploading') return `${baseClass} importing`;
+    if (importStatus.status === 'uploading' || importStatus.status === 'processing') return `${baseClass} importing`;
     if (isDragging) return `${baseClass} active`;
     return baseClass;
+  };
+
+  const getPhaseIconClass = (status: ImportPhase['status']) => {
+    switch (status) {
+      case 'complete':
+        return 'phase-icon complete';
+      case 'active':
+        return 'phase-icon active';
+      case 'error':
+        return 'phase-icon error';
+      default:
+        return 'phase-icon';
+    }
   };
 
   return (
@@ -192,7 +340,7 @@ export const MangaFolderImportSimple: React.FC<MangaFolderImportSimpleProps> = (
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="e.g., Dragon Ball Volume 1"
-          disabled={importStatus.status === 'uploading'}
+          disabled={importStatus.status === 'uploading' || importStatus.status === 'processing'}
           className="form-input"
         />
       </div>
@@ -201,11 +349,11 @@ export const MangaFolderImportSimple: React.FC<MangaFolderImportSimpleProps> = (
       <input
         ref={fileInputRef}
         type="file"
-        webkitdirectory=""
-        directory=""
+        {...{ webkitdirectory: '', directory: '' }}
         multiple
         onChange={handleFileSelect}
         className="import-input"
+        disabled={importStatus.status === 'uploading' || importStatus.status === 'processing'}
       />
 
       {/* Drop Zone */}
@@ -223,18 +371,18 @@ export const MangaFolderImportSimple: React.FC<MangaFolderImportSimpleProps> = (
             aria-hidden="true"
           />
           
-          {importStatus.status === 'uploading' ? (
+          {importStatus.status === 'uploading' || importStatus.status === 'processing' ? (
             <div className="import-loading">
               <div className="spinner" />
               <div className="upload-progress">
-                <p className="upload-text">Uploading...</p>
+                <p className="upload-text">{processingMessage || 'Processing...'}</p>
                 <div className="progress-bar-container">
                   <div 
                     className="progress-bar"
                     style={{ width: `${uploadProgress}%` }}
                   />
                 </div>
-                <p className="progress-percent">{uploadProgress}%</p>
+                <p className="progress-percent">{Math.round(uploadProgress)}%</p>
               </div>
             </div>
           ) : (
@@ -264,7 +412,7 @@ export const MangaFolderImportSimple: React.FC<MangaFolderImportSimpleProps> = (
               <CheckCircle className="w-5 h-5" />
               <span>{selectedFiles.length} pages selected</span>
             </div>
-            {importStatus.status !== 'uploading' && (
+            {importStatus.status !== 'uploading' && importStatus.status !== 'processing' && (
               <button
                 onClick={clearSelection}
                 className="clear-btn"
@@ -314,13 +462,14 @@ export const MangaFolderImportSimple: React.FC<MangaFolderImportSimpleProps> = (
       {selectedFiles.length > 0 && (
         <button
           onClick={handleImport}
-          disabled={importStatus.status === 'uploading'}
+          disabled={importStatus.status === 'uploading' || importStatus.status === 'processing'}
           className="import-btn"
         >
-          {importStatus.status === 'uploading' ? (
+          {importStatus.status === 'uploading' || importStatus.status === 'processing' ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              Importing... {uploadProgress > 0 && `${uploadProgress}%`}
+              {importStatus.status === 'uploading' ? 'Uploading...' : 'Processing...'}
+              {uploadProgress > 0 && ` ${Math.round(uploadProgress)}%`}
             </>
           ) : (
             <>
@@ -331,22 +480,41 @@ export const MangaFolderImportSimple: React.FC<MangaFolderImportSimpleProps> = (
         </button>
       )}
 
-      {/* Upload Progress */}
-      {importStatus.status === 'uploading' && (
-        <div className="upload-status-panel">
-          <div className="upload-status-header">
-            <span>Uploading {selectedFiles.length} pages...</span>
-            <span className="upload-percent">{uploadProgress}%</span>
+      {/* Detailed Progress Panel */}
+      {(importStatus.status === 'uploading' || importStatus.status === 'processing') && (
+        <div className="import-progress-panel">
+          <div className="progress-header">
+            <span className="progress-title">{processingMessage || 'Processing...'}</span>
+            <span className="progress-percent">{Math.round(uploadProgress)}%</span>
           </div>
+          
           <div className="progress-bar-container">
             <div 
               className="progress-bar"
               style={{ width: `${uploadProgress}%` }}
             />
           </div>
-          <p className="upload-note">
-            Processing OCR and generating thumbnails...
-          </p>
+
+          {/* Phase indicators */}
+          <div className="import-phases">
+            {phases.map((phase, index) => (
+              <div key={phase.id} className="phase-item">
+                <div className={getPhaseIconClass(phase.status)}>
+                  {phase.status === 'complete' ? (
+                    <CheckCircle className="w-4 h-4" />
+                  ) : phase.status === 'active' ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    phase.icon
+                  )}
+                </div>
+                <span className={`phase-label ${phase.status}`}>{phase.label}</span>
+                {index < phases.length - 1 && (
+                  <div className={`phase-connector ${phase.status === 'complete' ? 'complete' : ''}`} />
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

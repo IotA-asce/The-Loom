@@ -1,6 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useAppStore } from '../store'
 import './MangaLibrary.css'
+
+interface ExtractionProgress {
+  phase: string
+  message: string
+  progress: number
+}
 
 export function MangaLibrary() {
   const { mangaVolumes, fetchMangaVolumes, deleteMangaVolume, updateMangaVolume, addToast, selectNode, nodes, openMangaViewer, getMangaReadingProgress } = useAppStore()
@@ -136,22 +142,54 @@ export function MangaLibrary() {
     setSelectedVolumes(new Set())
   }
   
-  // Story extraction
+  // Story extraction with progress
   const [extractingVolume, setExtractingVolume] = useState<string | null>(null)
+  const [extractionProgress, setExtractionProgress] = useState<ExtractionProgress | null>(null)
+  const wsRef = useRef<WebSocket | null>(null)
+  const clientIdRef = useRef<string>(`extract-client-${Math.random().toString(36).substr(2, 9)}`)
   
-  const handleExtractStory = async (volume: typeof mangaVolumes[0]) => {
+  const handleExtractStory = useCallback(async (volume: typeof mangaVolumes[0]) => {
     if (!confirm(`Extract story from "${volume.title}"?\n\nThis will use AI to analyze the manga text and create scene nodes in your story graph.`)) {
       return
     }
     
     setExtractingVolume(volume.volume_id)
-    addToast({ message: `Extracting story from "${volume.title}"... This may take a minute.`, type: 'info' })
+    setExtractionProgress({ phase: 'start', message: 'Starting extraction...', progress: 0 })
+    
+    const clientId = clientIdRef.current
+    
+    // Setup WebSocket for progress updates
+    const wsUrl = `ws://${window.location.host}/api/ws/${clientId}`
+    const ws = new WebSocket(wsUrl)
+    wsRef.current = ws
+    
+    ws.onopen = () => {
+      console.log('WebSocket connected for extraction progress')
+    }
+    
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data)
+      if (data.type === 'job_progress' && data.data) {
+        setExtractionProgress({
+          phase: data.data.phase,
+          message: data.data.message,
+          progress: data.data.progress,
+        })
+      }
+    }
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error)
+    }
     
     try {
       const response = await fetch(`/api/manga/${volume.volume_id}/extract-story`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ volume_id: volume.volume_id }),
+        body: JSON.stringify({ 
+          volume_id: volume.volume_id,
+          client_id: clientId,
+        }),
       })
       
       if (!response.ok) {
@@ -172,8 +210,11 @@ export function MangaLibrary() {
       addToast({ message: 'Failed to extract story', type: 'error' })
     } finally {
       setExtractingVolume(null)
+      setExtractionProgress(null)
+      ws.close()
+      wsRef.current = null
     }
-  }
+  }, [addToast])
 
   if (loading) {
     return (
@@ -333,6 +374,20 @@ export function MangaLibrary() {
                 </div>
                 {!isEditing && (
                   <div className="manga-item-actions">
+                    {/* Extraction Progress Bar */}
+                    {extractingVolume === volume.volume_id && extractionProgress && (
+                      <div className="manga-extraction-progress">
+                        <div className="manga-extraction-bar-container">
+                          <div 
+                            className="manga-extraction-bar-fill"
+                            style={{ width: `${extractionProgress.progress}%` }}
+                          />
+                        </div>
+                        <span className="manga-extraction-text">
+                          {extractionProgress.message}
+                        </span>
+                      </div>
+                    )}
                     {hasProgress ? (
                       <button
                         className="manga-action-btn resume"

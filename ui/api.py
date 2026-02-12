@@ -794,11 +794,13 @@ async def ingest_manga_pages(
     files: list[UploadFile],
     title: str = Query(..., description="Manga title"),
     create_graph_node: bool = Query(True, description="Create a graph node for this manga"),
+    client_id: str | None = Query(None, description="Client ID for WebSocket progress updates"),
 ) -> dict[str, Any]:
     """Bulk import manga pages as individual image files (webp, png, jpg).
 
     Accepts multiple image files, automatically sorts by filename,
     and ingests them as a single manga volume.
+    Optionally sends progress updates via WebSocket if client_id is provided.
     """
     import shutil
     import tempfile
@@ -809,6 +811,7 @@ async def ingest_manga_pages(
         DEFAULT_INGESTION_POLICY,
         IngestionPolicy,
         ingest_image_folder_pages,
+        extract_ocr_from_manga_page,
     )
     from core.manga_storage import get_manga_storage, MangaVolume, MangaPage
     from core.graph_persistence import get_graph_persistence, GraphNode
@@ -816,15 +819,27 @@ async def ingest_manga_pages(
     if not files:
         raise HTTPException(status_code=400, detail="No files provided")
 
+    # Create progress tracker if client_id provided
+    tracker = None
+    job_id = None
+    if client_id and client_id in _connection_manager.active_connections:
+        job_id = f"import-{uuid.uuid4().hex[:12]}"
+        _connection_manager.subscribe_to_job(client_id, job_id)
+        tracker = MangaImportProgressTracker(job_id, _connection_manager)
+
     # Create a temporary folder for the pages
     temp_folder = Path(tempfile.mkdtemp(prefix="loom_manga_"))
 
     try:
-        # Save all uploaded files to the temp folder
+        # Phase 1: Save uploaded files (0-25%)
+        if tracker:
+            await tracker.report("upload", "Saving uploaded files...", 5)
+
         saved_count = 0
         skipped_files = []
+        total_files = len(files)
 
-        for file in files:
+        for i, file in enumerate(files):
             if not file.filename:
                 continue
 
@@ -841,6 +856,16 @@ async def ingest_manga_pages(
             dest_path = temp_folder / file_path.name
             dest_path.write_bytes(content)
             saved_count += 1
+
+            # Report progress every few files
+            if tracker and (i % 5 == 0 or i == total_files - 1):
+                upload_progress = int((i + 1) / total_files * 20) + 5
+                await tracker.report(
+                    "upload",
+                    f"Saving files... ({i + 1}/{total_files})",
+                    upload_progress,
+                    {"files_saved": saved_count, "files_total": total_files},
+                )
 
         if saved_count == 0:
             supported = SUPPORTED_MANGA_IMAGE_EXTENSIONS
@@ -859,12 +884,23 @@ async def ingest_manga_pages(
             worker_timeout_seconds=300.0,  # 5 minutes
         )
 
-        # Ingest the folder (non-sandbox for larger imports)
+        # Phase 2: Analyze pages and generate thumbnails (25-60%)
+        if tracker:
+            await tracker.report("analysis", "Analyzing pages and generating thumbnails...", 25)
+
         report = ingest_image_folder_pages(
             temp_folder,
             policy=policy,
             use_sandbox=False,
         )
+
+        if tracker:
+            await tracker.report(
+                "analysis",
+                f"Analyzed {report.page_count} pages",
+                60,
+                {"page_count": report.page_count, "formats": list(report.page_formats)},
+            )
 
         # Save to manga storage
         storage = get_manga_storage()
@@ -889,19 +925,66 @@ async def ingest_manga_pages(
             dest = permanent_folder / f"{i + 1:03d}{suffix}"
             if source.exists():
                 shutil.copy2(source, dest)
-        
-        manga_pages = tuple(
-            MangaPage(
-                page_number=i + 1,
-                format_name=meta.format_name,
-                width=meta.width,
-                height=meta.height,
-                content_hash=meta.content_hash,
-                ocr_text=getattr(meta, 'ocr_text', ''),
-            )
-            for i, meta in enumerate(report.page_metadata)
-        )
 
+        # Phase 3: OCR extraction (60-90%)
+        pages_with_ocr: list[MangaPage] = []
+        ocr_results: list[dict[str, Any]] = []
+
+        if tracker:
+            await tracker.report("ocr", "Extracting text from pages...", 60)
+
+        for i, meta in enumerate(report.page_metadata):
+            page_path = temp_folder / Path(meta.source_ref).name
+            ocr_text = ""
+
+            try:
+                if page_path.exists():
+                    ocr_report = extract_ocr_from_manga_page(page_path, min_confidence=0.6)
+                    # Get text from regions if available
+                    if hasattr(ocr_report, 'regions'):
+                        ocr_text_parts = []
+                        for region in ocr_report.regions:
+                            if hasattr(region, 'text'):
+                                ocr_text_parts.append(region.text)
+                        ocr_text = " ".join(ocr_text_parts)
+                    ocr_results.append({
+                        "page": i + 1,
+                        "engine": getattr(ocr_report, 'engine', 'unknown'),
+                        "confidence": getattr(ocr_report, 'average_confidence', 0),
+                        "regions": len(getattr(ocr_report, 'regions', [])),
+                    })
+            except Exception as e:
+                # OCR failure is not critical
+                ocr_results.append({
+                    "page": i + 1,
+                    "error": str(e),
+                })
+
+            pages_with_ocr.append(
+                MangaPage(
+                    page_number=i + 1,
+                    format_name=meta.format_name,
+                    width=meta.width,
+                    height=meta.height,
+                    content_hash=meta.content_hash,
+                    ocr_text=ocr_text,
+                )
+            )
+
+            # Report progress every few pages
+            if tracker and (i % 10 == 0 or i == len(report.page_metadata) - 1):
+                ocr_progress = int((i + 1) / len(report.page_metadata) * 25) + 60
+                await tracker.report(
+                    "ocr",
+                    f"Extracting text... ({i + 1}/{report.page_count})",
+                    min(ocr_progress, 90),
+                    {"pages_processed": i + 1, "pages_total": report.page_count},
+                )
+
+        # Phase 4: Save to storage and finalize (90-100%)
+        if tracker:
+            await tracker.report("finalize", "Saving to storage...", 90)
+        
         # Optionally create graph node
         graph_node_id = None
         if create_graph_node:
@@ -931,16 +1014,20 @@ async def ingest_manga_pages(
                 print(f"Warning: Failed to create graph node: {e}")
 
         # Create and save volume with permanent path
+        from core.manga_storage import MangaVolume
         volume = MangaVolume(
             volume_id=volume_id,
             title=title,
             source_path=str(permanent_folder),
             page_count=report.page_count,
             source_hash=report.source_hash,
-            pages=manga_pages,
+            pages=tuple(pages_with_ocr),
             graph_node_id=graph_node_id,
         )
         storage.save_volume(volume)
+
+        if tracker:
+            await tracker.report("complete", "Import complete!", 100)
 
         return {
             "success": True,
@@ -955,12 +1042,14 @@ async def ingest_manga_pages(
                     "width": meta.width,
                     "height": meta.height,
                     "hash": meta.content_hash[:16],
+                    "ocr_regions": ocr.get("regions", 0) if (ocr := ocr_results[i] if i < len(ocr_results) else {}) else 0,
                 }
                 for i, meta in enumerate(report.page_metadata)
             ],
             "skipped_files": skipped_files,
             "warnings": list(report.warnings),
             "source_hash": report.source_hash,
+            "job_id": job_id,
         }
 
     finally:
@@ -1240,6 +1329,7 @@ def _get_or_create_thumbnail(image_path: Path, content_hash: str, size: tuple[in
 class StoryExtractionRequest(BaseModel):
     volume_id: str
     extraction_mode: str = "scenes"  # "scenes" or "chapters"
+    client_id: str | None = None  # For WebSocket progress updates
 
 
 class StoryExtractionResponse(BaseModel):
@@ -1249,88 +1339,13 @@ class StoryExtractionResponse(BaseModel):
     manga_node_id: str | None = None
 
 
-async def _extract_text_from_images(
-    llm_backend,
-    image_paths: list[Path],
-    volume_title: str,
-) -> str:
-    """Extract text from manga page images using vision-capable LLM.
-    
-    Samples a subset of pages and extracts dialogue/narration.
-    """
-    import base64
-    from PIL import Image
-    
-    if not image_paths:
-        return ""
-    
-    # Sample pages - take first, middle, and last pages for coverage
-    # Also include some spread-out pages for variety
-    total_pages = len(image_paths)
-    if total_pages <= 10:
-        sample_indices = list(range(total_pages))
-    else:
-        # Take first 3, middle 4, and last 3
-        sample_indices = (
-            list(range(0, 3)) +
-            list(range(total_pages // 2 - 2, total_pages // 2 + 2)) +
-            list(range(total_pages - 3, total_pages))
+async def _send_extraction_progress(client_id: str | None, phase: str, message: str, progress: int) -> None:
+    """Send extraction progress update via WebSocket."""
+    if client_id and client_id in _connection_manager.active_connections:
+        await _connection_manager.send_job_progress(
+            f"extract-{client_id}",
+            {"phase": phase, "message": message, "progress": progress}
         )
-    
-    sample_paths = [image_paths[i] for i in sample_indices if i < total_pages]
-    
-    # Convert images to bytes (resize to reduce token usage)
-    image_bytes_list = []
-    for img_path in sample_paths[:8]:  # Max 8 images to avoid token limits
-        try:
-            with Image.open(img_path) as img:
-                # Resize to reasonable dimensions for vision model
-                max_size = (1024, 1024)
-                img.thumbnail(max_size, Image.Resampling.LANCZOS)
-                
-                # Convert to RGB if necessary
-                if img.mode in ('RGBA', 'LA', 'P'):
-                    img = img.convert('RGB')
-                
-                # Save to bytes
-                import io
-                buffer = io.BytesIO()
-                img.save(buffer, format='JPEG', quality=85)
-                image_bytes_list.append(buffer.getvalue())
-        except Exception as e:
-            print(f"Failed to process image {img_path}: {e}")
-            continue
-    
-    if not image_bytes_list:
-        return ""
-    
-    # Build prompt for vision extraction
-    prompt = f"""Extract all dialogue, narration, and text from these manga pages of "{volume_title}".
-
-Please extract:
-1. Character dialogue (who is speaking and what they say)
-2. Narration text (boxes, captions)
-3. Sound effects (if relevant to story)
-
-Format the output as:
-[Page X]: 
-- Character Name: "Dialogue text"
-- Narration: Text here
-- etc.
-
-Be thorough and transcribe everything you can read. If text is unclear, note it with [unclear]."""
-
-    try:
-        response = await llm_backend.generate_from_images(
-            image_bytes_list,
-            prompt,
-            temperature=0.2,
-            max_tokens=4000,
-        )
-        return response.content
-    except Exception as e:
-        print(f"Vision extraction failed: {e}")
-        return ""
 
 
 @app.post("/api/manga/{volume_id}/extract-story")
@@ -1338,21 +1353,25 @@ async def extract_story_from_manga(
     volume_id: str,
     request: StoryExtractionRequest,
 ) -> StoryExtractionResponse:
-    """Extract story content from manga and create scene nodes.
+    """Extract story content from manga using vision-based page-by-page analysis.
     
-    This endpoint:
-    1. Retrieves OCR text from manga pages (if available)
-    2. If no OCR, uses vision-capable LLM to extract text from page images
-    3. Uses AI to segment the text into scenes/chapters
-    4. Creates scene nodes in the story graph
-    5. Links scenes to the manga node
+    This endpoint uses the new Story Extraction Pipeline (v2):
+    1. Processes ALL pages (not just samples) using vision-capable LLM
+    2. Chunks pages with overlap for context continuity
+    3. Synthesizes scenes from page-level extraction
+    4. Validates extraction quality with confidence scores
+    5. Creates scene nodes in the story graph
+    
+    See: docs/STORY_EXTRACTION_STRATEGY.md
     """
     from core.manga_storage import get_manga_storage
-    from core.graph_persistence import get_graph_persistence, GraphNode
+    from core.graph_persistence import get_graph_persistence, GraphNode, GraphEdge
     from core.llm_backend import get_llm_backend
+    from core.story_extraction import StoryExtractionPipeline
     import uuid
-    import json
 
+    client_id = request.client_id
+    
     storage = get_manga_storage()
     graph_db = get_graph_persistence()
     llm = get_llm_backend()
@@ -1362,149 +1381,107 @@ async def extract_story_from_manga(
     if not volume:
         raise HTTPException(status_code=404, detail=f"Manga volume not found: {volume_id}")
 
-    # Get all OCR text from pages
-    ocr_pages = storage.get_volume_ocr_text(volume_id)
-    combined_text = ""
-    extraction_method = "ocr"
-    
-    if ocr_pages:
-        # Combine OCR text with page numbers
-        combined_text = "\n\n".join([
-            f"[Page {p['page_number']}]: {p['ocr_text']}"
-            for p in ocr_pages if p['ocr_text'].strip()
-        ])
-    
-    # If no OCR text, try vision extraction
-    if not combined_text.strip():
-        if llm.supports_vision:
-            # Get image paths for the volume
-            source_path = Path(volume.source_path) if volume.source_path else None
-            if source_path and source_path.exists():
-                # Find all image files
-                image_extensions = {'.jpg', '.jpeg', '.png', '.webp'}
-                image_paths = sorted([
-                    f for f in source_path.iterdir()
-                    if f.suffix.lower() in image_extensions
-                ])
-                
-                if image_paths:
-                    # Extract text from images using vision
-                    vision_text = await _extract_text_from_images(
-                        llm, image_paths, volume.title
-                    )
-                    if vision_text.strip():
-                        combined_text = vision_text
-                        extraction_method = "vision"
+    # Check for vision support
+    if not llm.supports_vision:
+        await _send_extraction_progress(client_id, "error", "No vision-capable LLM configured", 0)
+        return StoryExtractionResponse(
+            success=False,
+            message="Story extraction requires a vision-capable LLM (Gemini, GPT-4V, etc.)",
+            scenes=[],
+        )
+
+    # Get image paths
+    source_path = Path(volume.source_path) if volume.source_path else None
+    if not source_path or not source_path.exists():
+        await _send_extraction_progress(client_id, "error", "Manga images not found", 0)
+        return StoryExtractionResponse(
+            success=False,
+            message="Manga image files not found",
+            scenes=[],
+        )
+
+    # Find all image files
+    image_extensions = {'.jpg', '.jpeg', '.png', '.webp'}
+    image_paths = sorted([
+        f for f in source_path.iterdir()
+        if f.suffix.lower() in image_extensions
+    ])
+
+    if not image_paths:
+        await _send_extraction_progress(client_id, "error", "No images found in manga folder", 0)
+        return StoryExtractionResponse(
+            success=False,
+            message="No image files found in manga folder",
+            scenes=[],
+        )
+
+    # Initialize extraction pipeline
+    pipeline = StoryExtractionPipeline(llm)
+
+    # Progress callback
+    async def progress_callback(update: dict):
+        await _send_extraction_progress(
+            client_id,
+            update.get("phase", "processing"),
+            update.get("message", ""),
+            update.get("progress", 0),
+        )
+
+    try:
+        # Run extraction pipeline
+        await _send_extraction_progress(client_id, "start", f"Starting extraction of {len(image_paths)} pages...", 5)
         
-        if not combined_text.strip():
+        result = await pipeline.extract(
+            volume_id=volume_id,
+            image_paths=image_paths,
+            volume_title=volume.title,
+            progress_callback=progress_callback,
+        )
+
+        scenes = result["scenes"]
+        issues = result["issues"]
+        confidence = result["confidence"]
+
+        if not scenes:
+            await _send_extraction_progress(client_id, "error", "No scenes could be extracted", 0)
             return StoryExtractionResponse(
                 success=False,
-                message=(
-                    "No text could be extracted from this manga. "
-                    "The manga may not have extractable text, or no vision-capable LLM is configured. "
-                    "Please ensure you have a vision-capable model (Gemini, GPT-4V) configured."
-                ),
+                message="Could not extract any scenes from this manga",
                 scenes=[],
             )
 
-    # Use LLM to extract scenes
-    try:
-        text_source = "OCR text" if extraction_method == "ocr" else "vision-extracted text"
+        # Phase 4: Creating scene nodes (75-100%)
+        await _send_extraction_progress(client_id, "scenes", f"Creating {len(scenes)} scene nodes in graph...", 80)
         
-        extraction_prompt = f"""Analyze this manga text and extract the story scenes.
-
-Manga Title: {volume.title}
-Text Source: {text_source}
-
-Extracted Text by Page:
-{combined_text[:8000]}  # Limit to avoid token limits
-
-Extract the narrative into scenes. For each scene, provide:
-1. Scene title (brief, descriptive)
-2. Scene content (the narrative text, rewritten for clarity)
-3. Characters present (list of names)
-4. Page range (start and end page numbers)
-5. Mood/atmosphere (e.g., tense, peaceful, mysterious)
-6. Key events (what happens in this scene)
-
-Format your response as JSON:
-{{
-  "scenes": [
-    {{
-      "title": "Scene title",
-      "content": "Scene narrative text...",
-      "characters": ["Character1", "Character2"],
-      "page_start": 1,
-      "page_end": 5,
-      "mood": "tense",
-      "key_events": ["Event 1", "Event 2"]
-    }}
-  ]
-}}
-
-Extract 3-10 scenes depending on the manga length and complexity."""
-
-        # Call LLM
-        response = await llm.generate(
-            prompt=extraction_prompt,
-            temperature=0.3,
-            max_tokens=4000,
-        )
-
-        # Parse the response
-        try:
-            # Try to find JSON in the response
-            response_text = response.text if hasattr(response, 'text') else str(response)
-            
-            # Look for JSON block
-            json_start = response_text.find('{')
-            json_end = response_text.rfind('}') + 1
-            if json_start >= 0 and json_end > json_start:
-                extracted_data = json.loads(response_text[json_start:json_end])
-            else:
-                extracted_data = json.loads(response_text)
-            
-            scenes_data = extracted_data.get('scenes', [])
-        except (json.JSONDecodeError, AttributeError) as e:
-            print(f"Failed to parse LLM response: {e}")
-            print(f"Response was: {response_text[:500]}")
-            # Create a single scene as fallback
-            scenes_data = [{
-                "title": f"{volume.title} - Full Story",
-                "content": combined_text[:2000],
-                "characters": [],
-                "page_start": 1,
-                "page_end": len(ocr_pages),
-                "mood": "neutral",
-                "key_events": ["Story extracted from manga"],
-            }]
-
         # Create scene nodes in the graph
         created_scenes = []
         manga_node_id = volume.graph_node_id
 
-        for i, scene in enumerate(scenes_data):
-            scene_id = f"scene_{uuid.uuid4().hex[:12]}"
-            
+        for i, scene in enumerate(scenes):
             # Create scene node
             scene_node = GraphNode(
-                node_id=scene_id,
-                label=scene.get('title', f'Scene {i+1}'),
+                node_id=scene.scene_id,
+                label=scene.title,
                 branch_id="main",
                 scene_id=f"scene_{uuid.uuid4().hex[:8]}",
-                x=150.0 + (i * 50),  # Stagger positions
+                x=150.0 + (i * 50),
                 y=150.0 + (i * 30),
                 importance=0.7,
                 node_type="scene",
                 metadata={
                     "type": "scene",
                     "extracted_from_manga": volume_id,
-                    "page_start": scene.get('page_start', 1),
-                    "page_end": scene.get('page_end', 1),
-                    "characters": scene.get('characters', []),
-                    "mood": scene.get('mood', 'neutral'),
-                    "key_events": scene.get('key_events', []),
-                    "content": scene.get('content', ''),
+                    "page_start": scene.page_start,
+                    "page_end": scene.page_end,
+                    "characters": scene.characters,
+                    "mood": scene.mood,
+                    "key_events": scene.key_events,
+                    "content": scene.content,
+                    "dialogue": scene.dialogue,
+                    "confidence": scene.confidence_score,
+                    "extraction_timestamp": scene.extraction_timestamp,
+                    "extraction_method": "vision_v2",
+                    "needs_review": any(issue.severity == "error" for issue in issues[i]) if i < len(issues) else False,
                 },
             )
 
@@ -1513,33 +1490,49 @@ Extract 3-10 scenes depending on the manga length and complexity."""
             
             if success:
                 created_scenes.append({
-                    "id": scene_id,
-                    "title": scene_node.label,
-                    "page_start": scene.get('page_start', 1),
-                    "page_end": scene.get('page_end', 1),
+                    "id": scene.scene_id,
+                    "title": scene.title,
+                    "page_start": scene.page_start,
+                    "page_end": scene.page_end,
+                    "confidence": scene.confidence_score,
                 })
 
                 # Link scene to manga node if it exists
                 if manga_node_id:
                     edge_id = f"edge_{uuid.uuid4().hex[:12]}"
-                    await graph_db.save_edge({
-                        "edge_id": edge_id,
-                        "source": manga_node_id,
-                        "target": scene_id,
-                        "type": "contains",
-                        "label": f"Pages {scene.get('page_start', 1)}-{scene.get('page_end', 1)}",
-                    })
+                    edge = GraphEdge(
+                        edge_id=edge_id,
+                        source_id=manga_node_id,
+                        target_id=scene.scene_id,
+                        label=f"Pages {scene.page_start}-{scene.page_end}",
+                        edge_type="contains",
+                    )
+                    await graph_db.save_edge(edge)
 
-        method_note = f" (using {extraction_method.upper()})" if extraction_method != "ocr" else ""
+        # Build result message
+        error_count = sum(1 for issue_list in issues for issue in issue_list if issue.severity == "error")
+        warning_count = sum(1 for issue_list in issues for issue in issue_list if issue.severity == "warning")
+        
+        message_parts = [f"Successfully extracted {len(created_scenes)} scenes"]
+        if error_count > 0:
+            message_parts.append(f"({error_count} need review)")
+        if warning_count > 0:
+            message_parts.append(f"[{warning_count} warnings]")
+        message_parts.append(f"- Quality: {confidence['overall']:.0%}")
+
+        # Phase 5: Complete
+        await _send_extraction_progress(client_id, "complete", f"Extraction complete! {len(created_scenes)} scenes created.", 100)
+        
         return StoryExtractionResponse(
             success=True,
-            message=f"Successfully extracted {len(created_scenes)} scenes from manga{method_note}",
+            message=" ".join(message_parts),
             scenes=created_scenes,
             manga_node_id=manga_node_id,
         )
 
     except Exception as e:
         print(f"Error extracting story: {e}")
+        await _send_extraction_progress(client_id, "error", f"Extraction failed: {str(e)}", 0)
         raise HTTPException(status_code=500, detail=f"Failed to extract story: {str(e)}")
 
 
@@ -2210,6 +2203,315 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str) -> None:
 
             # Handle ping
             elif data.get("action") == "ping":
+                await websocket.send_json({"type": "pong"})
+
+    except WebSocketDisconnect:
+        _connection_manager.disconnect(client_id)
+
+
+# ============ Manga Import with WebSocket Progress ============
+
+
+class MangaImportProgressTracker:
+    """Track and report progress during manga import."""
+
+    def __init__(self, job_id: str, connection_manager: ConnectionManager):
+        self.job_id = job_id
+        self.cm = connection_manager
+        self.current_step = 0
+        self.total_steps = 4  # upload, thumbnails, ocr, finalize
+
+    async def report(
+        self,
+        phase: str,
+        message: str,
+        progress: int,  # 0-100 for overall
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        """Send progress update to all subscribed clients."""
+        await self.cm.send_job_progress(
+            self.job_id,
+            {
+                "phase": phase,
+                "message": message,
+                "progress": progress,
+                "details": details or {},
+            },
+        )
+
+
+async def process_manga_import_with_progress(
+    job_id: str,
+    files: list[UploadFile],
+    title: str,
+    tracker: MangaImportProgressTracker,
+    create_graph_node: bool = True,
+) -> dict[str, Any]:
+    """Process manga import with detailed progress tracking."""
+    import shutil
+    import tempfile
+    import uuid
+
+    from agents.archivist import (
+        SUPPORTED_MANGA_IMAGE_EXTENSIONS,
+        DEFAULT_INGESTION_POLICY,
+        IngestionPolicy,
+        ingest_image_folder_pages,
+        extract_ocr_from_manga_page,
+    )
+    from core.manga_storage import get_manga_storage, MangaPage
+    from core.graph_persistence import get_graph_persistence, GraphNode
+
+    # Phase 1: File upload/saving (0-25%)
+    await tracker.report("upload", "Saving uploaded files...", 5)
+
+    temp_folder = Path(tempfile.mkdtemp(prefix="loom_manga_"))
+    saved_count = 0
+    skipped_files: list[str] = []
+
+    try:
+        total_files = len(files)
+        for i, file in enumerate(files):
+            if not file.filename:
+                continue
+
+            file_path = Path(file.filename)
+            suffix = file_path.suffix.lower()
+
+            if suffix not in SUPPORTED_MANGA_IMAGE_EXTENSIONS:
+                skipped_files.append(f"{file.filename} (unsupported format)")
+                continue
+
+            content = await file.read()
+            dest_path = temp_folder / file_path.name
+            dest_path.write_bytes(content)
+            saved_count += 1
+
+            # Report progress every few files
+            if i % 5 == 0 or i == total_files - 1:
+                upload_progress = int((i + 1) / total_files * 20) + 5
+                await tracker.report(
+                    "upload",
+                    f"Saving files... ({i + 1}/{total_files})",
+                    upload_progress,
+                    {"files_saved": saved_count, "files_total": total_files},
+                )
+
+        if saved_count == 0:
+            raise ValueError("No valid image files found")
+
+        # Phase 2: Page analysis/thumbnails (25-60%)
+        await tracker.report("analysis", "Analyzing pages and generating thumbnails...", 25)
+
+        policy = IngestionPolicy(
+            max_file_size_bytes=100 * 1024 * 1024,
+            max_page_count=10_000,
+            max_archive_entry_count=10_000,
+            max_archive_uncompressed_bytes=2 * 1024 * 1024 * 1024,
+            max_compression_ratio=100.0,
+            worker_timeout_seconds=300.0,
+        )
+
+        report = ingest_image_folder_pages(
+            temp_folder,
+            policy=policy,
+            use_sandbox=False,
+        )
+
+        await tracker.report(
+            "analysis",
+            f"Analyzed {report.page_count} pages",
+            60,
+            {"page_count": report.page_count, "formats": list(report.page_formats)},
+        )
+
+        # Phase 3: OCR extraction (60-90%)
+        await tracker.report("ocr", "Extracting text from pages...", 60)
+
+        pages_with_ocr: list[MangaPage] = []
+        ocr_results: list[dict[str, Any]] = []
+
+        for i, meta in enumerate(report.page_metadata):
+            page_path = temp_folder / Path(meta.source_ref).name
+            ocr_text = ""
+
+            try:
+                if page_path.exists():
+                    ocr_report = extract_ocr_from_manga_page(page_path, min_confidence=0.6)
+                    ocr_text = " ".join(
+                        region.text for region in ocr_report.regions if hasattr(region, 'text')
+                    )
+                    ocr_results.append({
+                        "page": i + 1,
+                        "engine": ocr_report.engine,
+                        "confidence": ocr_report.average_confidence,
+                        "regions": len(ocr_report.regions),
+                    })
+            except Exception as e:
+                # OCR failure is not critical
+                ocr_results.append({
+                    "page": i + 1,
+                    "error": str(e),
+                })
+
+            pages_with_ocr.append(
+                MangaPage(
+                    page_number=i + 1,
+                    format_name=meta.format_name,
+                    width=meta.width,
+                    height=meta.height,
+                    content_hash=meta.content_hash,
+                    ocr_text=ocr_text,
+                )
+            )
+
+            # Report progress every few pages
+            if i % 10 == 0 or i == len(report.page_metadata) - 1:
+                ocr_progress = int((i + 1) / len(report.page_metadata) * 25) + 60
+                await tracker.report(
+                    "ocr",
+                    f"Extracting text... ({i + 1}/{report.page_count})",
+                    min(ocr_progress, 90),
+                    {"pages_processed": i + 1, "pages_total": report.page_count},
+                )
+
+        # Phase 4: Save to storage (90-100%)
+        await tracker.report("finalize", "Saving to storage...", 90)
+
+        storage = get_manga_storage()
+        volume_id = f"manga_{uuid.uuid4().hex[:12]}"
+
+        # Copy to permanent storage
+        permanent_folder = Path(".loom/manga_images") / volume_id
+        permanent_folder.mkdir(parents=True, exist_ok=True)
+
+        for i, meta in enumerate(report.page_metadata):
+            source_name = Path(meta.source_ref).name
+            source = temp_folder / source_name
+            suffix = Path(source_name).suffix.lower()
+            dest = permanent_folder / f"{i + 1:03d}{suffix}"
+            if source.exists():
+                shutil.copy2(source, dest)
+
+        await tracker.report("finalize", "Creating database entries...", 95)
+
+        # Create graph node
+        graph_node_id = None
+        if create_graph_node:
+            try:
+                graph_db = get_graph_persistence()
+                node_id = f"node_{uuid.uuid4().hex[:12]}"
+                node = GraphNode(
+                    node_id=node_id,
+                    label=title,
+                    branch_id="main",
+                    scene_id=f"scene_{uuid.uuid4().hex[:8]}",
+                    x=100.0,
+                    y=100.0,
+                    importance=0.8,
+                    node_type="manga",
+                    metadata={
+                        "type": "manga",
+                        "volume_id": volume_id,
+                        "page_count": report.page_count,
+                        "source_hash": report.source_hash,
+                    },
+                )
+                await graph_db.save_node(node)
+                graph_node_id = node_id
+            except Exception as e:
+                print(f"Warning: Failed to create graph node: {e}")
+
+        # Save volume
+        from core.manga_storage import MangaVolume
+        volume = MangaVolume(
+            volume_id=volume_id,
+            title=title,
+            source_path=str(permanent_folder),
+            page_count=report.page_count,
+            source_hash=report.source_hash,
+            pages=tuple(pages_with_ocr),
+            graph_node_id=graph_node_id,
+        )
+        storage.save_volume(volume)
+
+        await tracker.report("complete", "Import complete!", 100)
+
+        return {
+            "success": True,
+            "title": title,
+            "volume_id": volume_id,
+            "graph_node_id": graph_node_id,
+            "pages_imported": report.page_count,
+            "pages": [
+                {
+                    "page_number": i + 1,
+                    "format": meta.format_name,
+                    "width": meta.width,
+                    "height": meta.height,
+                    "hash": meta.content_hash[:16],
+                    "ocr_regions": ocr.get("regions", 0) if (ocr := ocr_results[i] if i < len(ocr_results) else {}) else 0,
+                }
+                for i, meta in enumerate(report.page_metadata)
+            ],
+            "skipped_files": skipped_files,
+            "warnings": list(report.warnings),
+            "source_hash": report.source_hash,
+        }
+
+    finally:
+        if temp_folder.exists():
+            shutil.rmtree(temp_folder)
+
+
+@app.websocket("/api/ws/manga-import/{client_id}")
+async def manga_import_websocket(websocket: WebSocket, client_id: str) -> None:
+    """WebSocket endpoint for manga import with real-time progress."""
+    await _connection_manager.connect(websocket, client_id)
+
+    try:
+        while True:
+            data = await websocket.receive_json()
+            action = data.get("action")
+
+            if action == "import":
+                # Start import process
+                job_id = f"import-{uuid.uuid4().hex[:12]}"
+                files_data = data.get("files", [])
+                title = data.get("title", "Untitled")
+                create_graph_node = data.get("create_graph_node", True)
+
+                await websocket.send_json({
+                    "type": "import_started",
+                    "job_id": job_id,
+                    "message": "Starting import...",
+                })
+
+                # Subscribe client to job updates
+                _connection_manager.subscribe_to_job(client_id, job_id)
+
+                # Create tracker and process
+                tracker = MangaImportProgressTracker(job_id, _connection_manager)
+
+                try:
+                    # Note: Files need to be handled differently for WebSocket
+                    # This is a simplified version - in production, you'd use
+                    # a file upload first, then trigger processing via WebSocket
+                    result = await process_manga_import_with_progress(
+                        job_id=job_id,
+                        files=[],  # Files should be uploaded via HTTP first
+                        title=title,
+                        tracker=tracker,
+                        create_graph_node=create_graph_node,
+                    )
+                    await _connection_manager.send_job_complete(job_id, result)
+                except Exception as e:
+                    await _connection_manager.send_job_progress(
+                        job_id,
+                        {"phase": "error", "message": str(e), "progress": 0},
+                    )
+
+            elif action == "ping":
                 await websocket.send_json({"type": "pong"})
 
     except WebSocketDisconnect:

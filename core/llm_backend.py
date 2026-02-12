@@ -529,41 +529,51 @@ class GeminiBackend(LLMBackend):
         """Lazy load Gemini client."""
         if self._client is None:
             try:
-                import google.generativeai as genai
+                from google import genai
             except ImportError as e:
                 raise ImportError(
-                    "Google Generative AI package not installed. Run: "
-                    "pip install google-generativeai"
+                    "Google GenAI package not installed. Run: "
+                    "pip install google-genai"
                 ) from e
 
-            genai.configure(api_key=self.config.api_key)
-            self._client = genai
+            self._client = genai.Client(api_key=self.config.api_key)
 
         return self._client
 
-    def _get_safety_settings(self) -> list[dict[str, str]]:
+    def _get_safety_settings(self) -> list[Any]:
         """Get safety settings with all filters set to BLOCK_NONE.
         
         This allows unrestricted content extraction from manga/comics.
         """
         if self._safety_settings is None:
+            try:
+                from google.genai import types
+            except ImportError:
+                # Fallback to dict format if types not available
+                return [
+                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+                ]
+            
             self._safety_settings = [
-                {
-                    "category": "HARM_CATEGORY_HARASSMENT",
-                    "threshold": "BLOCK_NONE",
-                },
-                {
-                    "category": "HARM_CATEGORY_HATE_SPEECH",
-                    "threshold": "BLOCK_NONE",
-                },
-                {
-                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                    "threshold": "BLOCK_NONE",
-                },
-                {
-                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-                    "threshold": "BLOCK_NONE",
-                },
+                types.SafetySetting(
+                    category="HARM_CATEGORY_HARASSMENT",
+                    threshold="BLOCK_NONE",
+                ),
+                types.SafetySetting(
+                    category="HARM_CATEGORY_HATE_SPEECH",
+                    threshold="BLOCK_NONE",
+                ),
+                types.SafetySetting(
+                    category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    threshold="BLOCK_NONE",
+                ),
+                types.SafetySetting(
+                    category="HARM_CATEGORY_DANGEROUS_CONTENT",
+                    threshold="BLOCK_NONE",
+                ),
             ]
         return self._safety_settings
 
@@ -601,26 +611,32 @@ class GeminiBackend(LLMBackend):
         # Convert messages
         system, prompt = self._convert_messages(request.messages)
 
-        # Build generation config
-        generation_config = {
-            "temperature": request.temperature or self.config.temperature,
-            "max_output_tokens": request.max_tokens or self.config.max_tokens,
-        }
-
-        # Create model with safety settings disabled
-        model = client.GenerativeModel(
-            model_name=self.config.model,
-            system_instruction=system,
-            safety_settings=self._get_safety_settings(),
-        )
+        # Build generation config using types
+        try:
+            from google.genai import types
+            generation_config = types.GenerateContentConfig(
+                temperature=request.temperature or self.config.temperature,
+                max_output_tokens=request.max_tokens or self.config.max_tokens,
+                safety_settings=self._get_safety_settings(),
+                system_instruction=system,
+            )
+        except ImportError:
+            # Fallback to dict format
+            generation_config = {
+                "temperature": request.temperature or self.config.temperature,
+                "max_output_tokens": request.max_tokens or self.config.max_tokens,
+                "safety_settings": self._get_safety_settings(),
+                "system_instruction": system,
+            }
 
         # Generate (run in executor since Gemini SDK is sync)
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
             None,
-            lambda: model.generate_content(
-                prompt,
-                generation_config=generation_config,
+            lambda: client.models.generate_content(
+                model=self.config.model,
+                contents=prompt,
+                config=generation_config,
             ),
         )
 
@@ -655,25 +671,32 @@ class GeminiBackend(LLMBackend):
         # Convert messages
         system, prompt = self._convert_messages(request.messages)
 
-        generation_config = {
-            "temperature": request.temperature or self.config.temperature,
-            "max_output_tokens": request.max_tokens or self.config.max_tokens,
-        }
-
-        model = client.GenerativeModel(
-            model_name=self.config.model,
-            system_instruction=system,
-            safety_settings=self._get_safety_settings(),
-        )
+        # Build generation config using types
+        try:
+            from google.genai import types
+            generation_config = types.GenerateContentConfig(
+                temperature=request.temperature or self.config.temperature,
+                max_output_tokens=request.max_tokens or self.config.max_tokens,
+                safety_settings=self._get_safety_settings(),
+                system_instruction=system,
+            )
+        except ImportError:
+            # Fallback to dict format
+            generation_config = {
+                "temperature": request.temperature or self.config.temperature,
+                "max_output_tokens": request.max_tokens or self.config.max_tokens,
+                "safety_settings": self._get_safety_settings(),
+                "system_instruction": system,
+            }
 
         # Generate streaming (run in executor)
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
             None,
-            lambda: model.generate_content(
-                prompt,
-                generation_config=generation_config,
-                stream=True,
+            lambda: client.models.generate_content_stream(
+                model=self.config.model,
+                contents=prompt,
+                config=generation_config,
             ),
         )
 
@@ -704,38 +727,49 @@ class GeminiBackend(LLMBackend):
     ) -> LLMResponse:
         """Generate from images using Gemini's vision capabilities."""
         import asyncio
-        import base64
+        from pathlib import Path
 
         client = self._get_client()
 
-        # Build content parts with images
-        content_parts = [prompt]
-        for img_bytes in images:
-            # Gemini can handle raw bytes directly
-            content_parts.append({
-                "mime_type": "image/jpeg",
-                "data": img_bytes
-            })
-
-        # Build generation config
-        generation_config = {
-            "temperature": temperature or self.config.temperature,
-            "max_output_tokens": max_tokens or self.config.max_tokens,
-        }
-
-        # Create model with safety settings disabled
-        model = client.GenerativeModel(
-            model_name=self.config.model,
-            safety_settings=self._get_safety_settings(),
-        )
+        # Build content parts with images using the new API format
+        try:
+            from google.genai import types
+            
+            # Build content with text and images
+            content_parts = [prompt]
+            for img_bytes in images:
+                content_parts.append(
+                    types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg")
+                )
+            
+            # Build generation config
+            generation_config = types.GenerateContentConfig(
+                temperature=temperature or self.config.temperature,
+                max_output_tokens=max_tokens or self.config.max_tokens,
+                safety_settings=self._get_safety_settings(),
+            )
+        except ImportError:
+            # Fallback for older API
+            content_parts = [prompt]
+            for img_bytes in images:
+                content_parts.append({
+                    "mime_type": "image/jpeg",
+                    "data": img_bytes
+                })
+            generation_config = {
+                "temperature": temperature or self.config.temperature,
+                "max_output_tokens": max_tokens or self.config.max_tokens,
+                "safety_settings": self._get_safety_settings(),
+            }
 
         # Generate (run in executor since Gemini SDK is sync)
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
             None,
-            lambda: model.generate_content(
-                content_parts,
-                generation_config=generation_config,
+            lambda: client.models.generate_content(
+                model=self.config.model,
+                contents=content_parts,
+                config=generation_config,
             ),
         )
 

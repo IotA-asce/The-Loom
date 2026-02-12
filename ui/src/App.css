@@ -142,6 +142,12 @@
   padding: 1rem;
 }
 
+/* Import panel scrollability */
+#import-panel {
+  height: 100%;
+  overflow-y: auto;
+}
+
 .empty-panel {
   text-align: center;
   padding: 2rem 1rem;

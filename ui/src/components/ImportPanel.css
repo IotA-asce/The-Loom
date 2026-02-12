@@ -541,6 +541,122 @@
   font-weight: 500;
 }
 
+/* Import Progress Panel */
+.manga-folder-import .import-progress-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--color-bg-secondary, #2a2a2a);
+  border: 1px solid var(--color-border, #444);
+  border-radius: 8px;
+}
+
+.manga-folder-import .progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.manga-folder-import .progress-title {
+  font-weight: 500;
+  color: var(--color-text-primary, #e0e0e0);
+  font-size: 0.9rem;
+}
+
+.manga-folder-import .progress-percent {
+  font-weight: 600;
+  color: var(--color-accent, #4a9eff);
+  font-size: 0.9rem;
+}
+
+/* Import Phases */
+.manga-folder-import .import-phases {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border, #444);
+}
+
+.manga-folder-import .phase-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  position: relative;
+  flex: 1;
+}
+
+.manga-folder-import .phase-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-tertiary, #1a1a1a);
+  border: 2px solid var(--color-border, #444);
+  color: var(--color-text-secondary, #888);
+  transition: all 0.3s ease;
+}
+
+.manga-folder-import .phase-icon.active {
+  background: var(--color-accent, #4a9eff);
+  border-color: var(--color-accent, #4a9eff);
+  color: white;
+  box-shadow: 0 0 10px rgba(74, 158, 255, 0.3);
+}
+
+.manga-folder-import .phase-icon.complete {
+  background: var(--color-success, #4caf50);
+  border-color: var(--color-success, #4caf50);
+  color: white;
+}
+
+.manga-folder-import .phase-icon.error {
+  background: var(--color-error, #f44336);
+  border-color: var(--color-error, #f44336);
+  color: white;
+}
+
+.manga-folder-import .phase-label {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: color 0.3s ease;
+}
+
+.manga-folder-import .phase-label.active {
+  color: var(--color-accent, #4a9eff);
+  font-weight: 500;
+}
+
+.manga-folder-import .phase-label.complete {
+  color: var(--color-success, #4caf50);
+}
+
+.manga-folder-import .phase-label.error {
+  color: var(--color-error, #f44336);
+}
+
+.manga-folder-import .phase-connector {
+  position: absolute;
+  top: 1rem;
+  right: -50%;
+  width: 100%;
+  height: 2px;
+  background: var(--color-border, #444);
+  transform: translateX(-50%);
+  z-index: 0;
+  transition: background 0.3s ease;
+}
+
+.manga-folder-import .phase-connector.complete {
+  background: var(--color-success, #4caf50);
+}
+
 /* Animation for spinner */
 @keyframes spin {
   to {
